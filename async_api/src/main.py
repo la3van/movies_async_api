@@ -5,7 +5,7 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
-from api.v1 import films, genres, persons
+from api.v1.router import api_router
 from core.config import get_settings
 from db.elastic import close_elastic, init_elastic
 from db.redis import close_redis, init_redis
@@ -39,19 +39,6 @@ app = FastAPI(
 )
 
 app.include_router(
-    films.router,
-    prefix='/api/v1/films',
-    tags=['Кинопроизведения'],
-)
-
-app.include_router(
-    genres.router,
-    prefix='/api/v1/genres',
-    tags=['Жанры'],
-)
-
-app.include_router(
-    persons.router,
-    prefix='/api/v1/persons',
-    tags=['Персоны'],
+    api_router,
+    prefix='/api/v1',
 )

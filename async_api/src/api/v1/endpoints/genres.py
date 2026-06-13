@@ -1,30 +1,15 @@
-"""Модуль с router'ом, моделями ответа API и обработчиками жанров."""
-
+"""Модуль с endpoint'ами для жанров."""
 from http import HTTPStatus
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 
-from models.genre import Genre
 from services.genre import GenreService, get_genre_service
 
+from api.v1.schemas.genres import GenreResponse
+from api.v1.mappers.genres import build_genre_response
+
 router = APIRouter()
-
-
-class GenreResponse(BaseModel):
-    """Модель ответа API для жанра."""
-
-    uuid: UUID
-    name: str
-
-
-def build_genre_response(genre: Genre) -> GenreResponse:
-    """Собирает ответ API для жанра."""
-    return GenreResponse(
-        uuid=UUID(genre.uuid),
-        name=genre.name,
-    )
 
 
 @router.get(

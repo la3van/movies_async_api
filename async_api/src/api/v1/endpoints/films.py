@@ -1,96 +1,21 @@
-"""Модуль с router'ом, моделями ответа API и обработчиками фильмов."""
+"""Модуль с endpoint'ами для фильмов."""
 from http import HTTPStatus
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 
-from models.film import Film, ShortFilm
 from services.film import FilmService, get_film_service
 
+from api.v1.schemas.films import (
+    ShortFilmResponse,
+    FilmDetailResponse,
+)
+from api.v1.mappers.films import (
+    build_film_detail_response,
+    build_short_film_response,
+)
+
 router = APIRouter()
-
-
-class ShortFilmResponse(BaseModel):
-    """Краткая модель фильма для списков."""
-
-    uuid: UUID
-    title: str
-    imdb_rating: float | None
-
-
-class GenreInFilmResponse(BaseModel):
-    """Жанр внутри полной информации о фильме."""
-
-    uuid: UUID
-    name: str
-
-
-class PersonInFilmResponse(BaseModel):
-    """Персона внутри полной информации о фильме."""
-
-    uuid: UUID
-    full_name: str
-
-
-class FilmDetailResponse(BaseModel):
-    """Полная модель фильма для страницы фильма."""
-
-    uuid: UUID
-    title: str
-    imdb_rating: float | None
-    description: str | None
-    genre: list[GenreInFilmResponse]
-    actors: list[PersonInFilmResponse]
-    writers: list[PersonInFilmResponse]
-    directors: list[PersonInFilmResponse]
-
-
-def build_short_film_response(film: ShortFilm) -> ShortFilmResponse:
-    """Собирает краткий ответ API для фильма."""
-    return ShortFilmResponse(
-        uuid=UUID(film.uuid),
-        title=film.title,
-        imdb_rating=film.imdb_rating,
-    )
-
-
-def build_film_detail_response(film: Film) -> FilmDetailResponse:
-    """Собирает полный ответ API для фильма."""
-    return FilmDetailResponse(
-        uuid=UUID(film.uuid),
-        title=film.title,
-        imdb_rating=film.imdb_rating,
-        description=film.description,
-        genre=[
-            GenreInFilmResponse(
-                uuid=UUID(genre.uuid),
-                name=genre.name,
-            )
-            for genre in film.genre
-        ],
-        actors=[
-            PersonInFilmResponse(
-                uuid=UUID(actor.uuid),
-                full_name=actor.full_name,
-            )
-            for actor in film.actors
-        ],
-        writers=[
-            PersonInFilmResponse(
-                uuid=UUID(writer.uuid),
-                full_name=writer.full_name,
-            )
-            for writer in film.writers
-        ],
-        directors=[
-            PersonInFilmResponse(
-                uuid=UUID(director.uuid),
-                full_name=director.full_name,
-            )
-            for director in film.directors
-        ],
-    )
 
 
 @router.get(

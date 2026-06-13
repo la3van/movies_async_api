@@ -16,8 +16,20 @@ class Settings(BaseSettings):
 
     # Elasticsearch
     elastic_host: str = 'localhost'
-    elastic_port: str = 9200
+    elastic_port: int = 9200
     elastic_request_timeout: int = 30
+
+    # FilmService
+    film_sort_fields: dict[str, str]
+    film_cache_expire_in_seconds: int = 300
+
+    # GenreService
+    genre_sort_fields: dict[str, str]
+    genre_cache_expire_in_seconds: int = 300
+
+    # PersonService
+    person_sort_fields: dict[str, str]
+    person_cache_expire_in_seconds: int = 300
 
     # Redis
     redis_host: str = 'localhost'

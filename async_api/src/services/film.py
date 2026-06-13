@@ -1,5 +1,4 @@
 """Модуль бизнес-логики для работы с фильмами."""
-import json
 from functools import lru_cache
 from typing import Optional
 
@@ -7,14 +6,32 @@ from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
 from redis.asyncio import Redis
 
+from core.config import get_settings
 from db.elastic import get_elastic
 from db.redis import get_redis
 from models.film import Film, ShortFilm
 
-FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5
-FILM_SORT_FIELDS = {
-    'imdb_rating': 'imdb_rating',
-}
+from services.cache_keys.films import (
+    _get_film_cache_key,
+    _get_sorted_films_cache_key,
+    _get_searched_films_cache_key,
+    _get_similar_films_cache_key,
+)
+
+from services.cache import (
+    put_model_to_cache,
+    put_models_to_cache,
+    get_model_from_cache,
+    get_models_from_cache,
+)
+
+from services.bodies.films import (
+    build_sorted_films_body,
+    build_searched_films_body,
+    build_similar_films_body,
+)
+
+settings = get_settings()
 
 
 class FilmService:
@@ -31,15 +48,24 @@ class FilmService:
 
     async def get_film_by_id(self, film_id: str) -> Optional[Film]:
         """Возвращает фильм по id или None, если фильм не найден."""
-        film_cache_key = self._get_film_cache_key(film_id)
+        film_cache_key = _get_film_cache_key(film_id)
 
-        film = await self._get_film_from_cache(film_cache_key)
+        film = await get_model_from_cache(
+            redis=self.redis,
+            key=film_cache_key,
+            model=Film,
+        )
 
         if not film:
             film = await self._get_film_from_elastic(film_id)
             if not film:
                 return None
-            await self._put_film_to_cache(film_cache_key, film)
+            await put_model_to_cache(
+                redis=self.redis,
+                key=film_cache_key,
+                value=film,
+                ttl=settings.film_cache_expire_in_seconds,
+            )
 
         return film
 
@@ -52,15 +78,17 @@ class FilmService:
     ) -> list[ShortFilm]:
         """Возвращает список фильмов с сортировкой, пагинацией и фильтром по
         жанру."""
-        sorted_films_cache_key = self._get_sorted_films_cache_key(
+        sorted_films_cache_key = _get_sorted_films_cache_key(
             sort=sort,
             genre_filter=genre_filter,
             page_number=page_number,
             page_size=page_size,
         )
 
-        sorted_films = await self._get_short_films_from_cache(
-            sorted_films_cache_key,
+        sorted_films = await get_models_from_cache(
+            redis=self.redis,
+            key=sorted_films_cache_key,
+            model=ShortFilm,
         )
         if sorted_films is not None:
             return sorted_films
@@ -71,9 +99,11 @@ class FilmService:
             page_number=page_number,
             page_size=page_size,
         )
-        await self._put_short_films_to_cache(
-            films_cache_key=sorted_films_cache_key,
-            films=sorted_films,
+        await put_models_to_cache(
+            redis=self.redis,
+            key=sorted_films_cache_key,
+            values=sorted_films,
+            ttl=settings.film_cache_expire_in_seconds,
         )
 
         return sorted_films
@@ -86,14 +116,16 @@ class FilmService:
     ) -> list[ShortFilm]:
         """Возвращает фильмы, найденные по полнотекстовому поисковому
         запросу."""
-        searched_films_cache_key = self._get_searched_films_cache_key(
+        searched_films_cache_key = _get_searched_films_cache_key(
             query=query,
             page_number=page_number,
             page_size=page_size,
         )
 
-        searched_films = await self._get_short_films_from_cache(
-            searched_films_cache_key,
+        searched_films = await get_models_from_cache(
+            redis=self.redis,
+            key=searched_films_cache_key,
+            model=ShortFilm,
         )
         if searched_films is not None:
             return searched_films
@@ -103,9 +135,11 @@ class FilmService:
             page_number=page_number,
             page_size=page_size,
         )
-        await self._put_short_films_to_cache(
-            films_cache_key=searched_films_cache_key,
-            films=searched_films,
+        await put_models_to_cache(
+            redis=self.redis,
+            key=searched_films_cache_key,
+            values=searched_films,
+            ttl=settings.film_cache_expire_in_seconds,
         )
 
         return searched_films
@@ -118,14 +152,16 @@ class FilmService:
     ) -> list[ShortFilm]:
         """Возвращает фильмы, похожие на данный(без учета film_id)
         схожесть считается через 'more_like_this' в Elasticsearch."""
-        similar_films_cache_key = self._get_similar_films_cache_key(
+        similar_films_cache_key = _get_similar_films_cache_key(
             film_id=film_id,
             page_number=page_number,
             page_size=page_size,
         )
 
-        similar_films = await self._get_short_films_from_cache(
-            similar_films_cache_key,
+        similar_films = await get_models_from_cache(
+            redis=self.redis,
+            key=similar_films_cache_key,
+            model=ShortFilm,
         )
         if similar_films is not None:
             return similar_films
@@ -158,9 +194,11 @@ class FilmService:
                 page_size=page_size,
             )
 
-        await self._put_short_films_to_cache(
-            films_cache_key=similar_films_cache_key,
-            films=similar_films,
+        await put_models_to_cache(
+            redis=self.redis,
+            key=similar_films_cache_key,
+            values=similar_films,
+            ttl=settings.film_cache_expire_in_seconds,
         )
 
         return similar_films
@@ -182,44 +220,13 @@ class FilmService:
     ) -> list[ShortFilm]:
         """Получает из Elasticsearch список фильмов с сортировкой и фильтром
         по жанру."""
-        order = 'desc' if sort.startswith('-') else 'asc'
-        sort_field = FILM_SORT_FIELDS.get(sort.lstrip('-'), 'imdb_rating')
-
-        search_query: dict = {
-            'match_all': {},
-        }
-
-        if genre_filter:
-            search_query = {
-                'bool': {
-                    'filter': [
-                        {
-                            'nested': {
-                                'path': 'genre',
-                                'query': {
-                                    'term': {
-                                        'genre.uuid': genre_filter,
-                                    },
-                                },
-                            },
-                        },
-                    ],
-                },
-            }
-
-        body = {
-            '_source': ['uuid', 'title', 'imdb_rating'],
-            'query': search_query,
-            'sort': [
-                {
-                    sort_field: {
-                        'order': order,
-                    },
-                },
-            ],
-            'from': (page_number - 1) * page_size,
-            'size': page_size,
-        }
+        body = build_sorted_films_body(
+            sort=sort,
+            genre_filter=genre_filter,
+            page_number=page_number,
+            page_size=page_size,
+            film_sort_fields=settings.film_sort_fields,
+        )
 
         response = await self.elastic.search(index='movies', body=body)
         return [
@@ -235,72 +242,11 @@ class FilmService:
     ) -> list[ShortFilm]:
         """Ищет фильмы в Elasticsearch по названию, описанию и именам
         участников."""
-        normalized_query = query.strip().lower()
-
-        body = {
-            '_source': ['uuid', 'title', 'imdb_rating'],
-            'query': {
-                'bool': {
-                    'should': [
-                        {
-                            'multi_match': {
-                                'query': normalized_query,
-                                'fields': [
-                                    'title^5',
-                                    'description',
-                                ],
-                                'fuzziness': 'AUTO',
-                            },
-                        },
-                        {
-                            'nested': {
-                                'path': 'actors',
-                                'query': {
-                                    'match': {
-                                        'actors.full_name': {
-                                            'query': normalized_query,
-                                            'fuzziness': 'AUTO',
-                                            'boost': 2,
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                        {
-                            'nested': {
-                                'path': 'writers',
-                                'query': {
-                                    'match': {
-                                        'writers.full_name': {
-                                            'query': normalized_query,
-                                            'fuzziness': 'AUTO',
-                                            'boost': 2,
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                        {
-                            'nested': {
-                                'path': 'directors',
-                                'query': {
-                                    'match': {
-                                        'directors.full_name': {
-                                            'query': normalized_query,
-                                            'fuzziness': 'AUTO',
-                                            'boost': 2,
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    ],
-                    'minimum_should_match': 1,
-                },
-            },
-            'from': (page_number - 1) * page_size,
-            'size': page_size,
-        }
+        body = build_searched_films_body(
+            query=query,
+            page_number=page_number,
+            page_size=page_size,
+        )
 
         response = await self.elastic.search(index='movies', body=body)
         return [
@@ -319,68 +265,13 @@ class FilmService:
         """Ищет похожие фильмы с ограничением по жанрам
         параметр more_like_this учитывается в зависимости от флага
         elastic_search_flag."""
-        bool_query = {
-            'filter': [
-                {
-                    'nested': {
-                        'path': 'genre',
-                        'query': {
-                            'terms': {
-                                'genre.uuid': genre_uuids,
-                            },
-                        },
-                    },
-                },
-            ],
-            'must_not': [
-                {
-                    'term': {
-                        'uuid': film_id,
-                    },
-                },
-            ],
-        }
-        if use_more_like_this:
-            bool_query['must'] = [
-                        {
-                            'more_like_this': {
-                                'fields': [
-                                    'title',
-                                    'description',
-                                ],
-                                'like': [
-                                    {
-                                        '_index': 'movies',
-                                        '_id': film_id,
-                                    },
-                                ],
-                                'min_term_freq': 1,
-                                'min_doc_freq': 1,
-                                'max_query_terms': 25,
-                            },
-                        },
-                    ]
-
-        body = {
-            '_source': ['uuid', 'title', 'imdb_rating'],
-            'query': {
-                'bool': bool_query,
-            },
-            'sort': [
-                {
-                    '_score': {
-                        'order': 'desc',
-                    },
-                },
-                {
-                    'imdb_rating': {
-                        'order': 'desc',
-                    },
-                },
-            ],
-            'from': (page_number - 1) * page_size,
-            'size': page_size,
-        }
+        body = build_similar_films_body(
+            use_more_like_this=use_more_like_this,
+            film_id=film_id,
+            genre_uuids=genre_uuids,
+            page_number=page_number,
+            page_size=page_size,
+        )
 
         response = await self.elastic.search(index='movies', body=body)
 
@@ -388,105 +279,6 @@ class FilmService:
             self._build_short_film(hit['_source'])
             for hit in response['hits']['hits']
         ]
-
-    def _get_film_cache_key(self, film_id: str) -> str:
-        """Формирует ключ кеша для одного фильма."""
-        return f'film:{film_id}'
-
-    def _get_sorted_films_cache_key(
-        self,
-        sort: str,
-        genre_filter: str | None,
-        page_number: int,
-        page_size: int,
-    ) -> str:
-        """Формирует ключ кеша для списка фильмов с учётом сортировки,
-        жанра и пагинации."""
-        normalized_genre_filter = (
-            genre_filter.strip() if genre_filter is not None else 'all'
-        )
-        return (
-            f'films:sort={sort}:genre={normalized_genre_filter}:'
-            f'page={page_number}:size={page_size}'
-        )
-
-    def _get_searched_films_cache_key(
-        self,
-        query: str,
-        page_number: int,
-        page_size: int,
-    ) -> str:
-        """Формирует ключ кеша для результата
-        полнотекстового поиска фильмов(нормализуем query)."""
-        normalized_query = query.strip().lower()
-        return (
-            f'films:query={normalized_query}:'
-            f'page_number={page_number}:page_size={page_size}'
-        )
-
-    def _get_similar_films_cache_key(
-        self,
-        film_id: str,
-        page_number: int,
-        page_size: int,
-    ) -> str:
-        """Формируем ключ кэша для похожих фильмов."""
-        return (
-            f'films:similar:film={film_id}:'
-            f'page={page_number}:size={page_size}'
-        )
-
-    async def _get_film_from_cache(
-        self,
-        film_cache_key: str,
-    ) -> Optional[Film]:
-        """Получает фильм из кеша по ключу."""
-        data = await self.redis.get(film_cache_key)
-        if not data:
-            return None
-
-        film = Film.model_validate_json(data)
-        return film
-
-    async def _get_short_films_from_cache(
-        self,
-        films_cache_key: str,
-    ) -> Optional[list[ShortFilm]]:
-        """Получает список фильмов из кеша по ключу."""
-        data = await self.redis.get(films_cache_key)
-
-        if not data:
-            return None
-
-        raw_films = json.loads(data)
-        return [
-            ShortFilm.model_validate(raw_film)
-            for raw_film in raw_films
-        ]
-
-    async def _put_film_to_cache(
-        self,
-        film_cache_key: str,
-        film: Film,
-    ) -> None:
-        """Сохраняет фильм в кеш с ограниченным временем жизни."""
-        await self.redis.set(
-            film_cache_key,
-            film.model_dump_json(),
-            ex=FILM_CACHE_EXPIRE_IN_SECONDS,
-        )
-
-    async def _put_short_films_to_cache(
-        self,
-        films_cache_key: str,
-        films: list[ShortFilm],
-    ) -> None:
-        """Сохраняет список фильмов в кеш с ограниченным временем жизни."""
-        await self.redis.set(
-            films_cache_key,
-            json.dumps([film.model_dump(mode='json') for film in films]),
-            ex=FILM_CACHE_EXPIRE_IN_SECONDS,
-        )
 
     def _build_short_film(self, source: dict) -> ShortFilm:
         """Собирает краткую модель фильма из данных Elasticsearch."""

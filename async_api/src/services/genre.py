@@ -1,6 +1,4 @@
 """Модуль бизнес-логики для работы с жанрами."""
-
-import json
 from functools import lru_cache
 from typing import Optional
 
@@ -8,14 +6,26 @@ from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
 from redis.asyncio import Redis
 
+from core.config import get_settings
 from db.elastic import get_elastic
 from db.redis import get_redis
 from models.genre import Genre
 
-GENRE_CACHE_EXPIRE_IN_SECONDS = 60 * 5
-GENRE_SORT_FIELDS = {
-    'name': 'name.raw',
-}
+from services.cache_keys.genres import (
+    _get_genre_cache_key,
+    _get_genres_cache_key,
+)
+
+from services.cache import (
+    put_model_to_cache,
+    put_models_to_cache,
+    get_model_from_cache,
+    get_models_from_cache,
+)
+
+from services.bodies.genres import build_genres_body
+
+settings = get_settings()
 
 
 class GenreService:
@@ -32,16 +42,25 @@ class GenreService:
 
     async def get_genre_by_id(self, genre_id: str) -> Optional[Genre]:
         """Возвращает жанр по id или None, если жанр не найден."""
-        genre_cache_key = self._get_genre_cache_key(genre_id)
+        genre_cache_key = _get_genre_cache_key(genre_id)
 
-        genre = await self._get_genre_from_cache(genre_cache_key)
+        genre = await get_model_from_cache(
+            redis=self.redis,
+            key=genre_cache_key,
+            model=Genre,
+        )
 
         if genre is None:
             genre = await self._get_genre_from_elastic(genre_id)
             if genre is None:
                 return None
 
-            await self._put_genre_to_cache(genre_cache_key, genre)
+            await put_model_to_cache(
+                redis=self.redis,
+                key=genre_cache_key,
+                value=genre,
+                ttl=settings.genre_cache_expire_in_seconds,
+            )
 
         return genre
 
@@ -61,14 +80,18 @@ class GenreService:
         if effective_sort is None and normalized_query is None:
             effective_sort = 'name'
 
-        genres_cache_key = self._get_genres_cache_key(
+        genres_cache_key = _get_genres_cache_key(
             query=normalized_query,
             sort=effective_sort,
             page_number=page_number,
             page_size=page_size,
         )
 
-        genres = await self._get_genres_from_cache(genres_cache_key)
+        genres = await get_models_from_cache(
+            redis=self.redis,
+            key=genres_cache_key,
+            model=Genre,
+        )
         if genres is not None:
             return genres
 
@@ -78,9 +101,11 @@ class GenreService:
             page_number=page_number,
             page_size=page_size,
         )
-        await self._put_genres_to_cache(
-            genres_cache_key=genres_cache_key,
-            genres=genres,
+        await put_models_to_cache(
+            redis=self.redis,
+            key=genres_cache_key,
+            values=genres,
+            ttl=settings.genre_cache_expire_in_seconds,
         )
 
         return genres
@@ -101,121 +126,19 @@ class GenreService:
         page_size: int,
     ) -> list[Genre]:
         """Получает список жанров из Elasticsearch."""
-        search_query: dict = {
-            'match_all': {},
-        }
-        if query:
-            search_query = {
-                'multi_match': {
-                    'query': query,
-                    'fields': [
-                        'name^5',
-                        'description',
-                    ],
-                },
-            }
-
-        body = {
-            'query': search_query,
-            'from': (page_number - 1) * page_size,
-            'size': page_size,
-        }
-
-        if sort:
-            order = 'desc' if sort.startswith('-') else 'asc'
-            sort_field = GENRE_SORT_FIELDS.get(
-                sort.lstrip('-'),
-                'name.raw',
-            )
-
-            body['sort'] = [
-                {
-                    sort_field: {
-                        'order': order,
-                    },
-                },
-            ]
+        body = build_genres_body(
+            query=query,
+            sort=sort,
+            page_number=page_number,
+            page_size=page_size,
+            genre_sort_fields=settings.genre_sort_fields,
+        )
 
         response = await self.elastic.search(index='genres', body=body)
         return [
             Genre.model_validate(hit['_source'])
             for hit in response['hits']['hits']
         ]
-
-    def _get_genre_cache_key(self, genre_id: str) -> str:
-        """Формирует ключ кеша для одного жанра."""
-        return f'genre:{genre_id}'
-
-    def _get_genres_cache_key(
-        self,
-        query: str | None,
-        sort: str | None,
-        page_number: int,
-        page_size: int,
-    ) -> str:
-        """Формирует ключ кеша для списка жанров.
-
-        Ключ учитывает поисковый запрос, сортировку и параметры пагинации.
-        """
-        normalized_query = query.strip().lower() if query else 'all'
-        normalized_sort = sort if sort else 'none'
-        return (
-            f'genres:query={normalized_query}:sort={normalized_sort}:'
-            f'page_number={page_number}:page_size={page_size}'
-        )
-
-    async def _get_genre_from_cache(
-        self,
-        genre_cache_key: str,
-    ) -> Optional[Genre]:
-        """Получает жанр из кеша по ключу."""
-        data = await self.redis.get(genre_cache_key)
-
-        if not data:
-            return None
-
-        genre = Genre.model_validate_json(data)
-        return genre
-
-    async def _get_genres_from_cache(
-        self,
-        genres_cache_key: str,
-    ) -> Optional[list[Genre]]:
-        """Получает список жанров из кеша по ключу."""
-        data = await self.redis.get(genres_cache_key)
-
-        if not data:
-            return None
-
-        raw_genres = json.loads(data)
-        return [
-            Genre.model_validate(raw_genre)
-            for raw_genre in raw_genres
-        ]
-
-    async def _put_genre_to_cache(
-        self,
-        genre_cache_key: str,
-        genre: Genre,
-    ) -> None:
-        """Сохраняет жанр в кеш с ограниченным временем жизни."""
-        await self.redis.set(
-            genre_cache_key,
-            genre.model_dump_json(),
-            ex=GENRE_CACHE_EXPIRE_IN_SECONDS,
-        )
-
-    async def _put_genres_to_cache(
-        self,
-        genres_cache_key: str,
-        genres: list[Genre],
-    ) -> None:
-        """Сохраняет список жанров в кеш с ограниченным временем жизни."""
-        await self.redis.set(
-            genres_cache_key,
-            json.dumps([genre.model_dump(mode='json') for genre in genres]),
-            ex=GENRE_CACHE_EXPIRE_IN_SECONDS,
-        )
 
 
 @lru_cache()
