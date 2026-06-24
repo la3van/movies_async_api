@@ -12,10 +12,10 @@ from db.redis import get_redis
 from models.film import Film, ShortFilm
 
 from services.cache_keys.films import (
-    _get_film_cache_key,
-    _get_sorted_films_cache_key,
-    _get_searched_films_cache_key,
-    _get_similar_films_cache_key,
+    get_film_cache_key,
+    get_sorted_films_cache_key,
+    get_searched_films_cache_key,
+    get_similar_films_cache_key,
 )
 
 from services.cache import (
@@ -29,6 +29,10 @@ from services.bodies.films import (
     build_sorted_films_body,
     build_searched_films_body,
     build_similar_films_body,
+)
+
+from services.mappers.films import (
+    build_short_film
 )
 
 settings = get_settings()
@@ -48,7 +52,7 @@ class FilmService:
 
     async def get_film_by_id(self, film_id: str) -> Optional[Film]:
         """Возвращает фильм по id или None, если фильм не найден."""
-        film_cache_key = _get_film_cache_key(film_id)
+        film_cache_key = get_film_cache_key(film_id)
 
         film = await get_model_from_cache(
             redis=self.redis,
@@ -78,7 +82,7 @@ class FilmService:
     ) -> list[ShortFilm]:
         """Возвращает список фильмов с сортировкой, пагинацией и фильтром по
         жанру."""
-        sorted_films_cache_key = _get_sorted_films_cache_key(
+        sorted_films_cache_key = get_sorted_films_cache_key(
             sort=sort,
             genre_filter=genre_filter,
             page_number=page_number,
@@ -116,7 +120,7 @@ class FilmService:
     ) -> list[ShortFilm]:
         """Возвращает фильмы, найденные по полнотекстовому поисковому
         запросу."""
-        searched_films_cache_key = _get_searched_films_cache_key(
+        searched_films_cache_key = get_searched_films_cache_key(
             query=query,
             page_number=page_number,
             page_size=page_size,
@@ -152,7 +156,7 @@ class FilmService:
     ) -> list[ShortFilm]:
         """Возвращает фильмы, похожие на данный(без учета film_id)
         схожесть считается через 'more_like_this' в Elasticsearch."""
-        similar_films_cache_key = _get_similar_films_cache_key(
+        similar_films_cache_key = get_similar_films_cache_key(
             film_id=film_id,
             page_number=page_number,
             page_size=page_size,
@@ -276,17 +280,9 @@ class FilmService:
         response = await self.elastic.search(index='movies', body=body)
 
         return [
-            self._build_short_film(hit['_source'])
+            build_short_film(hit['_source'])
             for hit in response['hits']['hits']
         ]
-
-    def _build_short_film(self, source: dict) -> ShortFilm:
-        """Собирает краткую модель фильма из данных Elasticsearch."""
-        return ShortFilm(
-            uuid=source['uuid'],
-            title=source['title'],
-            imdb_rating=source.get('imdb_rating'),
-        )
 
 
 @lru_cache()

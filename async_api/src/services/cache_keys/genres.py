@@ -1,12 +1,12 @@
 """Функции создания ключей для кеша жанров."""
 
 
-def _get_genre_cache_key(genre_id: str) -> str:
+def get_genre_cache_key(genre_id: str) -> str:
     """Формирует ключ кеша для одного жанра."""
     return f'genre:{genre_id}'
 
 
-def _get_genres_cache_key(
+def get_genres_cache_key(
     query: str | None,
     sort: str | None,
     page_number: int,

@@ -13,9 +13,9 @@ from models.film import ShortFilm
 from models.person import Person
 
 from services.cache_keys.persons import (
-    _get_person_cache_key,
-    _get_persons_cache_key,
-    _get_person_films_cache_key,
+    get_person_cache_key,
+    get_persons_cache_key,
+    get_person_films_cache_key,
 )
 
 from services.cache import (
@@ -28,6 +28,10 @@ from services.cache import (
 from services.bodies.persons import (
     build_persons_body,
     build_person_films_body,
+)
+
+from services.mappers.films import (
+    build_short_film,
 )
 
 settings = get_settings()
@@ -47,7 +51,7 @@ class PersonService:
 
     async def get_person_by_id(self, person_id: str) -> Optional[Person]:
         """Возвращает персону по id или None, если персона не найдена."""
-        person_cache_key = _get_person_cache_key(person_id)
+        person_cache_key = get_person_cache_key(person_id)
 
         person = await get_model_from_cache(
             redis=self.redis,
@@ -85,7 +89,7 @@ class PersonService:
         if effective_sort is None and normalized_query is None:
             effective_sort = 'full_name'
 
-        persons_cache_key = _get_persons_cache_key(
+        persons_cache_key = get_persons_cache_key(
             query=normalized_query,
             sort=effective_sort,
             page_number=page_number,
@@ -129,7 +133,7 @@ class PersonService:
         if person is None:
             return None
 
-        person_films_cache_key = _get_person_films_cache_key(
+        person_films_cache_key = get_person_films_cache_key(
             person_id=person_id,
             page_number=page_number,
             page_size=page_size,
@@ -207,17 +211,9 @@ class PersonService:
         response = await self.elastic.search(index='movies', body=body)
 
         return [
-            self._build_short_film(hit['_source'])
+            build_short_film(hit['_source'])
             for hit in response['hits']['hits']
         ]
-
-    def _build_short_film(self, source: dict) -> ShortFilm:
-        """Собирает краткую модель фильма из данных Elasticsearch."""
-        return ShortFilm(
-            uuid=source['uuid'],
-            title=source['title'],
-            imdb_rating=source.get('imdb_rating'),
-        )
 
 
 @lru_cache()

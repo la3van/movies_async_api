@@ -1,12 +1,12 @@
 """Функции создания ключей для кеша персон."""
 
 
-def _get_person_cache_key(person_id: str) -> str:
+def get_person_cache_key(person_id: str) -> str:
     """Формирует ключ кеша для одной персоны."""
     return f'person:{person_id}'
 
 
-def _get_persons_cache_key(
+def get_persons_cache_key(
     query: str | None,
     sort: str | None,
     page_number: int,
@@ -24,7 +24,7 @@ def _get_persons_cache_key(
     )
 
 
-def _get_person_films_cache_key(
+def get_person_films_cache_key(
     person_id: str,
     page_number: int,
     page_size: int,

@@ -12,8 +12,8 @@ from db.redis import get_redis
 from models.genre import Genre
 
 from services.cache_keys.genres import (
-    _get_genre_cache_key,
-    _get_genres_cache_key,
+    get_genre_cache_key,
+    get_genres_cache_key,
 )
 
 from services.cache import (
@@ -42,7 +42,7 @@ class GenreService:
 
     async def get_genre_by_id(self, genre_id: str) -> Optional[Genre]:
         """Возвращает жанр по id или None, если жанр не найден."""
-        genre_cache_key = _get_genre_cache_key(genre_id)
+        genre_cache_key = get_genre_cache_key(genre_id)
 
         genre = await get_model_from_cache(
             redis=self.redis,
@@ -80,7 +80,7 @@ class GenreService:
         if effective_sort is None and normalized_query is None:
             effective_sort = 'name'
 
-        genres_cache_key = _get_genres_cache_key(
+        genres_cache_key = get_genres_cache_key(
             query=normalized_query,
             sort=effective_sort,
             page_number=page_number,
