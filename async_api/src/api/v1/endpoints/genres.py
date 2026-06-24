@@ -68,6 +68,18 @@ async def get_genres(
     summary='Информация о жанре',
     description='Возвращает информацию о жанре по его UUID.',
     response_description='Информация о жанре',
+    responses={
+        404: {
+            'description': 'Жанр не найден',
+            'content': {
+                'application/json': {
+                    'example': {
+                        'detail': 'genre_not_found',
+                    },
+                },
+            },
+        },
+    },
 )
 async def get_genre(
     genre_id: UUID,
