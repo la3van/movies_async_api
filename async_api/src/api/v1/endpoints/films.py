@@ -166,6 +166,18 @@ async def get_similar_films(
     summary='Полная информация о фильме',
     description='Возвращает подробную информацию о фильме по его UUID.',
     response_description='Полная информация о фильме',
+    responses={
+        404: {
+            'description': 'Фильм не найден',
+            'content': {
+                'application/json': {
+                    'example': {
+                        'detail': 'film_not_found',
+                    },
+                },
+            },
+        },
+    },
 )
 async def get_film(
     film_id: UUID,

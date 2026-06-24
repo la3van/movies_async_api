@@ -13,7 +13,7 @@ from api.v1.mappers.persons import (
     build_person_response,
 )
 
-from api.v1.mappers.films import (
+from api.v1.mappers.persons import (
     build_short_film_response,
 )
 
@@ -32,11 +32,17 @@ router = APIRouter()
     response_description='Список найденных персон',
 )
 async def search_persons(
-    query: str = Query(  # noqa: B008
-        ...,
+    query: str | None = Query(  # noqa: B008
+        None,
         min_length=1,
         description='Поисковая строка для поиска персон',
         examples=['captain'],
+    ),
+    sort: str | None = Query(  # noqa: B008
+        None,
+        pattern='^-?full_name$',
+        description='Поле сортировки. Для убывания используется префикс "-".',
+        examples=['full_name'],
     ),
     page_number: int = Query(  # noqa: B008
         1,
@@ -54,6 +60,7 @@ async def search_persons(
     """Возвращает персон, найденных по поисковому запросу."""
     persons = await person_service.get_persons(
         query=query,
+        sort=sort,
         page_number=page_number,
         page_size=page_size,
     )
@@ -65,7 +72,7 @@ async def search_persons(
 
 
 @router.get(
-    '/{person_id}/film',
+    '/{person_id}/films',
     response_model=list[ShortFilmResponse],
     summary='Фильмы персоны',
     description=(
@@ -73,6 +80,18 @@ async def search_persons(
         'Персона может быть актёром, режиссёром или сценаристом фильма.'
     ),
     response_description='Список фильмов персоны',
+    responses={
+        404: {
+            'description': 'Персона не найдена',
+            'content': {
+                'application/json': {
+                    'example': {
+                        'detail': 'person_not_found',
+                    },
+                },
+            },
+        },
+    },
 )
 async def get_person_films(
     person_id: UUID,
@@ -117,6 +136,18 @@ async def get_person_films(
         'имя и список фильмов, в которых она участвовала.'
     ),
     response_description='Информация о персоне',
+    responses={
+        404: {
+            'description': 'Персона не найдена',
+            'content': {
+                'application/json': {
+                    'example': {
+                        'detail': 'person_not_found',
+                    },
+                },
+            },
+        },
+    },
 )
 async def get_person(
     person_id: UUID,
