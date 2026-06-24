@@ -5,10 +5,15 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
+from logging.config import dictConfig
+
 from api.v1.router import api_router
 from core.config import get_settings
+from core.logger import LOGGING
 from db.elastic import close_elastic, init_elastic
 from db.redis import close_redis, init_redis
+
+dictConfig(LOGGING)
 
 
 @asynccontextmanager

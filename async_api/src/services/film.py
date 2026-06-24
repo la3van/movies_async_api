@@ -32,7 +32,7 @@ from services.bodies.films import (
 )
 
 from services.mappers.films import (
-    build_short_film
+    build_short_film,
 )
 
 settings = get_settings()
@@ -234,7 +234,7 @@ class FilmService:
 
         response = await self.elastic.search(index='movies', body=body)
         return [
-            self._build_short_film(hit['_source'])
+            build_short_film(hit['_source'])
             for hit in response['hits']['hits']
         ]
 
@@ -254,7 +254,7 @@ class FilmService:
 
         response = await self.elastic.search(index='movies', body=body)
         return [
-            self._build_short_film(hit['_source'])
+            build_short_film(hit['_source'])
             for hit in response['hits']['hits']
         ]
 
