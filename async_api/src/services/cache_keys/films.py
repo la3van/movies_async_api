@@ -1,12 +1,12 @@
 """Функции создания ключей для кеша фильмов."""
 
 
-def _get_film_cache_key(film_id: str) -> str:
+def get_film_cache_key(film_id: str) -> str:
     """Формирует ключ кеша для одного фильма."""
     return f'film:{film_id}'
 
 
-def _get_sorted_films_cache_key(
+def get_sorted_films_cache_key(
     sort: str,
     genre_filter: str | None,
     page_number: int,
@@ -23,7 +23,7 @@ def _get_sorted_films_cache_key(
     )
 
 
-def _get_searched_films_cache_key(
+def get_searched_films_cache_key(
     query: str,
     page_number: int,
     page_size: int,
@@ -37,7 +37,7 @@ def _get_searched_films_cache_key(
     )
 
 
-def _get_similar_films_cache_key(
+def get_similar_films_cache_key(
     film_id: str,
     page_number: int,
     page_size: int,
