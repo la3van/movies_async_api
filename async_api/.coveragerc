@@ -1,0 +1,7 @@
+[run]
+source = src
+branch = True
+sigterm = True
+
+[report]
+show_missing = True

@@ -2,6 +2,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -47,6 +48,10 @@ class Settings(BaseSettings):
     backoff_factor: int = 2
     backoff_border_sleep_time: int = 10
     backoff_jitter: bool = True
+
+    schemas_dir: Path = (
+        Path(__file__).resolve().parents[2] / 'schemas'
+    )
 
     @property
     def elastic_url(self) -> str:

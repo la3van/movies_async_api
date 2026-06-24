@@ -2,7 +2,6 @@
 import json
 import logging
 from collections.abc import Mapping
-from pathlib import Path
 from typing import Any
 
 from elastic_transport import (
@@ -16,8 +15,6 @@ from postgres_to_es.backoff import backoff
 from postgres_to_es.config import get_settings
 
 logger = logging.getLogger(__name__)
-
-SCHEMAS_DIR = Path(__file__).resolve().parent / 'schemas'
 
 
 class ElasticsearchLoader:
@@ -58,7 +55,7 @@ class ElasticsearchLoader:
 
     def _load_index_schema(self, schema_filename: str) -> dict[str, Any]:
         """Загружает схему индекса Elasticsearch из JSON-файла."""
-        schema_path = SCHEMAS_DIR / schema_filename
+        schema_path = self.settings.schemas_dir / schema_filename
 
         with schema_path.open('r', encoding='utf-8') as file:
             schema: dict[str, Any] = json.load(file)

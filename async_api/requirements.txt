@@ -4,3 +4,4 @@ redis==7.1.0
 pydantic-settings==2.14.1
 uvicorn[standard]==0.30.6
 orjson==3.11.9
+coverage==7.14.2
