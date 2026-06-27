@@ -19,6 +19,7 @@ class ElasticsearchFilmRepository(FilmRepository):
         index_name: str,
         film_sort_fields: dict[str, str],
     ) -> None:
+        """Инициализирует репозиторий фильмов."""
         self._elastic = elastic
         self._index_name = index_name
         self._film_sort_fields = film_sort_fields
@@ -27,8 +28,8 @@ class ElasticsearchFilmRepository(FilmRepository):
         self,
         film_id: str,
     ) -> Film | None:
-        """Возвращает фильм по идентификатору
-        или None, если фильма нету."""
+        """Возвращает фильм по идентификатору или None,
+        если фильм не найден."""
         try:
             document = await self._elastic.get(
                 index=self._index_name,
@@ -46,7 +47,7 @@ class ElasticsearchFilmRepository(FilmRepository):
         page_number: int,
         page_size: int,
     ) -> list[ShortFilm]:
-        """Возвращает отсортированных список фильмов."""
+        """Возвращает отсортированный список фильмов."""
         body = build_sorted_films_body(
             sort=sort,
             genre_filter=genre_filter,

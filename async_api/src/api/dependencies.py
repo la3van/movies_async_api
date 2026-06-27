@@ -1,3 +1,4 @@
+"""Функции сборки зависимостей FastAPI-приложения."""
 from typing import Annotated
 
 from elasticsearch import AsyncElasticsearch
@@ -28,6 +29,7 @@ from core.config import Settings, get_settings
 def get_cache(
     redis: Annotated[Redis, Depends(get_redis)],
 ) -> Cache:
+    """Создаёт кеш приложения на основе Redis."""
     return RedisCache(redis)
 
 
@@ -41,6 +43,7 @@ def get_film_repository(
         Depends(get_settings),
     ],
 ) -> FilmRepository:
+    """Создаёт Elasticsearch-репозиторий фильмов."""
     return ElasticsearchFilmRepository(
         elastic=elastic,
         index_name=settings.elastic_movies_index,
@@ -58,6 +61,7 @@ def get_genre_repository(
         Depends(get_settings),
     ],
 ) -> GenreRepository:
+    """Создаёт Elasticsearch-репозиторий жанров."""
     return ElasticsearchGenreRepository(
         elastic=elastic,
         index_name=settings.elastic_genres_index,
@@ -75,6 +79,7 @@ def get_person_repository(
         Depends(get_settings),
     ],
 ) -> PersonRepository:
+    """Создаёт Elasticsearch-репозиторий персон."""
     return ElasticsearchPersonRepository(
         elastic=elastic,
         persons_index_name=settings.elastic_persons_index,
@@ -97,6 +102,7 @@ def get_film_service(
         Depends(get_settings),
     ],
 ) -> FilmService:
+    """Создаёт сервис работы с фильмами."""
     return FilmService(
         repository=repository,
         cache=cache,
@@ -118,6 +124,7 @@ def get_genre_service(
         Depends(get_settings),
     ],
 ) -> GenreService:
+    """Создаёт сервис работы с жанрами."""
     return GenreService(
         repository=repository,
         cache=cache,
@@ -139,6 +146,7 @@ def get_person_service(
         Depends(get_settings),
     ],
 ) -> PersonService:
+    """Создаёт сервис работы с персонами."""
     return PersonService(
         repository=repository,
         cache=cache,

@@ -1,3 +1,4 @@
+"""Настройки окружения функциональных тестов."""
 import json
 
 from pathlib import Path
@@ -11,6 +12,7 @@ DEFAULT_SCHEMAS_DIR = PROJECT_ROOT / 'schemas'
 
 
 class TestSettings(BaseSettings):
+    """Хранит настройки окружения функциональных тестов."""
     elastic_url: str = 'http://elasticsearch:9200'
     redis_url: str = 'redis://redis:6379/0'
     service_url: str = 'http://async_api:8000'
@@ -42,27 +44,33 @@ class TestSettings(BaseSettings):
     )
 
     def get_elastic_url(self) -> str:
+        """Возвращает URL тестового Elasticsearch."""
         return self.elastic_url
 
     def get_redis_url(self) -> str:
+        """Возвращает URL тестового Redis."""
         return self.redis_url
 
     @property
     def es_movies_index_schema(self) -> dict[str, Any]:
+        """Возвращает схему тестового индекса фильмов."""
         return self._load_index_schema('movies_schema.json')
 
     @property
     def es_genres_index_schema(self) -> dict[str, Any]:
+        """Возвращает схему тестового индекса жанров."""
         return self._load_index_schema('genres_schema.json')
 
     @property
     def es_persons_index_schema(self) -> dict[str, Any]:
+        """Возвращает схему тестового индекса персон."""
         return self._load_index_schema('persons_schema.json')
 
     def _load_index_schema(
         self,
         filename: str,
     ) -> dict[str, Any]:
+        """Загружает JSON-схему Elasticsearch из файла."""
         schema_path = self.schemas_dir / filename
 
         if not schema_path.is_file():

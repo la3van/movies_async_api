@@ -1,3 +1,4 @@
+"""Функциональные тесты эндпоинтов персон."""
 import pytest
 
 from tests.functional.settings import test_settings
@@ -24,7 +25,7 @@ async def test_get_person_by_id(
     expected_status,
     persons_in_es,
     make_get_request,
-):
+) -> None:
     if person_exists:
         person = persons_in_es[0]
         person_id = person['uuid']
@@ -51,7 +52,7 @@ async def test_get_person_from_redis(
     persons_in_es,
     es_delete_document,
     make_get_request,
-):
+) -> None:
     person = persons_in_es[0]
 
     first_response = await make_get_request(
@@ -90,7 +91,7 @@ async def test_get_person_from_redis(
 async def test_get_person_by_invalid_id(
     invalid_person_id,
     make_get_request,
-):
+) -> None:
     response = await make_get_request(
         url=f'{test_settings.api_prefix}/persons/{invalid_person_id}'
     )
@@ -134,7 +135,7 @@ async def test_get_person_films(
     persons_in_es,
     movies_in_es,
     make_get_request,
-):
+) -> None:
     if person_exists:
         person = persons_in_es[0]
         person_id = person['uuid']
@@ -181,7 +182,7 @@ async def test_get_person_films_from_redis(
     movies_in_es,
     es_delete_document,
     make_get_request,
-):
+) -> None:
     person = persons_in_es[0]
     person_id = person['uuid']
 
@@ -242,7 +243,7 @@ async def test_get_person_films_from_redis(
 async def test_get_person_films_by_invalid_id(
     invalid_person_id,
     make_get_request,
-):
+) -> None:
     response = await make_get_request(
         url=f'{test_settings.api_prefix}/persons/{invalid_person_id}/films'
     )

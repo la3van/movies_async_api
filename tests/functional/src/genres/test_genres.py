@@ -1,3 +1,4 @@
+"""Функциональные тесты эндпоинтов жанров."""
 import pytest
 
 from tests.functional.settings import test_settings
@@ -20,7 +21,7 @@ async def test_get_genre_by_id(
     expected_status,
     genres_in_es,
     make_get_request,
-):
+) -> None:
     if genre_exists:
         genre = genres_in_es[0]
         genre_id = genre['uuid']
@@ -45,7 +46,7 @@ async def test_get_genre_from_redis(
     genres_in_es,
     es_delete_document,
     make_get_request,
-):
+) -> None:
     genre = genres_in_es[0]
 
     first_response = await make_get_request(
@@ -84,7 +85,7 @@ async def test_get_genre_from_redis(
 async def test_get_genre_by_invalid_id(
     invalid_genre_id,
     make_get_request,
-):
+) -> None:
     response = await make_get_request(
         url=f'{test_settings.api_prefix}/genres/{invalid_genre_id}'
     )

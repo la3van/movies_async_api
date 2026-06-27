@@ -12,7 +12,7 @@ class ShortFilmResponse(BaseModel):
     )
     title: str = Field(
         description='Название фильма',
-        exmaples=['Spider-Man: Brand New Day'],
+        examples=['Spider-Man: Brand New Day'],
     )
     imdb_rating: float | None = Field(
         default=None,
@@ -30,7 +30,7 @@ class GenreInFilmResponse(BaseModel):
     )
     name: str = Field(
         description='Название жанра',
-        exmples=['Action', 'Comedy'],
+        examples=['Action', 'Comedy'],
     )
 
 
@@ -52,7 +52,7 @@ class FilmDetailResponse(BaseModel):
 
     uuid: UUID = Field(
         description='Уникальный идентификатор фильма',
-        exmples=['6f822a92-7b51-4753-8d00-ecfedf98a937'],
+        examples=['6f822a92-7b51-4753-8d00-ecfedf98a937'],
     )
     title: str = Field(
         description='Название фильма',

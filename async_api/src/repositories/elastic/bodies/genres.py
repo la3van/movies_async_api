@@ -1,4 +1,5 @@
 """Создание body запросов для поиска жанров."""
+from typing import Any
 
 
 def build_genres_body(
@@ -7,8 +8,9 @@ def build_genres_body(
     page_number: int,
     page_size: int,
     genre_sort_fields: dict[str, str],
-) -> dict:
-    search_query: dict = {
+) -> dict[str, Any]:
+    """Формирует запрос Elasticsearch для получения и поиска жанров."""
+    search_query: dict[str, Any] = {
         'match_all': {},
     }
     if query:
@@ -22,7 +24,7 @@ def build_genres_body(
             },
         }
 
-    body = {
+    body: dict[str, Any] = {
         'query': search_query,
         'from': (page_number - 1) * page_size,
         'size': page_size,

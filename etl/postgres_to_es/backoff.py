@@ -70,6 +70,8 @@ class BackoffRetryExecutor(RetryExecutor):
             float,
         ] = random.uniform,
     ) -> None:
+        """Инициализирует executor с политикой ожидания и
+        функциями задержки."""
         self._policy = policy
         self._sleeper = sleeper
         self._randomizer = randomizer

@@ -22,7 +22,8 @@ class FilmService:
         repository: FilmRepository,
         cache: Cache,
         cache_ttl: int,
-    ):
+    ) -> None:
+        """Инициализирует сервис фильмов."""
         self._repository = repository
         self._cache = cache
         self._cache_ttl = cache_ttl

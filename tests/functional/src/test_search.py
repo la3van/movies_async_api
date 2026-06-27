@@ -1,3 +1,4 @@
+"""Функциональные тесты поиска по фильмам, жанрам и персонам."""
 import pytest
 
 from tests.functional.settings import test_settings
@@ -76,7 +77,7 @@ async def test_get_genres_with_search(
     expected_sort,
     genres_in_es,
     make_get_request,
-):
+) -> None:
     response = await make_get_request(
         url=f'{test_settings.api_prefix}/genres/',
         query_data=query_data,
@@ -111,7 +112,7 @@ async def test_get_genres_with_search_from_redis(
     genres_in_es,
     es_delete_document,
     make_get_request,
-):
+) -> None:
     query_data = {
         'query': 'space',
         'sort': 'name',
@@ -213,7 +214,7 @@ async def test_get_persons_with_search(
     expected_sort,
     persons_in_es,
     make_get_request,
-):
+) -> None:
     response = await make_get_request(
         url=f'{test_settings.api_prefix}/persons/search',
         query_data=query_data,
@@ -248,7 +249,7 @@ async def test_get_persons_with_search_from_redis(
     persons_in_es,
     es_delete_document,
     make_get_request,
-):
+) -> None:
     query_data = {
         'query': 'Jason',
         'sort': 'full_name',
@@ -340,7 +341,7 @@ async def test_get_searched_films(
     expected_case,
     movies_in_es,
     make_get_request,
-):
+) -> None:
     expected_movies = build_expected_searched_movies(
         movies=movies_in_es,
         expected_case=expected_case,
@@ -376,7 +377,7 @@ async def test_get_searched_films_from_redis(
     movies_in_es,
     es_delete_document,
     make_get_request,
-):
+) -> None:
     query_data = {
         'query': 'Space',
         'page_number': 1,

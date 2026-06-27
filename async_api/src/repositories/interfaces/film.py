@@ -1,11 +1,15 @@
+"""Интерфейс репозитория фильмов."""
 from abc import ABC, abstractmethod
 
 from models.film import Film, ShortFilm
 
 
 class FilmRepository(ABC):
+    """Определяет операции получения и поиска фильмов."""
     @abstractmethod
     async def get_by_id(self, film_id: str) -> Film | None:
+        """Возвращает фильм по идентификатору или None, если фильм
+        не найден."""
         pass  # pragma: no cover
 
     @abstractmethod
@@ -16,6 +20,7 @@ class FilmRepository(ABC):
         page_number: int,
         page_size: int,
     ) -> list[ShortFilm]:
+        """Возвращает страницу фильмов с сортировкой и фильтром по жанру."""
         pass  # pragma: no cover
 
     @abstractmethod
@@ -25,6 +30,7 @@ class FilmRepository(ABC):
         page_number: int,
         page_size: int,
     ) -> list[ShortFilm]:
+        """Ищет фильмы по текстовому запросу с учётом пагинации."""
         pass  # pragma: no cover
 
     @abstractmethod
@@ -35,6 +41,7 @@ class FilmRepository(ABC):
         page_number: int,
         page_size: int,
     ) -> list[ShortFilm]:
+        """Возвращает фильмы, похожие по содержимому и жанрам."""
         pass  # pragma: no cover
 
     @abstractmethod
@@ -45,4 +52,5 @@ class FilmRepository(ABC):
         page_number: int,
         page_size: int,
     ) -> list[ShortFilm]:
+        """Возвращает фильмы с общими жанрами."""
         pass  # pragma: no cover

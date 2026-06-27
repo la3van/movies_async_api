@@ -1,3 +1,4 @@
+"""Функциональные тесты эндпоинтов фильмов."""
 import pytest
 
 from tests.functional.settings import test_settings
@@ -24,7 +25,7 @@ async def test_get_film_by_id(
     expected_status,
     movies_in_es,
     make_get_request,
-):
+) -> None:
     if movie_exists:
         movie = movies_in_es[0]
         movie_id = movie['uuid']
@@ -49,7 +50,7 @@ async def test_get_film_from_redis(
     movies_in_es,
     es_delete_document,
     make_get_request,
-):
+) -> None:
     movie = movies_in_es[0]
 
     first_response = await make_get_request(
@@ -88,7 +89,7 @@ async def test_get_film_from_redis(
 async def test_get_film_by_invalid_id(
     invalid_movie_id,
     make_get_request,
-):
+) -> None:
     response = await make_get_request(
         url=f'{test_settings.api_prefix}/films/{invalid_movie_id}'
     )
@@ -165,7 +166,7 @@ async def test_get_sorted_films(
     movies_in_es,
     genre_documents,
     make_get_request,
-):
+) -> None:
     query_data = query_data.copy()
 
     if genre_index is None:
@@ -214,7 +215,7 @@ async def test_get_sorted_films_from_redis(
     genre_documents,
     es_delete_document,
     make_get_request,
-):
+) -> None:
     genre_uuid = genre_documents[1]['uuid']
 
     query_data = {
@@ -274,48 +275,11 @@ async def test_get_sorted_films_from_redis(
         assert second_body == first_body
 
 
-def get_expected_search_movies(
-    movies: list[dict],
-    expected_case: str,
-) -> list[dict]:
-    if expected_case == 'title':
-        return [
-            movie
-            for movie in movies
-            if 'Space' in movie['title']
-        ]
-
-    if expected_case == 'description':
-        return [
-            movie
-            for movie in movies
-            if 'Detective' in movie['description']
-        ]
-
-    if expected_case == 'person':
-        return [
-            movie
-            for movie in movies
-            if any(
-                'Jason' in person['full_name']
-                for role in ('actors', 'writers', 'directors')
-                for person in movie[role]
-            )
-        ]
-
-    if expected_case == 'not_found':
-        return []
-
-    raise ValueError(
-        f'Unknown expected case: {expected_case}',
-    )
-
-
 @pytest.mark.asyncio
 async def test_get_similar_films_when_similar_found(
     movies_in_es,
     make_get_request,
-):
+) -> None:
     source_movie = movies_in_es[0]
 
     query_data = {
@@ -374,7 +338,7 @@ async def test_get_similar_films_when_similar_found(
 async def test_get_similar_films_when_nothing_found(
     isolated_movie_in_es,
     make_get_request,
-):
+) -> None:
     response = await make_get_request(
         url=(
             f'{test_settings.api_prefix}/films/'
@@ -397,7 +361,7 @@ async def test_get_similar_films_when_nothing_found(
 async def test_get_similar_films_when_nothing_found_and_source_has_no_genres(
     movie_without_relations_in_es,
     make_get_request,
-):
+) -> None:
     response = await make_get_request(
         url=(
             f'{test_settings.api_prefix}/films/'
@@ -421,7 +385,7 @@ async def test_get_similar_films_from_redis(
     movies_in_es,
     es_delete_document,
     make_get_request,
-):
+) -> None:
     source_movie = movies_in_es[0]
 
     query_data = {
@@ -466,7 +430,7 @@ async def test_get_similar_films_from_redis(
 @pytest.mark.asyncio
 async def test_get_similar_films_when_source_film_not_found(
     make_get_request,
-):
+) -> None:
     missing_film_id = (
         '99999999-9999-9999-9999-999999999999'
     )

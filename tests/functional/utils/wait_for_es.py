@@ -1,3 +1,4 @@
+"""Ожидание готовности Elasticsearch перед тестами."""
 import time
 
 from urllib.parse import urlsplit

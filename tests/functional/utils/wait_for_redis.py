@@ -1,3 +1,4 @@
+"""Ожидание готовности Redis перед тестами."""
 import time
 
 from redis import Redis
@@ -6,7 +7,7 @@ from redis.exceptions import ConnectionError, TimeoutError
 from tests.functional.settings import test_settings
 
 
-def wait_for_redis():
+def wait_for_redis() -> None:
     deadline = time.monotonic() + test_settings.redis_wait_timeout
 
     with Redis.from_url(

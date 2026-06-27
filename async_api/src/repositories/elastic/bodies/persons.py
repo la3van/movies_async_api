@@ -1,4 +1,5 @@
 """Создание body запросов для поиска персон."""
+from typing import Any
 
 
 def build_persons_body(
@@ -7,7 +8,8 @@ def build_persons_body(
     page_number: int,
     page_size: int,
     person_sort_fields: dict[str, str],
-) -> dict:
+) -> dict[str, Any]:
+    """Формирует запрос Elasticsearch для получения и поиска персон."""
     search_query: dict = {
         'match_all': {},
     }
@@ -46,7 +48,8 @@ def build_person_films_body(
     person_id: str,
     page_number: int,
     page_size: int,
-) -> dict:
+) -> dict[str, Any]:
+    """Формирует запрос Elasticsearch для получения фильмов персоны."""
     body = {
         '_source': ['uuid', 'title', 'imdb_rating'],
         'query': {

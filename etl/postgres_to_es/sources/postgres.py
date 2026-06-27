@@ -51,8 +51,11 @@ class PostgresSource(
 
     def _connect(self) -> PgConnection:
         """Создаёт новое подключение к PostgreSQL."""
-        connection = psycopg2.connect(
-            **self._connection_params,
+        connection = cast(
+            PgConnection,
+            psycopg2.connect(
+                **self._connection_params,
+            ),
         )
         connection.autocommit = True
 

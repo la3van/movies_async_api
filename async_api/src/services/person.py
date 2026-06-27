@@ -23,7 +23,8 @@ class PersonService:
         repository: PersonRepository,
         cache: Cache,
         cache_ttl: int,
-    ):
+    ) -> None:
+        """Инициализирует сервис персон."""
         self._repository = repository
         self._cache = cache
         self._cache_ttl = cache_ttl

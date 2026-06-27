@@ -1,3 +1,4 @@
+"""Вспомогательные функции функциональных тестов."""
 from collections.abc import Callable, Iterable
 from typing import Any
 
@@ -15,8 +16,9 @@ ExpectedSearchCase = Literal[
 
 def build_bulk_actions(
     index: str,
-    documents: list[dict],
-) -> list[dict]:
+    documents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Формирует bulk-операции для загрузки документов в Elasticsearch."""
     return [
         {
             '_index': index,
@@ -30,8 +32,9 @@ def build_bulk_actions(
 async def recreate_index(
     es_client: AsyncElasticsearch,
     index: str,
-    index_schema: dict,
+    index_schema: dict[str, Any],
 ) -> None:
+    """Пересоздаёт Elasticsearch-индекс по переданной схеме."""
     if await es_client.indices.exists(
         index=index
     ):
@@ -58,6 +61,7 @@ def build_expected_page(
         dict[str, Any],
     ] | None = None,
 ) -> list[dict[str, Any]]:
+    """Формирует ожидаемую страницу документов для проверки ответа."""
     expected_documents = [
         documents[index]
         for index in expected_indexes
@@ -84,9 +88,10 @@ def build_expected_page(
 
 
 def build_expected_searched_movies(
-    movies: list[dict],
+    movies: list[dict[str, Any]],
     expected_case: ExpectedSearchCase,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
+    """Формирует ожидаемый результат поиска фильмов."""
     if expected_case == 'title':
         return [
             movie

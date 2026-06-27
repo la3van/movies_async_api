@@ -1,14 +1,18 @@
+"""Фикстуры документов Elasticsearch для функциональных тестов."""
 import copy
 import pytest
 import uuid
 import random
 
+from typing import Any
+
 
 @pytest.fixture(name='movie_documents', scope='session')
 def movie_documents(
-    person_documents: list[dict],
-    genre_documents: list[dict],
-) -> list[dict]:
+    person_documents: list[dict[str, Any]],
+    genre_documents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Формирует тестовые документы фильмов."""
     documents = []
     movie_number = 0
     for person in person_documents:
@@ -93,8 +97,9 @@ def movie_documents(
 
 @pytest.fixture(name='isolated_movie_document', scope='session')
 def isolated_movie_document(
-    movie_documents,
-) -> list[dict]:
+    movie_documents: dict[str, Any],
+) -> dict[str, Any]:
+    """Формирует фильм с уникальными содержимым и связями."""
     isolated_movie = copy.deepcopy(movie_documents[0])
 
     isolated_movie['uuid'] = (
@@ -111,7 +116,8 @@ def isolated_movie_document(
 
 
 @pytest.fixture(name='movie_without_relations_document', scope='session')
-def movie_without_relations_document() -> dict:
+def movie_without_relations_document() -> dict[str, Any]:
+    """Формирует фильм без жанров и связанных персон."""
     return {
         'uuid': 'ffffffff-ffff-ffff-ffff-fffffffffff2',
         'title': 'Movie Without Relations',
@@ -125,7 +131,8 @@ def movie_without_relations_document() -> dict:
 
 
 @pytest.fixture(name='genre_documents', scope='session')
-def genre_documents() -> list[dict]:
+def genre_documents() -> list[dict[str, Any]]:
+    """Формирует тестовые документы жанров."""
     return [
         {
             'uuid': str(uuid.UUID(int=number + 1)),
@@ -145,7 +152,8 @@ def genre_documents() -> list[dict]:
 
 
 @pytest.fixture(name='person_documents', scope='session')
-def person_documents() -> list[dict]:
+def person_documents() -> list[dict[str, Any]]:
+    """Формирует тестовые документы персон."""
     rng = random.Random(42)
 
     return [

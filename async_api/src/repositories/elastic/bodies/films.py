@@ -1,4 +1,5 @@
 """Создание body запросов для поиска фильмов."""
+from typing import Any
 
 
 def build_sorted_films_body(
@@ -7,14 +8,15 @@ def build_sorted_films_body(
     page_number: int,
     page_size: int,
     film_sort_fields: dict[str, str],
-) -> dict:
+) -> dict[str, Any]:
+    """Формирует запрос Elasticsearch для сортировки и фильтрации фильмов."""
     order = 'desc' if sort.startswith('-') else 'asc'
     sort_field = film_sort_fields.get(
         sort.lstrip('-'),
         'imdb_rating',
     )
 
-    search_query: dict = {
+    search_query: dict[str, Any] = {
         'match_all': {},
     }
 
@@ -55,7 +57,8 @@ def build_searched_films_body(
     query: str,
     page_number: int,
     page_size: int,
-) -> dict:
+) -> dict[str, Any]:
+    """Формирует полнотекстовый запрос Elasticsearch для поиска фильмов."""
     normalized_query = query.strip().lower()
 
     return {
@@ -131,8 +134,10 @@ def build_similar_films_body(
     page_number: int,
     page_size: int,
     index_name: str,
-) -> dict:
-    bool_query = {
+) -> dict[str, Any]:
+    """Формирует запрос поиска фильмов по жанрам и,
+    при необходимости, содержимому."""
+    bool_query: dict[str, Any] = {
         'filter': [
             {
                 'nested': {

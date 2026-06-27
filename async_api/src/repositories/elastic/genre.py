@@ -1,4 +1,4 @@
-"""Реализация репозитория фильмов через Elasticsearch."""
+"""Реализация репозитория жанров через Elasticsearch."""
 from elasticsearch import AsyncElasticsearch, NotFoundError
 
 from models.genre import Genre
@@ -16,6 +16,7 @@ class ElasticsearchGenreRepository(GenreRepository):
         index_name: str,
         genre_sort_fields: dict[str, str],
     ) -> None:
+        """Инициализирует репозиторий жанров."""
         self._elastic = elastic
         self._index_name = index_name
         self._genre_sort_fields = genre_sort_fields
@@ -24,8 +25,7 @@ class ElasticsearchGenreRepository(GenreRepository):
         self,
         genre_id: str,
     ) -> Genre | None:
-        """Возвращает жанр по идентификатору
-        или None, если фильма нету."""
+        """Возвращает жанр по идентификатору или None, если жанр не найден."""
         try:
             document = await self._elastic.get(
                 index=self._index_name,
@@ -43,6 +43,7 @@ class ElasticsearchGenreRepository(GenreRepository):
         page_number: int,
         page_size: int,
     ) -> list[Genre]:
+        """Возвращает страницу жанров с учётом поиска и сортировки."""
         body = build_genres_body(
             query=query,
             sort=sort,

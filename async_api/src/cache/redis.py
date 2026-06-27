@@ -1,3 +1,4 @@
+"""Реализация кеша приложения на основе Redis."""
 import json
 from collections.abc import Sequence
 from typing import TypeVar
@@ -11,7 +12,9 @@ ModelType = TypeVar('ModelType', bound=BaseModel)
 
 
 class RedisCache(Cache):
-    def __init__(self, redis: Redis):
+    """Хранит сериализованные Pydantic-модели в Redis."""
+    def __init__(self, redis: Redis) -> None:
+        """Инициализирует кеш с готовым клиентом Redis."""
         self._redis = redis
 
     async def get_model(
@@ -19,6 +22,7 @@ class RedisCache(Cache):
         key: str,
         model_type: type[ModelType],
     ) -> ModelType | None:
+        """Возвращает одну десериализованную модель из Redis."""
         cached_data = await self._redis.get(key)
 
         if cached_data is None:
@@ -31,6 +35,7 @@ class RedisCache(Cache):
         key: str,
         model_type: type[ModelType],
     ) -> list[ModelType] | None:
+        """Возвращает список десериализованных моделей из Redis."""
         cached_data = await self._redis.get(key)
 
         if cached_data is None:
@@ -49,6 +54,7 @@ class RedisCache(Cache):
         value: BaseModel,
         ttl: int,
     ) -> None:
+        """Сериализует и сохраняет одну модель в Redis."""
         await self._redis.set(
             name=key,
             value=value.model_dump_json(),
@@ -61,6 +67,7 @@ class RedisCache(Cache):
         values: Sequence[BaseModel],
         ttl: int,
     ) -> None:
+        """Сериализует и сохраняет последовательность моделей в Redis."""
         serialized_values = [
             value.model_dump(mode='json')
             for value in values
