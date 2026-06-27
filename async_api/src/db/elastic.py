@@ -17,6 +17,11 @@ async def init_elastic() -> None:
     elastic = AsyncElasticsearch(
         hosts=[settings.elastic_url],
         request_timeout=settings.elastic_request_timeout,
+        max_retries=settings.elastic_max_retries,
+        retry_on_timeout=settings.elastic_retry_on_timeout,
+        retry_on_status=settings.elastic_retry_on_status,
+        retry_backoff_base=settings.elastic_retry_backoff_base,
+        retry_backoff_cap=settings.elastic_retry_backoff_cap,
     )
 
 

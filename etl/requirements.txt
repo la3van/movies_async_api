@@ -4,7 +4,7 @@ pydantic-settings==2.14.1
 psycopg2-binary==2.9.12
 types-psycopg2==2.9.21.20260509
 
-elasticsearch==8.13.2
+elasticsearch==9.4.1
 redis==7.1.0
 
 flake8==7.3.0
