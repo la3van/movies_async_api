@@ -1,5 +1,5 @@
 fastapi[standard]==0.112.0
-elasticsearch[async]==8.13.2
+elasticsearch[async]==9.4.1
 redis==7.1.0
 pydantic-settings==2.14.1
 uvicorn[standard]==0.30.6

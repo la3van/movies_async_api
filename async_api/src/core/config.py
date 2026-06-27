@@ -23,6 +23,18 @@ class Settings(BaseSettings):
     elastic_genres_index: str = 'genres'
     elastic_persons_index: str = 'persons'
 
+    # Elasticsearch retries
+    elastic_max_retries: int = 2
+    elastic_retry_on_timeout: bool = True
+    elastic_retry_on_status: tuple[int, ...] = (
+        429,
+        502,
+        503,
+        504,
+    )
+    elastic_retry_backoff_base: float = 0.1
+    elastic_retry_backoff_cap: float = 1.0
+
     # FilmService
     film_sort_fields: dict[str, str]
     film_cache_expire_in_seconds: int = 300
@@ -41,6 +53,11 @@ class Settings(BaseSettings):
     redis_db: int = 0
     redis_socket_connect_timeout: int = 5
     redis_socket_timeout: int = 5
+
+    # Redis retries
+    redis_max_retries: int = 2
+    redis_retry_backoff_base: float = 0.1
+    redis_retry_backoff_cap: float = 1.0
 
     @property
     def elastic_url(self) -> str:

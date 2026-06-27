@@ -41,14 +41,16 @@ HTTP client
 - кеширование ответов API в Redis;
 - инкрементальная ETL-загрузка трёх Elasticsearch-индексов;
 - exponential backoff для внешних зависимостей ETL;
+- встроенные retries и exponential backoff для Redis и Elasticsearch в Async API;
 - функциональные тесты с отдельными Elasticsearch и Redis.
 
 ## Технологии
 
 - FastAPI и Uvicorn;
 - PostgreSQL 16;
-- Elasticsearch 8.13.2;
-- Redis 7;
+- Elasticsearch 9.4.2;
+- Elasticsearch Python client 9.4.1;
+- Redis 7 и redis-py 7.1.0;
 - Pydantic v2 и pydantic-settings;
 - psycopg2;
 - pytest, pytest-asyncio и aiohttp;
@@ -66,7 +68,7 @@ movies_async_api/
 │   │   ├── api/               # endpoints, схемы ответов и DI
 │   │   ├── cache/             # интерфейс кеша и Redis-реализация
 │   │   ├── core/              # настройки и логирование
-│   │   ├── db/                # жизненный цикл клиентов Redis и Elasticsearch
+│   │   ├── db/                # клиенты Redis и Elasticsearch с retry-настройками
 │   │   ├── models/            # внутренние Pydantic-модели
 │   │   ├── repositories/      # интерфейсы и Elasticsearch-репозитории
 │   │   ├── services/          # бизнес-логика
@@ -107,6 +109,20 @@ movies_async_api/
 - [ETL service](etl/README.md)
 - [Functional tests](tests/README.md)
 
+## Отказоустойчивость
+
+В проекте используются два подхода к повторным попыткам:
+
+- ETL применяет собственные `BackoffPolicy`, `BackoffRetryExecutor` и `@retryable` для PostgreSQL, Elasticsearch и Redis state;
+- Async API использует retry-механизмы клиентских библиотек на транспортном уровне.
+
+В Async API:
+
+- Elasticsearch повторяет ошибки соединения, таймауты и настроенные HTTP-статусы с exponential backoff и jitter;
+- Redis использует `Retry` вместе с `ExponentialWithJitterBackoff` для ошибок соединения и таймаутов.
+
+Параметры количества повторов и задержек задаются в `async_api/.env` и передаются клиентам при их инициализации.
+
 ## Быстрый запуск
 
 ### 1. Создать файлы окружения
@@ -135,6 +151,15 @@ docker compose up --build
 3. ETL переносит данные в Elasticsearch;
 4. Async API становится доступен на `http://localhost:8000`.
 
+После смены major-версии Elasticsearch рекомендуется чистый запуск:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+Команда `down -v` удаляет volumes PostgreSQL, Elasticsearch и Redis, поэтому все локальные данные будут созданы заново.
+
 ### 3. Проверить сервисы
 
 Swagger UI:
@@ -152,6 +177,7 @@ http://localhost:8000/api/openapi.json
 Elasticsearch:
 
 ```bash
+curl "http://localhost:9200"
 curl "http://localhost:9200/_cat/indices?v"
 curl "http://localhost:9200/movies/_count?pretty"
 curl "http://localhost:9200/genres/_count?pretty"
@@ -195,5 +221,3 @@ docker compose down -v
 ```bash
 mypy async_api/src etl/postgres_to_es
 ```
-
-Функциональные тесты пока типизированы не полностью; подробности указаны в итогах проверки аннотаций.

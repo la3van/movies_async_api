@@ -2,6 +2,9 @@
 from typing import Optional
 
 from redis.asyncio import Redis
+from redis.asyncio.retry import Retry
+from redis.backoff import ExponentialWithJitterBackoff
+from redis.exceptions import ConnectionError, TimeoutError
 
 from core.config import get_settings
 
@@ -21,6 +24,17 @@ async def init_redis() -> None:
         socket_connect_timeout=settings.redis_socket_connect_timeout,
         socket_timeout=settings.redis_socket_timeout,
         decode_responses=False,
+        retry=Retry(
+            backoff=ExponentialWithJitterBackoff(
+                base=settings.redis_retry_backoff_base,
+                cap=settings.redis_retry_backoff_cap,
+            ),
+            retries=settings.redis_max_retries,
+            supported_errors=(
+                ConnectionError,
+                TimeoutError,
+            ),
+        ),
     )
 
 

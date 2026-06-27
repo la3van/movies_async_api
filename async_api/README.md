@@ -7,10 +7,12 @@
 - Python 3.10;
 - FastAPI;
 - Uvicorn;
-- `elasticsearch[async]`;
-- `redis.asyncio`;
+- `elasticsearch[async]` 9.4.1;
+- `redis.asyncio` из redis-py 7.1.0;
 - Pydantic v2;
 - ORJSONResponse.
+
+Elasticsearch-сервер в основном и тестовом Docker Compose использует версию 9.4.2.
 
 ## Архитектура
 
@@ -36,7 +38,7 @@ Service
 | `src/repositories/elastic/` | Реализации репозиториев и тела запросов Elasticsearch |
 | `src/cache/` | Абстракция кеша и реализация Redis |
 | `src/models/` | Внутренние Pydantic-модели |
-| `src/db/` | Инициализация и закрытие внешних клиентов |
+| `src/db/` | Инициализация, retry-настройки и закрытие внешних клиентов |
 | `src/core/` | Настройки и конфигурация логирования |
 | `src/main.py` | Создание FastAPI-приложения |
 
@@ -53,18 +55,34 @@ cp .env.example .env
 Основные переменные:
 
 ```env
-PROJECT_NAME=movies-async-API
+PROJECT_NAME=movies-async-api
 
+# Elasticsearch
 ELASTIC_HOST=elasticsearch
 ELASTIC_PORT=9200
 ELASTIC_REQUEST_TIMEOUT=30
+ELASTIC_MOVIES_INDEX=movies
+ELASTIC_GENRES_INDEX=genres
+ELASTIC_PERSONS_INDEX=persons
 
+ELASTIC_MAX_RETRIES=2
+ELASTIC_RETRY_ON_TIMEOUT=true
+ELASTIC_RETRY_ON_STATUS='[429, 502, 503, 504]'
+ELASTIC_RETRY_BACKOFF_BASE=0.1
+ELASTIC_RETRY_BACKOFF_CAP=1.0
+
+# Redis
 REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_DB=1
 REDIS_SOCKET_CONNECT_TIMEOUT=5
 REDIS_SOCKET_TIMEOUT=5
 
+REDIS_MAX_RETRIES=2
+REDIS_RETRY_BACKOFF_BASE=0.1
+REDIS_RETRY_BACKOFF_CAP=1.0
+
+# Services
 FILM_SORT_FIELDS='{"imdb_rating":"imdb_rating"}'
 GENRE_SORT_FIELDS='{"name":"name.raw"}'
 PERSON_SORT_FIELDS='{"full_name":"full_name.raw"}'
@@ -76,6 +94,29 @@ PERSON_CACHE_EXPIRE_IN_SECONDS=300
 
 Точные значения sort fields должны соответствовать mappings из каталога `schemas/`.
 
+`ELASTIC_MAX_RETRIES` и `REDIS_MAX_RETRIES` задают количество повторов после первоначальной попытки. Например, значение `2` означает максимум три обращения к внешнему сервису.
+
+## Retries и exponential backoff
+
+Async API не содержит отдельного retry-декоратора или собственного executor. Повторные попытки настраиваются при создании клиентов в `src/db/elastic.py` и `src/db/redis.py`.
+
+### Elasticsearch
+
+`AsyncElasticsearch` использует:
+
+- `max_retries` — максимальное количество повторов;
+- `retry_on_timeout` — повтор запроса при клиентском таймауте;
+- `retry_on_status` — HTTP-статусы, при которых разрешён повтор;
+- `retry_backoff_base` и `retry_backoff_cap` — exponential backoff с jitter.
+
+Ошибки соединения повторяются автоматически, если retries включены. По умолчанию в конфигурации проекта повторяются статусы `429`, `502`, `503` и `504`.
+
+### Redis
+
+Redis-клиент использует `Retry` и `ExponentialWithJitterBackoff`. Повторяются ошибки соединения и таймауты, а начальная и максимальная задержки задаются через настройки приложения.
+
+Backoff остаётся транспортной ответственностью клиентов. `RedisCache`, сервисы и Elasticsearch-репозитории не содержат собственной логики повторов.
+
 ## Запуск через Docker Compose
 
 Из корня проекта:
@@ -84,11 +125,20 @@ PERSON_CACHE_EXPIRE_IN_SECONDS=300
 docker compose up --build async_api
 ```
 
-Обычно API запускается вместе с Elasticsearch, Redis и ETL:
+Обычно API запускается вместе с PostgreSQL, Elasticsearch, Redis и ETL:
 
 ```bash
 docker compose up --build
 ```
+
+После перехода с Elasticsearch 8 на Elasticsearch 9 выполните чистый запуск:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+`down -v` удаляет все volumes корневого Compose-проекта, включая PostgreSQL и Redis.
 
 ## Локальный запуск
 
@@ -103,7 +153,10 @@ pip install -r requirements.txt
 Для локального запуска в `.env` укажите доступные с хоста адреса Elasticsearch и Redis, например `localhost`.
 
 ```bash
-uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+PYTHONPATH=src uvicorn src.main:app \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --reload
 ```
 
 Docker-образ использует тот же entry point без `--reload`.
@@ -159,9 +212,10 @@ Redis хранит ответы API с TTL, заданным отдельно д
 
 FastAPI lifespan:
 
-1. создаёт AsyncElasticsearch и Redis при старте;
-2. предоставляет их через зависимости;
-3. закрывает подключения при завершении приложения.
+1. создаёт `AsyncElasticsearch` и `Redis` при старте;
+2. передаёт им параметры timeout, retries и backoff из `Settings`;
+3. предоставляет клиентов через зависимости;
+4. закрывает подключения при завершении приложения.
 
 ## Проверка типов
 

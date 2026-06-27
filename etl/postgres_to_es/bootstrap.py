@@ -4,6 +4,8 @@ from contextlib import contextmanager
 
 from elasticsearch import Elasticsearch
 from redis import Redis
+from redis.backoff import NoBackoff
+from redis.retry import Retry
 
 from postgres_to_es.backoff import (
     BackoffPolicy,
@@ -62,6 +64,10 @@ def build_etl_service() -> Iterator[ETLService]:
             settings.redis_socket_connect_timeout
         ),
         socket_timeout=settings.redis_socket_timeout,
+        retry=Retry(
+            backoff=NoBackoff(),
+            retries=0,
+        ),
     )
 
     elastic_client: Elasticsearch | None = None
@@ -70,6 +76,8 @@ def build_etl_service() -> Iterator[ETLService]:
         elastic_client = Elasticsearch(
             hosts=[settings.elastic_url],
             request_timeout=settings.elastic_request_timeout,
+            max_retries=0,
+            retry_on_timeout=False,
         )
 
         postgres_source = PostgresSource(
