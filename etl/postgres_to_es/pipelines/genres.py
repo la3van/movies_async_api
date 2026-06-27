@@ -1,51 +1,92 @@
-"""Пайплайн загрузки жанров в Elasticsearch."""
+"""Пайплайн загрузки жанров в целевой индекс."""
 import logging
-from typing import Any
 
+from psycopg2.extensions import connection as PgConnection
+
+from postgres_to_es.interfaces import (
+    DocumentLoader,
+    GenresSource,
+)
 from postgres_to_es.pipelines.base import BasePipeline
+from postgres_to_es.state import State
 from postgres_to_es.transforms import transform_genres
 
 logger = logging.getLogger(__name__)
 
+GENRES_SCHEMA_FILENAME = 'genres_schema.json'
+
 
 class GenresPipeline(BasePipeline):
-    """Пайплайн загрузки индекса жанров."""
-    def prepare(self) -> None:
-        """Создаёт индекс жанров, если он ещё не существует."""
-        self.elasticsearch.create_index_if_not_exists(
-            index_name=self.settings.genres_index,
-            schema_filename='genres_schema.json',
+    """Загружает документы жанров."""
+    def __init__(
+        self,
+        source: GenresSource,
+        loader: DocumentLoader,
+        state: State,
+        index_name: str,
+        batch_size: int,
+    ) -> None:
+        """Инициализирует пайплайн жанров."""
+        super().__init__(
+            loader=loader,
+            state=state,
+            index_name=index_name,
+            schema_filename=GENRES_SCHEMA_FILENAME,
+            batch_size=batch_size,
         )
 
-    def run_iteration(self, connection: Any) -> bool:
+        self._source = source
+
+    def run_iteration(
+        self,
+        connection: PgConnection,
+    ) -> bool:
         """Выполняет одну итерацию загрузки жанров."""
-        genre_changes = self.postgres.get_changed_genre_ids(
+        genre_modified, genre_id = self._get_cursor(
+            'genre',
+        )
+
+        genre_changes = self._source.get_changed_genre_ids(
             connection=connection,
-            last_modified=self._get_state('genre_modified'),
-            last_id=self._get_state('genre_id'),
-            limit=self.settings.batch_size,
+            last_modified=genre_modified,
+            last_id=genre_id,
+            limit=self._batch_size,
         )
 
         if not genre_changes:
-            logger.info('Изменения для индекса жанров не найдены.')
+            logger.info(
+                'Изменения для индекса жанров не найдены.',
+            )
             return False
 
-        genre_ids = [record.id for record in genre_changes]
+        genre_ids = [
+            record.id
+            for record in genre_changes
+        ]
 
-        postgres_genres = self.postgres.get_genres_by_ids(
+        postgres_genres = self._source.get_genres_by_ids(
             connection=connection,
             genre_ids=genre_ids,
         )
-        elastic_genres = transform_genres(postgres_genres)
 
-        self.elasticsearch.bulk_load(
-            index_name=self.settings.genres_index,
-            documents=elastic_genres,
+        genre_documents = transform_genres(
+            postgres_genres,
         )
 
-        state_updates = self._get_cursor_update('genre', genre_changes)
-        if state_updates:
-            self.state.set_states(state_updates)
+        self._loader.bulk_load(
+            index_name=self._index_name,
+            documents=genre_documents,
+        )
 
-        logger.info('Итерация пайплайна жанров завершена.')
+        state_updates = self._get_cursor_update(
+            prefix='genre',
+            records=genre_changes,
+        )
+
+        self._state.set_states(state_updates)
+
+        logger.info(
+            'Итерация пайплайна жанров завершена.',
+        )
+
         return True

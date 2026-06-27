@@ -36,7 +36,7 @@ def build_sorted_films_body(
             },
         }
 
-    body = {
+    return {
         '_source': ['uuid', 'title', 'imdb_rating'],
         'query': search_query,
         'sort': [
@@ -49,7 +49,6 @@ def build_sorted_films_body(
         'from': (page_number - 1) * page_size,
         'size': page_size,
     }
-    return body
 
 
 def build_searched_films_body(
@@ -59,7 +58,7 @@ def build_searched_films_body(
 ) -> dict:
     normalized_query = query.strip().lower()
 
-    body = {
+    return {
         '_source': ['uuid', 'title', 'imdb_rating'],
         'query': {
             'bool': {
@@ -124,8 +123,6 @@ def build_searched_films_body(
         'size': page_size,
     }
 
-    return body
-
 
 def build_similar_films_body(
     use_more_like_this: bool,
@@ -133,6 +130,7 @@ def build_similar_films_body(
     genre_uuids: list[str],
     page_number: int,
     page_size: int,
+    index_name: str,
 ) -> dict:
     bool_query = {
         'filter': [
@@ -165,7 +163,7 @@ def build_similar_films_body(
                             ],
                             'like': [
                                 {
-                                    '_index': 'movies',
+                                    '_index': index_name,
                                     '_id': film_id,
                                 },
                             ],
@@ -176,7 +174,7 @@ def build_similar_films_body(
                     },
                 ]
 
-    body = {
+    return {
         '_source': ['uuid', 'title', 'imdb_rating'],
         'query': {
             'bool': bool_query,
@@ -196,5 +194,3 @@ def build_similar_films_body(
         'from': (page_number - 1) * page_size,
         'size': page_size,
     }
-
-    return body

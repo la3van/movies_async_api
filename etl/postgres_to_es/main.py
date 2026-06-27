@@ -1,8 +1,12 @@
-"""Стартовая точка запуска PostgreSQL->Elasticsearch сервиса."""
+"""Точка запуска ETL-приложения."""
+from postgres_to_es.bootstrap import build_etl_service
 
-from postgres_to_es.service import ETLService
+
+def main() -> None:
+    """Запускает ETL-сервис."""
+    with build_etl_service() as service:
+        service.run()
 
 
 if __name__ == '__main__':
-    service = ETLService()
-    service.run()
+    main()

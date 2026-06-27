@@ -33,8 +33,8 @@ async def close_redis() -> None:
         redis = None
 
 
-async def get_redis() -> Optional[Redis]:
-    """Возвращает клиент Elasticsearch для dependency injection."""
+async def get_redis() -> Redis:
+    """Возвращает клиент Redis для dependency injection."""
     if redis is None:
         raise RuntimeError('Redis client is not initialized')
 
