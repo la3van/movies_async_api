@@ -4,7 +4,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from services.genre import GenreService, get_genre_service
+from services.genre import GenreService
+from api.dependencies import get_genre_service
 
 from api.v1.schemas.genres import GenreResponse
 from api.v1.mappers.genres import build_genre_response

@@ -4,16 +4,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from services.person import PersonService, get_person_service
+from services.person import PersonService
+from api.dependencies import get_person_service
 
 from api.v1.schemas.films import ShortFilmResponse
 from api.v1.schemas.persons import PersonResponse
 
 from api.v1.mappers.persons import (
     build_person_response,
-)
-
-from api.v1.mappers.persons import (
     build_short_film_response,
 )
 

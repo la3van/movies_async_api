@@ -1,6 +1,8 @@
 """Модели документов персон для Elasticsearch."""
 from pydantic import BaseModel, ConfigDict, Field
 
+from postgres_to_es.models.common import BaseDocument
+
 
 class PersonMovie(BaseModel):
     """Фильм внутри документа персоны."""
@@ -10,7 +12,7 @@ class PersonMovie(BaseModel):
     roles: list[str] = Field(default_factory=list)
 
 
-class PersonDocument(BaseModel):
+class PersonDocument(BaseDocument):
     """Документ персоны для индекса Elasticsearch."""
     model_config = ConfigDict(extra='forbid')
 

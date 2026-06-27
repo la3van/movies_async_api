@@ -4,7 +4,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from services.film import FilmService, get_film_service
+from services.film import FilmService
+from api.dependencies import get_film_service
 
 from api.v1.schemas.films import (
     ShortFilmResponse,

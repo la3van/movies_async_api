@@ -1,5 +1,5 @@
 """Пакет с описанием моделей фильма, жанра, персоны и общими моделями."""
-from postgres_to_es.models.common import ChangedRecord
+from postgres_to_es.models.common import ChangedRecord, BaseDocument
 from postgres_to_es.models.movies import (
     MovieDocument,
     MovieGenre,
@@ -18,6 +18,7 @@ from postgres_to_es.models.postgres_models import (
 
 __all__ = (
     'ChangedRecord',
+    'BaseDocument',
     'MovieDocument',
     'MovieGenre',
     'MoviePerson',

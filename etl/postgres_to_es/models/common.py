@@ -10,3 +10,10 @@ class ChangedRecord(BaseModel):
 
     id: str
     modified: datetime | str
+
+
+class BaseDocument(BaseModel):
+    """Базовая модель документа целевого хранилища."""
+    model_config = ConfigDict(extra='forbid')
+
+    uuid: str

@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     elastic_port: int = 9200
     elastic_request_timeout: int = 30
 
+    elastic_movies_index: str = 'movies'
+    elastic_genres_index: str = 'genres'
+    elastic_persons_index: str = 'persons'
+
     # FilmService
     film_sort_fields: dict[str, str]
     film_cache_expire_in_seconds: int = 300

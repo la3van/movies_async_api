@@ -37,6 +37,8 @@ async def test_get_person_by_id(
         url=f'{test_settings.api_prefix}/persons/{person_id}',
     )
 
+    print(person_id, persons_in_es[0]['uuid'])
+
     async with response:
         body = await response.json()
 

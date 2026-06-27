@@ -1,5 +1,6 @@
 """Модуль настроек ETL-сервиса"""
 from functools import lru_cache
+from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
@@ -59,15 +60,26 @@ class Settings(BaseSettings):
         return f'http://{self.elastic_host}:{self.elastic_port}'
 
     @property
-    def postgres_dsn(self) -> dict:
+    def postgres_connection_params(self) -> dict[str, Any]:
         """Возвращает параметры подключения к PostgreSQL."""
+        options = ' '.join(
+            option
+            for option in (
+                self.postgres_options.strip(),
+                (
+                    '-c statement_timeout='
+                    f'{self.postgres_statement_timeout_ms}'
+                ),
+            )
+            if option
+        )
         return {
             'host': self.postgres_host,
             'port': self.postgres_port,
             'dbname': self.postgres_db,
             'user': self.postgres_user,
             'password': self.postgres_password,
-            'options': self.postgres_options,
+            'options': options,
             'connect_timeout': self.postgres_connect_timeout,
         }
 

@@ -1,98 +1,73 @@
-"""Основной ETL-сервис оркестрации."""
+"""Сервис оркестрации ETL-пайплайнов."""
+
 import logging
 import time
+from collections.abc import Callable, Sequence
 
 from psycopg2 import InterfaceError, OperationalError
-from redis import Redis
 
-from postgres_to_es.backoff import backoff
-from postgres_to_es.config import get_settings
-from postgres_to_es.elastic import ElasticsearchLoader
-from postgres_to_es.pipelines import FilmsPipeline
-from postgres_to_es.pipelines import GenresPipeline
-from postgres_to_es.pipelines import PersonsPipeline
-from postgres_to_es.postgres import PostgresExtractor
-from postgres_to_es.state import RedisStorage, State
+from postgres_to_es.backoff import retryable
+from postgres_to_es.interfaces import (
+    ConnectionProvider,
+    RetryExecutor,
+)
+from postgres_to_es.pipelines import BasePipeline
 
 logger = logging.getLogger(__name__)
 
 
 class ETLService:
-    """Сервис для орекстрации ETL-пайплайнов."""
-    def __init__(self):
-        """Инициализирует ETL-зависимости и пайплайны."""
-        self.settings = get_settings()
+    """Оркестрирует выполнение ETL-пайплайнов."""
+    def __init__(
+        self,
+        connection_provider: ConnectionProvider,
+        pipelines: Sequence[BasePipeline],
+        sleep_time: float,
+        retry_executor: RetryExecutor,
+        sleeper: Callable[[float], None] = time.sleep,
+    ) -> None:
+        """Сохраняет зависимости ETL-сервиса."""
+        if sleep_time < 0:
+            raise ValueError(
+                'Время ожидания ETL не может быть отрицательным.',
+            )
 
-        self.redis_adapter = Redis(
-            host=self.settings.redis_host,
-            port=self.settings.redis_port,
-            db=self.settings.redis_db,
-            decode_responses=True,
-            socket_connect_timeout=(
-                self.settings.redis_socket_connect_timeout
-            ),
-            socket_timeout=self.settings.redis_socket_timeout,
-        )
-
-        self.postgres = PostgresExtractor()
-        self.elasticsearch = ElasticsearchLoader()
-
-        self.films_pipeline = FilmsPipeline(
-            postgres=self.postgres,
-            elasticsearch=self.elasticsearch,
-            state=self._create_state('films'),
-            settings=self.settings,
-        )
-
-        self.genres_pipeline = GenresPipeline(
-            postgres=self.postgres,
-            elasticsearch=self.elasticsearch,
-            state=self._create_state('genres'),
-            settings=self.settings,
-        )
-
-        self.persons_pipeline = PersonsPipeline(
-            postgres=self.postgres,
-            elasticsearch=self.elasticsearch,
-            state=self._create_state('persons'),
-            settings=self.settings,
-        )
+        self._connection_provider = connection_provider
+        self._pipelines = tuple(pipelines)
+        self._sleep_time = sleep_time
+        self._retry_executor = retry_executor
+        self._sleeper = sleeper
 
     def run(self) -> None:
-        """Запускает бесконечный ETL-процесс."""
-        self._prepare_indices()
+        """Запускает непрерывное выполнение ETL."""
+        self._prepare_pipelines()
 
         while True:
             has_changes = self.run_iteration()
 
             if not has_changes:
-                logger.info('No changes found')
-                time.sleep(self.settings.etl_sleep_time)
+                logger.info(
+                    'Изменения не найдены. Ожидание следующей итерации.',
+                )
+                self._sleeper(self._sleep_time)
 
-    @backoff(exceptions=(InterfaceError, OperationalError))
+    @retryable(
+        exceptions=(
+            InterfaceError,
+            OperationalError,
+        ),
+    )
     def run_iteration(self) -> bool:
-        """Запускает одну итерацию для всех пайплайнов."""
-        with self.postgres.connection() as connection:
-            films_has_changes = self.films_pipeline.run_iteration(connection)
-            genres_has_changes = self.genres_pipeline.run_iteration(connection)
-            persons_has_changes = self.persons_pipeline.run_iteration(
-                connection,
-            )
+        """Выполняет одну итерацию всех пайплайнов."""
+        with self._connection_provider.connection() as connection:
+            results = [
+                pipeline.run_iteration(connection)
+                for pipeline in self._pipelines
+            ]
 
-        return films_has_changes or genres_has_changes or persons_has_changes
+        return any(results)
 
-    def _prepare_indices(self) -> None:
-        """Создает Elasticsearch индекс если их еще нет."""
-        self.films_pipeline.prepare()
-        self.genres_pipeline.prepare()
-        self.persons_pipeline.prepare()
-
-    def _create_state(self, pipeline_name: str) -> State:
-        """Создает изолированное хранилище состояния
-        для одного пайплайна."""
-        return State(
-            RedisStorage(
-                redis_adapter=self.redis_adapter,
-                state_key=self.settings.get_state_key(pipeline_name),
-            ),
-        )
+    def _prepare_pipelines(self) -> None:
+        """Подготавливает целевые ресурсы пайплайнов."""
+        for pipeline in self._pipelines:
+            pipeline.prepare()
