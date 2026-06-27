@@ -106,16 +106,22 @@ def isolated_movie_document(
     isolated_movie['description'] = (
         'Unrepeatable isolated description'
     )
-    isolated_movie['genre'] = [
-        {
-            'uuid': (
-                'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
-            ),
-            'name': 'Isolated Genre',
-        },
-    ]
 
     return isolated_movie
+
+
+@pytest.fixture(name='movie_without_relations_document', scope='session')
+def movie_without_relations_document() -> dict:
+    return {
+        'uuid': 'ffffffff-ffff-ffff-ffff-fffffffffff2',
+        'title': 'Movie Without Relations',
+        'imdb_rating': None,
+        'description': None,
+        'genre': [],
+        'actors': [],
+        'writers': [],
+        'directors': [],
+    }
 
 
 @pytest.fixture(name='genre_documents', scope='session')

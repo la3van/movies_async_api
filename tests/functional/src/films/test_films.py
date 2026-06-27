@@ -394,6 +394,29 @@ async def test_get_similar_films_when_nothing_found(
 
 
 @pytest.mark.asyncio
+async def test_get_similar_films_when_nothing_found_and_source_has_no_genres(
+    movie_without_relations_in_es,
+    make_get_request,
+):
+    response = await make_get_request(
+        url=(
+            f'{test_settings.api_prefix}/films/'
+            f'{movie_without_relations_in_es["uuid"]}/similar'
+        ),
+        query_data={
+            'page_number': 1,
+            'page_size': 50,
+        },
+    )
+
+    async with response:
+        body = await response.json()
+
+        assert response.status == 200
+        assert body == []
+
+
+@pytest.mark.asyncio
 async def test_get_similar_films_from_redis(
     movies_in_es,
     es_delete_document,

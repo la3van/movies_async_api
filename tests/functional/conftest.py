@@ -74,6 +74,7 @@ async def movies_in_es(
 
 @pytest_asyncio.fixture(name='isolated_movie_in_es')
 async def isolated_movie_in_es(
+    movies_in_es,
     isolated_movie_document,
     es_write_data,
 ):
@@ -84,6 +85,21 @@ async def isolated_movie_in_es(
     )
 
     return isolated_movie_document
+
+
+@pytest_asyncio.fixture(name='movie_without_relations_in_es')
+async def movie_without_relations_in_es(
+    movies_in_es,
+    movie_without_relations_document,
+    es_write_data,
+):
+    await es_write_data(
+        index=test_settings.es_movies_index,
+        index_schema=test_settings.es_movies_index_schema,
+        documents=[movie_without_relations_document],
+    )
+
+    return movie_without_relations_document
 
 
 @pytest_asyncio.fixture(name='genres_in_es')
