@@ -115,6 +115,34 @@ def isolated_movie_document(
     return isolated_movie
 
 
+@pytest.fixture(
+    name='movies_without_matches_documents',
+    scope='session',
+)
+def movies_without_matches_documents(
+    isolated_movie_document: dict[str, Any],
+    movie_documents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Формирует фильмы для проверки отсутствия похожих результатов."""
+    content_match_with_other_genre = copy.deepcopy(
+        isolated_movie_document,
+    )
+    content_match_with_other_genre['uuid'] = (
+        'ffffffff-ffff-ffff-ffff-fffffffffff3'
+    )
+    content_match_with_other_genre['genre'] = copy.deepcopy(
+        movie_documents[2]['genre'],
+    )
+
+    unrelated_movie = copy.deepcopy(movie_documents[3])
+
+    return [
+        isolated_movie_document,
+        content_match_with_other_genre,
+        unrelated_movie,
+    ]
+
+
 @pytest.fixture(name='movie_without_relations_document', scope='session')
 def movie_without_relations_document() -> dict[str, Any]:
     """Формирует фильм без жанров и связанных персон."""
@@ -128,6 +156,70 @@ def movie_without_relations_document() -> dict[str, Any]:
         'writers': [],
         'directors': [],
     }
+
+
+@pytest.fixture(name='similar_movies_documents', scope='session')
+def similar_movies_documents() -> list[dict[str, Any]]:
+    """Формирует детерминированные фильмы для проверки more_like_this."""
+    matching_genre = {
+        'uuid': 'dddddddd-dddd-dddd-dddd-ddddddddddd1',
+        'name': 'Matching Genre',
+    }
+    other_genre = {
+        'uuid': 'dddddddd-dddd-dddd-dddd-ddddddddddd2',
+        'name': 'Other Genre',
+    }
+
+    source_movie = {
+        'uuid': 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1',
+        'title': 'Nebulor Quasaris',
+        'imdb_rating': 8.0,
+        'description': 'Cryovanta Zephyrium',
+        'genre': [matching_genre],
+        'actors': [],
+        'writers': [],
+        'directors': [],
+    }
+
+    content_and_genre_match = {
+        'uuid': 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2',
+        'title': 'Nebulor Quasaris',
+        'imdb_rating': 9.0,
+        'description': 'Cryovanta Zephyrium',
+        'genre': [matching_genre],
+        'actors': [],
+        'writers': [],
+        'directors': [],
+    }
+
+    genre_only_match = {
+        'uuid': 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee3',
+        'title': 'Granite Harbor',
+        'imdb_rating': 7.0,
+        'description': 'Silent Orchard',
+        'genre': [matching_genre],
+        'actors': [],
+        'writers': [],
+        'directors': [],
+    }
+
+    content_only_match = {
+        'uuid': 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee4',
+        'title': 'Nebulor Quasaris',
+        'imdb_rating': 10.0,
+        'description': 'Cryovanta Zephyrium',
+        'genre': [other_genre],
+        'actors': [],
+        'writers': [],
+        'directors': [],
+    }
+
+    return [
+        source_movie,
+        content_and_genre_match,
+        genre_only_match,
+        content_only_match,
+    ]
 
 
 @pytest.fixture(name='genre_documents', scope='session')

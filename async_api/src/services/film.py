@@ -130,7 +130,7 @@ class FilmService:
         film_id: str,
         page_number: int = 1,
         page_size: int = 50,
-    ) -> list[ShortFilm]:
+    ) -> list[ShortFilm] | None:
         """Возвращает фильмы, похожие на указанный фильм."""
         similar_films_cache_key = get_similar_films_cache_key(
             film_id=film_id,
@@ -148,7 +148,7 @@ class FilmService:
         film = await self.get_film_by_id(film_id)
 
         if film is None:
-            return []
+            return None
 
         genre_uuids = [
             genre.uuid

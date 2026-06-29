@@ -23,8 +23,9 @@ pytest_plugins = [
 
 @pytest.fixture(scope='session')
 def event_loop():
-    """Создаёт event loop на время тестовой сессии."""
-    loop = asyncio.get_event_loop()
+    """Создаёт отдельный event loop на время тестовой сессии."""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
     loop.close()
 
@@ -66,7 +67,7 @@ def es_write_data(es_client: AsyncElasticsearch):
 async def movies_in_es(
     movie_documents: dict[str, Any],
     es_write_data,
-):
+) -> list[dict[str, Any]]:
     """Загружает тестовые фильмы в Elasticsearch."""
     await es_write_data(
         index=test_settings.es_movies_index,
@@ -77,28 +78,42 @@ async def movies_in_es(
     return movie_documents
 
 
-@pytest_asyncio.fixture(name='isolated_movie_in_es')
-async def isolated_movie_in_es(
-    movies_in_es,
+@pytest_asyncio.fixture(name='movies_with_isolated_movie_in_es')
+async def movies_with_isolated_movie_in_es(
+    movie_documents: list[dict[str, Any]],
     isolated_movie_document: dict[str, Any],
     es_write_data,
-):
-    """Загружает изолированный фильм для проверки отсутствия похожих."""
+) -> dict[str, Any]:
+    """Загружает фильмы для проверки fallback-поиска по жанрам."""
     await es_write_data(
         index=test_settings.es_movies_index,
         index_schema=test_settings.es_movies_index_schema,
-        documents=[isolated_movie_document],
+        documents=movie_documents + [isolated_movie_document],
     )
 
     return isolated_movie_document
 
 
+@pytest_asyncio.fixture(name='movies_without_matches_in_es')
+async def movies_without_matches_in_es(
+    movies_without_matches_documents: list[dict[str, Any]],
+    es_write_data,
+) -> list[dict[str, Any]]:
+    """Загружает фильм и неподходящих кандидатов в Elasticsearch."""
+    await es_write_data(
+        index=test_settings.es_movies_index,
+        index_schema=test_settings.es_movies_index_schema,
+        documents=movies_without_matches_documents,
+    )
+
+    return movies_without_matches_documents
+
+
 @pytest_asyncio.fixture(name='movie_without_relations_in_es')
 async def movie_without_relations_in_es(
-    movies_in_es,
     movie_without_relations_document: dict[str, Any],
     es_write_data,
-):
+) -> dict[str, Any]:
     """Загружает фильм без жанров и связанных персон."""
     await es_write_data(
         index=test_settings.es_movies_index,
@@ -109,11 +124,26 @@ async def movie_without_relations_in_es(
     return movie_without_relations_document
 
 
+@pytest_asyncio.fixture(name='similar_movies_in_es')
+async def similar_movies_in_es(
+    similar_movies_documents: list[dict[str, Any]],
+    es_write_data,
+) -> list[dict[str, Any]]:
+    """Загружает фильмы для проверки more_like_this."""
+    await es_write_data(
+        index=test_settings.es_movies_index,
+        index_schema=test_settings.es_movies_index_schema,
+        documents=similar_movies_documents,
+    )
+
+    return similar_movies_documents
+
+
 @pytest_asyncio.fixture(name='genres_in_es')
 async def genres_in_es(
     genre_documents: list[dict[str, Any]],
     es_write_data,
-):
+) -> list[dict[str, Any]]:
     """Загружает тестовые жанры в Elasticsearch."""
     await es_write_data(
         index=test_settings.es_genres_index,
@@ -128,7 +158,7 @@ async def genres_in_es(
 async def persons_in_es(
     person_documents: list[dict[str, Any]],
     es_write_data,
-):
+) -> list[dict[str, Any]]:
     """Загружает тестовых персон в Elasticsearch."""
     await es_write_data(
         index=test_settings.es_persons_index,
