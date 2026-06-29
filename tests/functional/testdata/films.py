@@ -1,10 +1,8 @@
-"""Фикстуры документов Elasticsearch для функциональных тестов."""
+"""Тестовые документы фильмов."""
 import copy
-import pytest
-import uuid
-import random
-
 from typing import Any
+
+import pytest
 
 
 @pytest.fixture(name='movie_documents', scope='session')
@@ -219,55 +217,4 @@ def similar_movies_documents() -> list[dict[str, Any]]:
         content_and_genre_match,
         genre_only_match,
         content_only_match,
-    ]
-
-
-@pytest.fixture(name='genre_documents', scope='session')
-def genre_documents() -> list[dict[str, Any]]:
-    """Формирует тестовые документы жанров."""
-    return [
-        {
-            'uuid': str(uuid.UUID(int=number + 1)),
-            'name': (
-                f'Space Genre {number:02d}'
-                if number % 10 == 0
-                else f'Action Genre {number:02d}'
-            ),
-            'description': (
-                f'Detective stories {number:02d}'
-                if number % 10 == 0
-                else f'Epic battles {number:02d}'
-            ),
-        }
-        for number in range(60)
-    ]
-
-
-@pytest.fixture(name='person_documents', scope='session')
-def person_documents() -> list[dict[str, Any]]:
-    """Формирует тестовые документы персон."""
-    rng = random.Random(42)
-
-    return [
-        {
-            'uuid': str(uuid.UUID(int=person_number + 1)),
-            'full_name': (
-                f'Jason full_name {person_number:02d}'
-                if person_number % 10 == 0
-                else f'Erik full_name {person_number:02d}'
-            ),
-            'films': [
-                {
-                    'uuid': str(uuid.UUID(
-                        int=person_number * 10 + film_number + 1)
-                    ),
-                    'roles': rng.sample(
-                        ['actor', 'writer', 'director'],
-                        k=rng.randint(1, 3),
-                    ),
-                }
-                for film_number in range(rng.randint(1, 10))
-            ],
-        }
-        for person_number in range(60)
     ]
