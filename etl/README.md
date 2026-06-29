@@ -224,6 +224,27 @@ python -m postgres_to_es.main
 mypy etl/postgres_to_es
 ```
 
+## Maintainability Index
+
+Проверка выполняется из корня проекта:
+
+```bash
+radon mi etl/postgres_to_es -s
+```
+
+Все модули ETL имеют категорию `A`.
+
+| Модуль | MI |
+| --- | ---: |
+| `postgres_to_es/sources/postgres.py` | `32.72` |
+| `postgres_to_es/loaders/elastic.py` | `40.83` |
+| `postgres_to_es/models/postgres_models.py` | `52.29` |
+| `postgres_to_es/transforms/persons.py` | `53.02` |
+| `postgres_to_es/backoff.py` | `53.05` |
+| `postgres_to_es/pipelines/films.py` | `53.57` |
+
+Остальные проверенные модули имеют MI от `55.72` до `100.00`.
+
 ## Ограничения текущего CDC
 
 Пайплайны ориентируются на `modified` основных таблиц. Изменения или удаления только в таблицах связей `person_film_work` и `genre_film_work` требуют обновления `modified` родительских сущностей, триггеров либо отдельного change log/outbox механизма.

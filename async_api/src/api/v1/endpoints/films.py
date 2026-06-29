@@ -155,6 +155,12 @@ async def get_similar_films(
         page_size=page_size,
     )
 
+    if films is None:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='film_not_found',
+        )
+
     return [
         build_short_film_response(film)
         for film in films

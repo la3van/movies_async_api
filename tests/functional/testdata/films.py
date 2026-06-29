@@ -1,10 +1,8 @@
-"""Фикстуры документов Elasticsearch для функциональных тестов."""
+"""Тестовые документы фильмов."""
 import copy
-import pytest
-import uuid
-import random
-
 from typing import Any
+
+import pytest
 
 
 @pytest.fixture(name='movie_documents', scope='session')
@@ -115,6 +113,34 @@ def isolated_movie_document(
     return isolated_movie
 
 
+@pytest.fixture(
+    name='movies_without_matches_documents',
+    scope='session',
+)
+def movies_without_matches_documents(
+    isolated_movie_document: dict[str, Any],
+    movie_documents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Формирует фильмы для проверки отсутствия похожих результатов."""
+    content_match_with_other_genre = copy.deepcopy(
+        isolated_movie_document,
+    )
+    content_match_with_other_genre['uuid'] = (
+        'ffffffff-ffff-ffff-ffff-fffffffffff3'
+    )
+    content_match_with_other_genre['genre'] = copy.deepcopy(
+        movie_documents[2]['genre'],
+    )
+
+    unrelated_movie = copy.deepcopy(movie_documents[3])
+
+    return [
+        isolated_movie_document,
+        content_match_with_other_genre,
+        unrelated_movie,
+    ]
+
+
 @pytest.fixture(name='movie_without_relations_document', scope='session')
 def movie_without_relations_document() -> dict[str, Any]:
     """Формирует фильм без жанров и связанных персон."""
@@ -130,52 +156,65 @@ def movie_without_relations_document() -> dict[str, Any]:
     }
 
 
-@pytest.fixture(name='genre_documents', scope='session')
-def genre_documents() -> list[dict[str, Any]]:
-    """Формирует тестовые документы жанров."""
+@pytest.fixture(name='similar_movies_documents', scope='session')
+def similar_movies_documents() -> list[dict[str, Any]]:
+    """Формирует детерминированные фильмы для проверки more_like_this."""
+    matching_genre = {
+        'uuid': 'dddddddd-dddd-dddd-dddd-ddddddddddd1',
+        'name': 'Matching Genre',
+    }
+    other_genre = {
+        'uuid': 'dddddddd-dddd-dddd-dddd-ddddddddddd2',
+        'name': 'Other Genre',
+    }
+
+    source_movie = {
+        'uuid': 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1',
+        'title': 'Nebulor Quasaris',
+        'imdb_rating': 8.0,
+        'description': 'Cryovanta Zephyrium',
+        'genre': [matching_genre],
+        'actors': [],
+        'writers': [],
+        'directors': [],
+    }
+
+    content_and_genre_match = {
+        'uuid': 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2',
+        'title': 'Nebulor Quasaris',
+        'imdb_rating': 9.0,
+        'description': 'Cryovanta Zephyrium',
+        'genre': [matching_genre],
+        'actors': [],
+        'writers': [],
+        'directors': [],
+    }
+
+    genre_only_match = {
+        'uuid': 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee3',
+        'title': 'Granite Harbor',
+        'imdb_rating': 7.0,
+        'description': 'Silent Orchard',
+        'genre': [matching_genre],
+        'actors': [],
+        'writers': [],
+        'directors': [],
+    }
+
+    content_only_match = {
+        'uuid': 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee4',
+        'title': 'Nebulor Quasaris',
+        'imdb_rating': 10.0,
+        'description': 'Cryovanta Zephyrium',
+        'genre': [other_genre],
+        'actors': [],
+        'writers': [],
+        'directors': [],
+    }
+
     return [
-        {
-            'uuid': str(uuid.UUID(int=number + 1)),
-            'name': (
-                f'Space Genre {number:02d}'
-                if number % 10 == 0
-                else f'Action Genre {number:02d}'
-            ),
-            'description': (
-                f'Detective stories {number:02d}'
-                if number % 10 == 0
-                else f'Epic battles {number:02d}'
-            ),
-        }
-        for number in range(60)
-    ]
-
-
-@pytest.fixture(name='person_documents', scope='session')
-def person_documents() -> list[dict[str, Any]]:
-    """Формирует тестовые документы персон."""
-    rng = random.Random(42)
-
-    return [
-        {
-            'uuid': str(uuid.UUID(int=person_number + 1)),
-            'full_name': (
-                f'Jason full_name {person_number:02d}'
-                if person_number % 10 == 0
-                else f'Erik full_name {person_number:02d}'
-            ),
-            'films': [
-                {
-                    'uuid': str(uuid.UUID(
-                        int=person_number * 10 + film_number + 1)
-                    ),
-                    'roles': rng.sample(
-                        ['actor', 'writer', 'director'],
-                        k=rng.randint(1, 3),
-                    ),
-                }
-                for film_number in range(rng.randint(1, 10))
-            ],
-        }
-        for person_number in range(60)
+        source_movie,
+        content_and_genre_match,
+        genre_only_match,
+        content_only_match,
     ]
