@@ -153,10 +153,7 @@ pip install -r requirements.txt
 Для локального запуска в `.env` укажите доступные с хоста адреса Elasticsearch и Redis, например `localhost`.
 
 ```bash
-PYTHONPATH=src uvicorn src.main:app \
-  --host 0.0.0.0 \
-  --port 8000 \
-  --reload
+PYTHONPATH=src uvicorn src.main:app   --host 0.0.0.0   --port 8000   --reload
 ```
 
 Docker-образ использует тот же entry point без `--reload`.
@@ -225,6 +222,39 @@ FastAPI lifespan:
 mypy async_api/src
 ```
 
+## Maintainability Index
+
+Проверка выполняется из корня проекта:
+
+```bash
+radon mi async_api/src -s
+```
+
+Все модули Async API имеют категорию `A`. Текущие значения для наиболее объёмных модулей:
+
+| Модуль | MI |
+| --- | ---: |
+| `src/api/v1/schemas/films.py` | `55.89` |
+| `src/cache/redis.py` | `57.52` |
+| `src/repositories/elastic/bodies/persons.py` | `58.97` |
+| `src/services/film.py` | `60.57` |
+| `src/db/redis.py` | `60.77` |
+| `src/repositories/elastic/bodies/films.py` | `61.63` |
+| `src/db/elastic.py` | `61.98` |
+| `src/services/person.py` | `62.51` |
+| `src/repositories/elastic/bodies/genres.py` | `64.28` |
+| `src/models/film.py` | `69.39` |
+| `src/services/genre.py` | `68.47` |
+| `src/api/v1/endpoints/persons.py` | `73.31` |
+| `src/api/v1/endpoints/films.py` | `74.19` |
+| `src/api/v1/endpoints/genres.py` | `80.95` |
+| `src/services/cache_keys/films.py` | `88.41` |
+| `src/models/genre.py` | `94.30` |
+
+Остальные проверенные модули имеют MI `100.00`.
+
 ## Функциональные тесты
 
-Тесты находятся в `tests/functional` и запускаются в отдельном Docker Compose окружении. Инструкции: [tests/README.md](../tests/README.md).
+Тесты находятся в `tests/functional` и запускаются в отдельном Docker Compose окружении. Они разделены по ресурсам и endpoint, а общие фикстуры вынесены в `tests/functional/fixtures`.
+
+Инструкции: [tests/README.md](../tests/README.md).

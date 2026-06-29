@@ -55,7 +55,7 @@ HTTP client
 - psycopg2;
 - pytest, pytest-asyncio и aiohttp;
 - Docker Compose;
-- mypy и coverage.py.
+- mypy, coverage.py и Radon.
 
 `async_api` и функциональные тесты используют Python 3.10, ETL — Python 3.12.
 
@@ -95,7 +95,11 @@ movies_async_api/
 │   └── README.md
 ├── schemas/                   # JSON-схемы индексов Elasticsearch
 ├── tests/
-│   ├── functional/            # отдельное Docker Compose окружение тестов
+│   ├── functional/
+│   │   ├── fixtures/          # общие и предметные pytest-фикстуры
+│   │   ├── src/               # тесты, разделённые по endpoint
+│   │   ├── testdata/          # документы films, genres и persons
+│   │   └── utils/             # вспомогательные функции ожидания и проверок
 │   └── README.md
 ├── database_dump.sql
 ├── docker-compose.yml
@@ -221,3 +225,23 @@ docker compose down -v
 ```bash
 mypy async_api/src etl/postgres_to_es
 ```
+
+## Maintainability Index
+
+Проверка выполняется из корня проекта:
+
+```bash
+radon mi async_api/src -s
+radon mi etl/postgres_to_es -s
+radon mi tests/functional -s
+```
+
+На текущем состоянии все проверенные Python-модули имеют категорию `A`.
+
+| Компонент | Минимальное значение MI | Модуль |
+| --- | ---: | --- |
+| Async API | `55.89` | `async_api/src/api/v1/schemas/films.py` |
+| ETL | `32.72` | `etl/postgres_to_es/sources/postgres.py` |
+| Functional tests | `26.33` | `tests/functional/src/films/test_film_similar.py` |
+
+Низкие значения отдельных тестовых файлов связаны главным образом с большим количеством сценариев, параметризаций и проверок внутри одного endpoint-модуля. Тесты при этом уже разделены по ресурсам и endpoint, а дальнейшее дробление ухудшило бы навигацию без заметной архитектурной пользы.
