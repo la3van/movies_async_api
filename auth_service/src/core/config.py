@@ -69,4 +69,4 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     """Возвращает настройки auth-сервиса."""
-    return Settings
+    return Settings()

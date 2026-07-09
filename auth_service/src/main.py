@@ -6,6 +6,7 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
+from api.v1.router import api_router
 from core.config import get_settings
 from core.logger import LOGGING
 from db.postgres import close_postgres, init_postgres
@@ -37,6 +38,8 @@ app = FastAPI(
     default_response_class=ORJSONResponse,
     lifespan=lifespan,
 )
+
+app.include_router(api_router, prefix='/api/v1')
 
 
 @app.get('/health', tags=['health'])

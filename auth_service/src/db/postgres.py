@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase
 
 from core.config import get_settings
 
