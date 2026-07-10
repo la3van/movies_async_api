@@ -1,6 +1,7 @@
 fastapi[standart]==0.112.0
 uvicorn[standart]==0.30.6
 pydantic-settings==2.14.1
+email-validator==2.2.0
 orjson==3.11.9
 
 SQLAlchemy==2.0.36
