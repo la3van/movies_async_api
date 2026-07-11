@@ -99,7 +99,7 @@ class PermissionService:
 
             return permission
         except Exception:
-            self._session.rollback()
+            await self._session.rollback()
             raise
 
     async def update(

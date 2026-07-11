@@ -91,3 +91,10 @@ class PostgresUserRepository(UserRepository):
         await self.session.flush()
 
         return user
+
+    async def save(self, user: User) -> User:
+        """Сохраняет пользователя и возвращает обновлённую модель."""
+        self.session.add(user)
+        await self.session.flush()
+
+        return user

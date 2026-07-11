@@ -10,7 +10,7 @@ class PermissionBase(BaseModel):
         min_length=1,
         max_length=100,
         description='Код права доступа',
-        exmaples=['movies:watch_premium'],
+        examples=['movies:watch_premium'],
     )
 
     description: str | None = Field(
@@ -31,13 +31,13 @@ class PermissionUpdate(BaseModel):
         min_length=1,
         max_length=100,
         description='Новый код права доступа',
-        exmaples=['movies:watch_fresh'],
+        examples=['movies:watch_fresh'],
     )
 
     description: str | None = Field(
         default=None,
         description='Новое описание права доступа',
-        exmaples=['Разрешает смотреть новые фильмы'],
+        examples=['Разрешает смотреть новые фильмы'],
     )
 
 

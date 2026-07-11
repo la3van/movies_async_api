@@ -40,6 +40,7 @@ class PostgresLoginHistoryRepository(LoginHistoryRepository):
         is_successful: bool,
         user_id: UUID | None = None,
         reason: str | None = None,
+        user_agent: str | None = None,
         ip_address: str | None = None,
     ) -> LoginHistory:
         """Создаёт запись истории входа и возвращает созданную модель."""
@@ -48,10 +49,11 @@ class PostgresLoginHistoryRepository(LoginHistoryRepository):
             is_successful=is_successful,
             user_id=user_id,
             reason=reason,
+            user_agent=user_agent,
             ip_address=ip_address,
         )
 
         self.session.add(login_history)
-        self.session.flush()
+        await self.session.flush()
 
         return login_history

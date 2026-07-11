@@ -13,13 +13,13 @@ class RoleBase(BaseModel):
         min_length=1,
         max_length=100,
         description='Название роли',
-        exmaples=['subscriber'],
+        examples=['subscriber'],
     )
 
     description: str | None = Field(
         default=None,
         description='Описание роли',
-        exmaples=['Пользователь с активной подпиской'],
+        examples=['Пользователь с активной подпиской'],
     )
 
     is_default: bool = Field(
@@ -66,7 +66,7 @@ class RoleUpdate(BaseModel):
     permission_ids: list[UUID] | None = Field(
         default=None,
         description='Новый список permissions роли',
-        exmaples=[['6f822a92-7b51-4753-8d00-ecfedf98a937']],
+        examples=[['6f822a92-7b51-4753-8d00-ecfedf98a937']],
     )
 
 

@@ -26,7 +26,7 @@ class PostgresRoleRepository(RoleRepository):
         )
 
         result = await self.session.execute(statement)
-        return result.scalar_one_or_none
+        return result.scalar_one_or_none()
 
     async def get_by_name(self, name: str) -> Role | None:
         """Возвращает роль по названию или None,
@@ -38,7 +38,7 @@ class PostgresRoleRepository(RoleRepository):
         )
 
         result = await self.session.execute(statement)
-        return result.scalar_one_or_none
+        return result.scalar_one_or_none()
 
     async def get_by_ids(self, role_ids: list[UUID]) -> list[Role]:
         """Возвращает роли по списку идентификаторов."""
@@ -96,6 +96,13 @@ class PostgresRoleRepository(RoleRepository):
         """Заменяет список прав доступа у роли."""
         role.permissions = permissions
 
+        self.session.add(role)
+        await self.session.flush()
+
+        return role
+
+    async def save(self, role: Role) -> Role:
+        """Сохраняет роль и возвращает обновлённую модель."""
         self.session.add(role)
         await self.session.flush()
 

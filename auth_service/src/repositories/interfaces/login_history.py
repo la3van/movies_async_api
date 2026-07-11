@@ -26,6 +26,7 @@ class LoginHistoryRepository(ABC):
         is_successful: bool,
         user_id: UUID | None = None,
         reason: str | None = None,
+        user_agent: str | None = None,
         ip_address: str | None = None,
     ) -> LoginHistory:
         """Создаёт запись истории входа и возвращает созданную модель."""

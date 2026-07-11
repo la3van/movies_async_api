@@ -1,7 +1,7 @@
 """Сервис работы с ролями."""
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession\
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.schemas.roles import RoleCreate, RoleResponse, RoleUpdate
 from cache.base import Cache

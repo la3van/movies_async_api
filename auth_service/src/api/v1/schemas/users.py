@@ -23,7 +23,7 @@ class UserBase(BaseModel):
         default=None,
         max_length=255,
         description='Имя пользователя',
-        exmaples=['Ivan'],
+        examples=['Ivan'],
     )
 
     last_name: str | None = Field(

@@ -88,7 +88,7 @@ class UserService:
 
             await self._cache.delete(get_user_cache_key(user_id))
             await self._cache.set_model(
-                keey=get_user_cache_key(user_id),
+                key=get_user_cache_key(user_id),
                 value=user,
                 ttl=self._user_cache_ttl,
             )
@@ -110,7 +110,7 @@ class UserService:
 
         if not verify_password(
             password_data.old_password,
-            password_data.new_password,
+            user_model.password_hash,
         ):
             raise InvalidCredentialsError('Invalid old password')
 

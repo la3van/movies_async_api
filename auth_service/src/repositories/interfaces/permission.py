@@ -16,7 +16,7 @@ class PermissionRepository(ABC):
     @abstractmethod
     async def get_by_code(self, code: str) -> Permission | None:
         """Возвращает право доступа по коду или None, если оно не найдено."""
-        pass  # pragme: no cover
+        pass  # pragma: no cover
 
     @abstractmethod
     async def get_by_ids(self, permission_ids: list[UUID]) -> list[Permission]:
@@ -31,4 +31,9 @@ class PermissionRepository(ABC):
         description: str | None = None,
     ) -> Permission:
         """Создаёт право доступа и возвращает созданную модель."""
+        pass  # pragma: no cover
+
+    @abstractmethod
+    async def save(self, permission: Permission) -> Permission:
+        """Сохраняет право доступа и возвращает обновлённую модель."""
         pass  # pragma: no cover

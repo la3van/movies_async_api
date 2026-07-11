@@ -45,3 +45,8 @@ class UserRepository(ABC):
     async def add_roles(self, user: User, roles: list[Role]) -> User:
         """Добавляет пользователю роли и возвращает обновлённую модель."""
         pass  # pragma: no cover
+
+    @abstractmethod
+    async def save(self, user: User) -> User:
+        """Сохраняет пользователя и возвращает обновлённую модель."""
+        pass  # pragma: no cover

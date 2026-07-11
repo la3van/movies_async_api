@@ -11,12 +11,12 @@ class EntityResponse(BaseModel):
 
     id: UUID = Field(
         description='Уникальный идентификатор сущности',
-        exmaples=['6f822a92-7b51-4753-8d00-ecfedf98a937'],
+        examples=['6f822a92-7b51-4753-8d00-ecfedf98a937'],
     )
 
     created_at: datetime = Field(
         description='Дата и время создания записи',
-        exmaples=['2026-01-01T12:00:00Z'],
+        examples=['2026-01-01T12:00:00Z'],
     )
     updated_at: datetime = Field(
         description='Дата и время последнего обновления записи',

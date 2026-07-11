@@ -48,7 +48,7 @@ class PostgresRefreshSessionRepository(RefreshSessionRepository):
         )
 
         self.session.add(refresh_session)
-        self.session.flush()
+        await self.session.flush()
 
         return refresh_session
 

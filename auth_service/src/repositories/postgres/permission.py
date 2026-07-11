@@ -52,6 +52,13 @@ class PostgresPermissionRepository(PermissionRepository):
         )
 
         self.session.add(permission)
-        self.session.flush()
+        await self.session.flush()
+
+        return permission
+
+    async def save(self, permission: Permission) -> Permission:
+        """Сохраняет право доступа и возвращает обновлённую модель."""
+        self.session.add(permission)
+        await self.session.flush()
 
         return permission

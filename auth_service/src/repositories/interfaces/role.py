@@ -15,7 +15,7 @@ class RoleRepository(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
-    async def get_by_name(self, name) -> Role | None:
+    async def get_by_name(self, name: str) -> Role | None:
         """Возвращает роль по названию или None,
         если роль не найдена."""
         pass  # pragma: no cover
@@ -36,7 +36,7 @@ class RoleRepository(ABC):
         *,
         name: str,
         description: str | None = None,
-        is_default: bool = None,
+        is_default: bool = False,
         permissions: list[Permission] | None = None,
     ) -> Role:
         """Создает роль и возвращает созданную модель."""
@@ -49,4 +49,9 @@ class RoleRepository(ABC):
         permissions: list[Permission],
     ) -> Role:
         """Заменяет список permissions у роли."""
+        pass  # pragma: no cover
+
+    @abstractmethod
+    async def save(self, role: Role) -> Role:
+        """Сохраняет роль и возвращает обновлённую модель."""
         pass  # pragma: no cover
