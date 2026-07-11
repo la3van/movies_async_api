@@ -52,6 +52,17 @@ class Settings(BaseSettings):
     superuser_first_name: str = 'Admin'
     superuser_last_name: str = 'User'
 
+    # Cache
+    user_cache_expire_in_seconds: int = 300
+    role_cache_expire_in_seconds: int = 300
+    permission_cache_expire_in_seconds: int = 300
+    token_claims_cache_expire_in_seconds: int = 300
+    login_history_cache_expire_in_seconds: int = 60
+
+    def build_redis_key(self, key: str) -> str:
+        """Добавляет auth-префикс к Redis-ключу."""
+        return f'{self.redis_key_prefix}:{key}'
+
     @property
     def postgres_url(self) -> str:
         """Возвращает url подключения к PostgreSQL."""
