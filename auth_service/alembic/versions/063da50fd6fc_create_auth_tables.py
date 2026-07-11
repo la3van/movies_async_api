@@ -1,8 +1,8 @@
 """create auth tables
 
-Revision ID: 637a8be2d160
+Revision ID: 063da50fd6fc
 Revises: 
-Create Date: 2026-07-09 19:02:28.099041
+Create Date: 2026-07-11 20:02:43.561790
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 
 # Revision identifiers, used by Alembic.
-revision: str = '637a8be2d160'
+revision: str = '063da50fd6fc'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -98,7 +98,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('role_id', sa.UUID(), nullable=False),
     sa.ForeignKeyConstraint(['role_id'], ['roles.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['user_id'], ['roles.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('user_id', 'role_id')
     )
     # ### end Alembic commands ###
