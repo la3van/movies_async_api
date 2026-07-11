@@ -9,12 +9,17 @@ from cache.base import Cache
 from core.security import hash_password, verify_password
 from repositories.interfaces.login_history import LoginHistoryRepository
 from repositories.interfaces.refresh_session import RefreshSessionRepository
+from repositories.interfaces.role import RoleRepository
 from repositories.interfaces.user import UserRepository
 from services.cache_keys.users import (
     get_login_history_cache_key,
     get_user_cache_key,
 )
-from services.exceptions import InvalidCredentialsError, UserNotFoundError
+from services.exceptions import (
+    InvalidCredentialsError,
+    RoleNotFoundError,
+    UserNotFoundError,
+)
 
 
 class UserService:
@@ -23,6 +28,7 @@ class UserService:
         self,
         session: AsyncSession,
         user_repository: UserRepository,
+        role_repository: RoleRepository,
         login_history_repository: LoginHistoryRepository,
         refresh_session_repository: RefreshSessionRepository,
         cache: Cache,
@@ -32,6 +38,7 @@ class UserService:
         """Инициализирует сервис пользователей."""
         self._session = session
         self._user_repository = user_repository
+        self._role_repository = role_repository
         self._login_history_repository = login_history_repository
         self._refresh_session_repository = refresh_session_repository
         self._cache = cache
@@ -175,3 +182,59 @@ class UserService:
         )
 
         return login_history
+
+    async def assign_role(
+        self,
+        user_id: UUID,
+        role_id: UUID,
+    ) -> UserResponse:
+        """Назначает роль пользователю."""
+        user_model = await self._user_repository.get_by_id(user_id)
+        if user_model is None:
+            raise UserNotFoundError('User not found')
+
+        role_model = await self._role_repository.get_by_id(role_id)
+        if role_model is None:
+            raise RoleNotFoundError('Role not found')
+
+        try:
+            user_model = await self._user_repository.add_role(
+                user_model,
+                role_model,
+            )
+            await self._session.commit()
+
+            await self._cache.delete(get_user_cache_key(user_id))
+
+            return UserResponse.model_validate(user_model)
+        except Exception:
+            await self._session.rollback()
+            raise
+
+    async def remove_role(
+        self,
+        user_id: UUID,
+        role_id: UUID,
+    ) -> UserResponse:
+        """Удаляет роль у пользователя."""
+        user_model = await self._user_repository.get_by_id(user_id)
+        if user_model is None:
+            raise UserNotFoundError('User not found')
+
+        role_model = await self._role_repository.get_by_id(role_id)
+        if role_model is None:
+            raise RoleNotFoundError('Role not found')
+
+        try:
+            user_model = await self._user_repository.remove_role(
+                user_model,
+                role_model,
+            )
+            await self._session.commit()
+
+            await self._cache.delete(get_user_cache_key(user_id))
+
+            return UserResponse.model_validate(user_model)
+        except Exception:
+            await self._session.rollback()
+            raise

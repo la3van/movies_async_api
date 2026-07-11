@@ -25,6 +25,10 @@ class InvalidRefreshTokenError(AuthServiceError):
     """Ошибка невалидного refresh-токена."""
 
 
+class PermissionDeniedError(AuthServiceError):
+    """Ошибка недостаточных прав доступа."""
+
+
 class RoleAlreadyExistsError(AuthServiceError):
     """Ошибка существующей роли."""
 

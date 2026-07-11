@@ -150,3 +150,18 @@ class RoleService:
         except Exception:
             await self._session.rollback()
             raise
+
+    async def delete(self, role_id: UUID) -> None:
+        """Удаляет роль."""
+        role_model = await self._role_repository.get_by_id(role_id)
+        if role_model is None:
+            raise RoleNotFoundError('Role not found')
+
+        try:
+            await self._role_repository.delete(role_model)
+            await self._session.commit()
+
+            await self._cache.delete(get_role_cache_key(role_id))
+        except Exception:
+            await self._session.rollback()
+            raise

@@ -92,6 +92,34 @@ class PostgresUserRepository(UserRepository):
 
         return user
 
+    async def add_role(self, user: User, role: Role) -> User:
+        """Добавляет пользователю роль и возвращает обновлённую модель."""
+        existing_role_ids = {
+            existing_role.id
+            for existing_role in user.roles
+        }
+
+        if role.id not in existing_role_ids:
+            user.roles.append(role)
+
+        self.session.add(user)
+        await self.session.flush()
+
+        return user
+
+    async def remove_role(self, user: User, role: Role) -> User:
+        """Добавляет пользователю роль и возвращает обновлённую модель."""
+        user.roles = [
+            existing_role
+            for existing_role in user.roles
+            if existing_role.id != role.id
+        ]
+
+        self.session.add(user)
+        await self.session.flush()
+
+        return user
+
     async def save(self, user: User) -> User:
         """Сохраняет пользователя и возвращает обновлённую модель."""
         self.session.add(user)

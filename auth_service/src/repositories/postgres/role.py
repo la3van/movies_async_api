@@ -40,6 +40,25 @@ class PostgresRoleRepository(RoleRepository):
         result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
+    async def get_all(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Role]:
+        """Возвращает список ролей."""
+        statement = (
+            select(Role)
+            .options(selectinload(Role.permissions))
+            .order_by(Role.name)
+            .limit(limit)
+            .offset(offset)
+        )
+
+        result = await self.session.execute(statement)
+
+        return list(result.scalars().all())
+
     async def get_by_ids(self, role_ids: list[UUID]) -> list[Role]:
         """Возвращает роли по списку идентификаторов."""
         if not role_ids:
@@ -107,3 +126,8 @@ class PostgresRoleRepository(RoleRepository):
         await self.session.flush()
 
         return role
+
+    async def delete(self, role: Role) -> None:
+        """Удаляет роль."""
+        await self.session.delete(role)
+        await self.session.flush()

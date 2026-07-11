@@ -19,6 +19,16 @@ class PermissionRepository(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
+    async def get_all(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Permission]:
+        """Возвращает список прав доступа."""
+        pass  # pragma: no cover
+
+    @abstractmethod
     async def get_by_ids(self, permission_ids: list[UUID]) -> list[Permission]:
         """Возвращает права доступа по списку идентификаторов."""
         pass  # pragma: no cover

@@ -21,6 +21,16 @@ class RoleRepository(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
+    async def get_all(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Role]:
+        """Возвращает список ролей."""
+        pass  # pragma: no cover
+
+    @abstractmethod
     async def get_by_ids(self, role_ids: list[UUID]) -> list[Role]:
         """Возвращает список ролей по списку идентификаторов."""
         pass  # pragma: no cover
@@ -54,4 +64,9 @@ class RoleRepository(ABC):
     @abstractmethod
     async def save(self, role: Role) -> Role:
         """Сохраняет роль и возвращает обновлённую модель."""
+        pass  # pragma: no cover
+
+    @abstractmethod
+    async def delete(self, role: Role) -> None:
+        """Удаляет роль."""
         pass  # pragma: no cover

@@ -59,6 +59,23 @@ class PermissionService:
 
         return permission
 
+    async def get_all(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[PermissionResponse]:
+        """Возвращает список прав доступа."""
+        permissions = await self._permission_repository.get_all(
+            limit=limit,
+            offset=offset,
+        )
+
+        return [
+            PermissionResponse.model_validate(permission)
+            for permission in permissions
+        ]
+
     async def get_models_by_ids(self, permission_ids: list[UUID]):
         """Возвращает ORM-модели прав доступа по списку идентификаторов."""
         permissions = await self._permission_repository.get_by_ids(

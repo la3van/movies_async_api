@@ -1,12 +1,17 @@
 """FastAPI dependencies auth-сервиса."""
 from collections.abc import AsyncGenerator
+from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, Request
+from fastapi.security import OAuth2PasswordBearer
+from jwt import ExpiredSignatureError, InvalidTokenError
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.v1.schemas.users import UserResponse
 from cache.redis import RedisCache
 from core.config import get_settings
+from core.jwt import ACCESS_TOKEN_TYPE, decode_jwt_token
 from db.postgres import get_session
 from db.redis import get_redis
 from repositories.postgres.login_history import PostgresLoginHistoryRepository
@@ -17,10 +22,20 @@ from repositories.postgres.refresh_session import (
 from repositories.postgres.role import PostgresRoleRepository
 from repositories.postgres.user import PostgresUserRepository
 from services.auth import AuthService
+from services.exceptions import (
+    InactiveUserError,
+    InvalidCredentialsError,
+    PermissionDeniedError,
+)
 from services.permission import PermissionService
 from services.role import RoleService
 from services.token import TokenService
 from services.user import UserService
+
+
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl='/api/v1/auth/login',
+)
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -60,6 +75,7 @@ async def get_user_service(
     return UserService(
         session=session,
         user_repository=PostgresUserRepository(session),
+        role_repository=PostgresRoleRepository(session),
         login_history_repository=PostgresLoginHistoryRepository(session),
         refresh_session_repository=PostgresRefreshSessionRepository(session),
         cache=cache,
@@ -104,3 +120,56 @@ async def get_role_service(
         cache=cache,
         role_cache_ttl=settings.role_cache_expire_in_seconds,
     )
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    user_service: UserService = Depends(get_user_service),
+) -> UserResponse:
+    """Возвращает текущего пользователя по JWT access-token."""
+    try:
+        payload = decode_jwt_token(token)
+
+        if payload.get('type') != ACCESS_TOKEN_TYPE:
+            raise InvalidCredentialsError('Invalid token type')
+
+        user_id = UUID(str(payload.get('sub')))
+    except (ExpiredSignatureError, InvalidTokenError, ValueError) as error:
+        raise InvalidCredentialsError(
+            'Could not validate credentials',
+        ) from error
+
+    return await user_service.get_by_id(user_id)
+
+
+async def get_current_active_user(
+    current_user: UserResponse = Depends(get_current_user),
+) -> UserResponse:
+    """Возвращает текущего активного пользователя."""
+    if not current_user.is_active:
+        raise InactiveUserError('User is inactive')
+
+    return current_user
+
+
+async def require_superuser(
+    current_user: UserResponse = Depends(get_current_user),
+) -> UserResponse:
+    """Проверяет, что текущий пользователь является суперпользователем."""
+    if not current_user.is_superuser:
+        raise PermissionDeniedError('Not enough permissions')
+
+    return current_user
+
+
+async def get_request_user_agent(request: Request) -> str | None:
+    """Возвращает User-Agent из запроса."""
+    return request.headers.get('user-agent')
+
+
+async def get_request_ip_address(request: Request) -> str | None:
+    """Возвращает IP-адрес клиента из запроса."""
+    if request.client is None:
+        return None
+
+    return request.client.host

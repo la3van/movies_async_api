@@ -43,3 +43,21 @@ class PermissionUpdate(BaseModel):
 
 class PermissionResponse(PermissionBase, EntityResponse):
     """Response-схема permission."""
+
+
+class PermissionCheckRequest(BaseModel):
+    """Request-схема проверки права доступа."""
+    permission_code: str = Field(
+        min_length=1,
+        max_length=100,
+        description='Код права доступа, которое нужно проверить',
+        examples=['movies:watch_fresh'],
+    )
+
+
+class PermissionCheckResponse(BaseModel):
+    """Response-схема проверки права доступа."""
+    has_permission: bool = Field(
+        description='Есть ли у пользователя указанное право доступа',
+        examples=[True],
+    )

@@ -29,6 +29,24 @@ class PostgresPermissionRepository(PermissionRepository):
         result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
+    async def get_all(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Permission]:
+        """Возвращает список прав доступа."""
+        statement = (
+            select(Permission)
+            .order_by(Permission.code)
+            .limit(limit)
+            .offset(offset)
+        )
+
+        result = await self.session.execute(statement)
+
+        return list(result.scalars().all())
+
     async def get_by_ids(self, permission_ids: list[UUID]) -> list[Permission]:
         """Возвращает права доступа по списку идентификаторов."""
         if not permission_ids:

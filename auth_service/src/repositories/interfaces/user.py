@@ -47,6 +47,16 @@ class UserRepository(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
+    async def add_role(self, user: User, role: Role) -> User:
+        """Добавляет пользователю роль и возвращает обновлённую модель."""
+        pass  # pragma: no cover
+
+    @abstractmethod
+    async def remove_role(self, user: User, role: Role) -> User:
+        """Удаляет роль у пользователя и возвращает обновлённую модель."""
+        pass  # pragma: no cover
+
+    @abstractmethod
     async def save(self, user: User) -> User:
         """Сохраняет пользователя и возвращает обновлённую модель."""
         pass  # pragma: no cover
