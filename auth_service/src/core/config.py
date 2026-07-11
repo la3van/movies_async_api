@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     # Superuser
     superuser_login: str = 'admin'
+    superuser_email: str = 'admin@example.com'
     superuser_password: str = 'admin_password'
     superuser_first_name: str = 'Admin'
     superuser_last_name: str = 'User'
