@@ -49,3 +49,13 @@ class Cache(ABC):
     ) -> None:
         """Сохраняет последовательность моделей в кеше на заданное время."""
         pass  # pragma: no cover
+
+    @abstractmethod
+    async def delete(self, key: str) -> None:
+        """Удаляет значение из кеша."""
+        pass  # pragma: no cover
+
+    @abstractmethod
+    async def delete_many(self, keys: Sequence[str]) -> None:
+        """Удаляет несколько значений из кеша."""
+        pass  # pragma: no cover

@@ -78,3 +78,14 @@ class RedisCache(Cache):
             json.dumps(serialized_values),
             ex=ttl,
         )
+
+    async def delete(self, key: str) -> None:
+        """Удаляет значение из кеша."""
+        await self._redis.delete(key)
+
+    async def delete_many(self, keys: Sequence[str]) -> None:
+        """Удаляет несколько значений из кеша."""
+        if not keys:
+            return
+
+        await self._redis.delete(*keys)
