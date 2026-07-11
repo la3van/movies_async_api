@@ -57,7 +57,7 @@ class TokenService:
         token = generate_secure_token()
         token_hash = hash_token(token)
         expires_at = datetime.now(timezone.utc) + timedelta(
-            days=self._settings.refresh_token_expire_dats,
+            days=self._settings.refresh_token_expire_days,
         )
 
         return RefreshTokenData(

@@ -162,12 +162,12 @@ async def require_superuser(
     return current_user
 
 
-async def get_request_user_agent(request: Request) -> str | None:
+def get_request_user_agent(request: Request) -> str | None:
     """Возвращает User-Agent из запроса."""
     return request.headers.get('user-agent')
 
 
-async def get_request_ip_address(request: Request) -> str | None:
+def get_request_ip_address(request: Request) -> str | None:
     """Возвращает IP-адрес клиента из запроса."""
     if request.client is None:
         return None

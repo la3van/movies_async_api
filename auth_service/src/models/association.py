@@ -10,7 +10,7 @@ user_roles = Table(
     Column(
         'user_id',
         PgUUID(as_uuid=True),
-        ForeignKey('roles.id', ondelete='CASCADE'),
+        ForeignKey('users.id', ondelete='CASCADE'),
         primary_key=True,
     ),
     Column(

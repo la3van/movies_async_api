@@ -16,6 +16,7 @@ from services.exceptions import (
     InvalidCredentialsError,
     InvalidRefreshTokenError,
     UserAlreadyExistsError,
+    UserNotFoundError,
 )
 from services.token import TokenPair, TokenService
 
@@ -70,16 +71,20 @@ class AuthService:
 
             default_roles = await self._role_repository.get_default_roles()
             if default_roles:
-                user = await self._user_repository.add_roles(
-                    user, default_roles
-                )
+                await self._user_repository.add_roles(user, default_roles)
+
+            user_with_roles = await self._user_repository.get_by_id(user.id)
+            if user_with_roles is None:
+                raise UserNotFoundError('User not found')
 
             token_pair, refresh_token_data = (
-                self._token_service.create_token_pair(user)
+                self._token_service.create_token_pair(
+                    user_with_roles,
+                )
             )
 
             await self._refresh_session_repository.create(
-                user_id=user.id,
+                user_id=user_with_roles.id,
                 token_hash=refresh_token_data.token_hash,
                 expires_at=refresh_token_data.expires_at,
                 user_agent=user_agent,
@@ -87,8 +92,8 @@ class AuthService:
             )
 
             await self._login_history_repository.create(
-                user_id=user.id,
-                login=user.login,
+                user_id=user_with_roles.id,
+                login=user_with_roles.login,
                 is_successful=True,
                 user_agent=user_agent,
                 ip_address=ip_address,
