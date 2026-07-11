@@ -1,16 +1,21 @@
 """Точка входа FastAPI-приложения auth-сервиса."""
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from logging.config import dictConfig
-from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
+from api.v1.exception_handlers import (
+    EXCEPTION_STATUS_CODES,
+    service_exception_handler,
+)
 from api.v1.router import api_router
 from core.config import get_settings
 from core.logger import LOGGING
 from db.postgres import close_postgres, init_postgres
 from db.redis import close_redis, init_redis
+
 
 dictConfig(LOGGING)
 
@@ -38,6 +43,14 @@ app = FastAPI(
     default_response_class=ORJSONResponse,
     lifespan=lifespan,
 )
+
+
+for exception_class in EXCEPTION_STATUS_CODES:
+    app.add_exception_handler(
+        exception_class,
+        service_exception_handler,
+    )
+
 
 app.include_router(api_router, prefix='/api/v1')
 
