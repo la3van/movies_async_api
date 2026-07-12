@@ -1,0 +1,68 @@
+name: auth-service-functional-tests
+
+services:
+  auth-postgres:
+    image: postgres:16
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - auth_test_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7
+    ports:
+      - "127.0.0.1:6381:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      COVERAGE_FILE: /app/tests/functional/coverage/.coverage
+    command: >
+      sh -c "mkdir -p /app/tests/functional/coverage &&
+            alembic upgrade head &&
+            exec coverage run --rcfile=.coveragerc -m uvicorn src.main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - ../../:/app
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  tests:
+    build:
+      context: ../..
+      dockerfile: tests/functional/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      auth-service:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - "pytest -v tests/functional/src"
+
+volumes:
+  auth_test_postgres_data:

@@ -106,7 +106,15 @@ class PermissionService:
 
             await self._session.commit()
 
-            permission = PermissionResponse.model_validate(permission_model)
+            fresh_permission_model = (
+                await self._permission_repository.get_by_id(
+                    permission_model.id,
+                )
+            )
+
+            permission = PermissionResponse.model_validate(
+                fresh_permission_model,
+            )
 
             await self._cache.set_model(
                 key=get_permission_cache_key(permission_model.id),
@@ -156,7 +164,15 @@ class PermissionService:
             )
             await self._session.commit()
 
-            permission = PermissionResponse.model_validate(permission_model)
+            fresh_permission_model = (
+                await self._permission_repository.get_by_id(
+                    permission_model.id,
+                )
+            )
+
+            permission = PermissionResponse.model_validate(
+                fresh_permission_model,
+            )
 
             await self._cache.delete(get_permission_cache_key(permission_id))
             await self._cache.set_model(

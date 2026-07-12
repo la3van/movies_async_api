@@ -53,6 +53,22 @@ class RoleService:
 
         return role
 
+    async def get_all(
+        self,
+        limit: int,
+        offset: int,
+    ) -> list[RoleResponse]:
+        """Возвращает список ролей."""
+        role_models = await self._role_repository.get_all(
+            limit=limit,
+            offset=offset,
+        )
+
+        return [
+            RoleResponse.model_validate(role_model)
+            for role_model in role_models
+        ]
+
     async def get_models_by_ids(self, role_ids: list[UUID]):
         """Возвращает ORM-модели ролей по списку идентификаторов."""
         roles = await self._role_repository.get_by_ids(role_ids)
@@ -82,7 +98,11 @@ class RoleService:
 
             await self._session.commit()
 
-            role = RoleResponse.model_validate(role_model)
+            fresh_role_model = await self._role_repository.get_by_id(
+                role_model.id
+            )
+
+            role = RoleResponse.model_validate(fresh_role_model)
 
             await self._cache.set_model(
                 key=get_role_cache_key(role_model.id),
@@ -136,7 +156,11 @@ class RoleService:
             role_model = await self._role_repository.save(role_model)
             await self._session.commit()
 
-            role = RoleResponse.model_validate(role_model)
+            fresh_role_model = await self._role_repository.get_by_id(
+                role_model.id
+            )
+
+            role = RoleResponse.model_validate(fresh_role_model)
 
             await self._cache.delete(get_role_cache_key(role_id))
             await self._cache.set_model(

@@ -16,8 +16,6 @@ env/
 .coverage
 htmlcov/
 
-tests/
-
 .idea/
 .vscode/
 .DS_Store

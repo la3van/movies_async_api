@@ -91,7 +91,11 @@ class UserService:
             user_model = await self._user_repository.save(user_model)
             await self._session.commit()
 
-            user = UserResponse.model_validate(user_model)
+            fresh_user_model = await self._user_repository.get_by_id(
+                user_model.id,
+            )
+
+            user = UserResponse.model_validate(fresh_user_model)
 
             await self._cache.delete(get_user_cache_key(user_id))
             await self._cache.set_model(
