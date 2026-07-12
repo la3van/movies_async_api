@@ -62,7 +62,7 @@ services:
     command:
       - sh
       - -c
-      - "pytest -v tests/functional/src"
+      - "pytest -vv -s -ra --tb=short --color=yes tests/functional/src"
 
 volumes:
   auth_test_postgres_data:
