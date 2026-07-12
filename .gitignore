@@ -5,16 +5,30 @@ venv/
 .venv/
 
 .vscode/
+.idea/
 
 __pycache__/
 **/__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 .mypy_cache/
 **/.mypy_cache/
 
+.pytest_cache/
+**/.pytest_cache/
+
+.ruff_cache/
+**/.ruff_cache/
+
 .DS_Store
+**/.DS_Store
+__MACOSX/
 
 **/.coverage
+.coverage
 **/coverage/
 **/htmlcov/
-**/.pytest_cache/
+
+*.log

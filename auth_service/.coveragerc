@@ -1,0 +1,9 @@
+[run]
+source = src
+branch = True
+sigterm = True
+data_file = tests/functional/coverage/.coverage
+
+[report]
+show_missing = True
+skip_empty = True
