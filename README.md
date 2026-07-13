@@ -1,107 +1,89 @@
-# Movies Async API
+# Movies Backend
 
-Read-only backend для онлайн-кинотеатра. Проект переносит данные о фильмах, жанрах и персонах из PostgreSQL в Elasticsearch и предоставляет HTTP API для поиска и чтения этих данных.
+Backend онлайн-кинотеатра, оформленный как монорепозиторий из независимых сервисов.
+
+Проект предоставляет:
+
+- read-only API для фильмов, жанров и персон;
+- сервис аутентификации и авторизации;
+- инкрементальную синхронизацию данных PostgreSQL → Elasticsearch;
+- кеширование ответов и хранение состояния ETL в Redis;
+- изолированные функциональные тесты сервисов.
 
 ## Архитектура
 
 ```text
-PostgreSQL
-    │
-    ▼
-ETL service ───────► Redis DB 0
-    │                состояние пайплайнов
-    ▼
-Elasticsearch
-    ▲
-    │
-Async API ─────────► Redis DB 1
-    │                кеш ответов
-    ▼
-HTTP client
+                         ┌────────────────────┐
+                         │    HTTP clients    │
+                         └─────────┬──────────┘
+                                   │
+                  ┌────────────────┴────────────────┐
+                  │                                 │
+                  ▼                                 ▼
+        ┌───────────────────┐             ┌───────────────────┐
+        │  Content Service  │             │   Auth Service    │
+        │ films / genres /  │             │ users / roles /   │
+        │ persons           │             │ permissions       │
+        └─────────┬─────────┘             └─────────┬─────────┘
+                  │                                 │
+          ┌───────┴───────┐                 ┌───────┴───────┐
+          ▼               ▼                 ▼               ▼
+   Elasticsearch     Redis DB 1       PostgreSQL       Redis DB 2
+          ▲                              auth
+          │
+   ┌──────┴─────────┐
+   │  Content ETL   │──────────────► Redis DB 0
+   └──────┬─────────┘                pipeline state
+          │
+          ▼
+    PostgreSQL theatre
 ```
 
-В проект входят следующие сервисы:
+## Компоненты
 
-| Сервис | Назначение |
+| Компонент | Назначение |
 | --- | --- |
-| `theatre-db` | PostgreSQL с исходными данными |
-| `etl` | Инкрементальный перенос данных PostgreSQL → Elasticsearch |
+| `content-service` | Read-only FastAPI API для фильмов, жанров и персон |
+| `auth-service` | Аутентификация, авторизация, роли и permissions |
+| `content-etl` | Инкрементальный перенос данных PostgreSQL → Elasticsearch |
+| `theatre-db` | Исходная PostgreSQL-база контента |
+| `auth-postgres` | Отдельная PostgreSQL-база Auth Service |
 | `elasticsearch` | Read-модель и полнотекстовый поиск |
-| `redis` | Состояние ETL и кеш Async API |
-| `async_api` | Read-only API на FastAPI |
+| `redis` | Состояние ETL и кеши сервисов |
 
-## Основные возможности
-
-- получение фильмов, жанров и персон по UUID;
-- пагинация и сортировка списков;
-- фильтрация фильмов по жанру;
-- полнотекстовый поиск по фильмам, жанрам и персонам;
-- поиск похожих фильмов;
-- получение фильмов, связанных с персоной;
-- кеширование ответов API в Redis;
-- инкрементальная ETL-загрузка трёх Elasticsearch-индексов;
-- exponential backoff для внешних зависимостей ETL;
-- встроенные retries и exponential backoff для Redis и Elasticsearch в Async API;
-- функциональные тесты с отдельными Elasticsearch и Redis.
-
-## Технологии
-
-- FastAPI и Uvicorn;
-- PostgreSQL 16;
-- Elasticsearch 9.4.2;
-- Elasticsearch Python client 9.4.1;
-- Redis 7 и redis-py 7.1.0;
-- Pydantic v2 и pydantic-settings;
-- psycopg2;
-- pytest, pytest-asyncio и aiohttp;
-- Docker Compose;
-- mypy, coverage.py и Radon.
-
-`async_api` и функциональные тесты используют Python 3.10, ETL — Python 3.12.
-
-## Структура проекта
+## Структура репозитория
 
 ```text
-movies_async_api/
-├── async_api/                 # FastAPI-сервис
-│   ├── src/
-│   │   ├── api/               # endpoints, схемы ответов и DI
-│   │   ├── cache/             # интерфейс кеша и Redis-реализация
-│   │   ├── core/              # настройки и логирование
-│   │   ├── db/                # клиенты Redis и Elasticsearch с retry-настройками
-│   │   ├── models/            # внутренние Pydantic-модели
-│   │   ├── repositories/      # интерфейсы и Elasticsearch-репозитории
-│   │   ├── services/          # бизнес-логика
-│   │   └── main.py
-│   ├── Dockerfile
-│   ├── requirements.txt
+./
+├── docs/
+│   └── CODE_MAINTAINABILITY.md
+├── infrastructure/
+│   ├── elasticsearch/
+│   │   ├── mappings/
+│   │   │   ├── genres.json
+│   │   │   ├── movies.json
+│   │   │   └── persons.json
+│   │   └── README.md
+│   ├── postgres/
+│   │   ├── theatre/
+│   │   │   └── init/
+│   │   │       └── 0001_content_dump.sql
+│   │   └── README.md
 │   └── README.md
-├── etl/
-│   ├── postgres_to_es/
-│   │   ├── interfaces/        # контракты source, loader, retry и connection
-│   │   ├── loaders/           # загрузка документов в Elasticsearch
-│   │   ├── models/            # исходные и целевые модели
-│   │   ├── pipelines/         # films, genres и persons pipelines
-│   │   ├── sources/           # чтение PostgreSQL
-│   │   ├── state/             # состояние пайплайнов в Redis
-│   │   ├── transforms/        # преобразование моделей
-│   │   ├── backoff.py
-│   │   ├── bootstrap.py
-│   │   ├── config.py
-│   │   ├── main.py
-│   │   └── service.py
-│   ├── Dockerfile
-│   ├── requirements.txt
+├── services/
+│   ├── auth_service/
+│   │   ├── alembic/
+│   │   ├── src/
+│   │   ├── tests/
+│   │   └── README.md
+│   ├── content_etl/
+│   │   ├── postgres_to_es/
+│   │   └── README.md
+│   ├── content_service/
+│   │   ├── src/
+│   │   ├── tests/
+│   │   └── README.md
 │   └── README.md
-├── schemas/                   # JSON-схемы индексов Elasticsearch
-├── tests/
-│   ├── functional/
-│   │   ├── fixtures/          # общие и предметные pytest-фикстуры
-│   │   ├── src/               # тесты, разделённые по endpoint
-│   │   ├── testdata/          # документы films, genres и persons
-│   │   └── utils/             # вспомогательные функции ожидания и проверок
-│   └── README.md
-├── database_dump.sql
 ├── docker-compose.yml
 ├── mypy.ini
 └── README.md
@@ -109,38 +91,77 @@ movies_async_api/
 
 Подробная документация:
 
-- [Async API](async_api/README.md)
-- [ETL service](etl/README.md)
-- [Functional tests](tests/README.md)
+- [Сервисы](services/README.md)
+- [Content Service](services/content_service/README.md)
+- [Функциональные тесты Content Service](services/content_service/tests/README.md)
+- [Auth Service](services/auth_service/README.md)
+- [Функциональные тесты Auth Service](services/auth_service/tests/README.md)
+- [Content ETL](services/content_etl/README.md)
+- [Инфраструктура](infrastructure/README.md)
+- [Elasticsearch](infrastructure/elasticsearch/README.md)
+- [PostgreSQL](infrastructure/postgres/README.md)
+- [Поддерживаемость кода](docs/CODE_MAINTAINABILITY.md)
 
-## Отказоустойчивость
+## Основные возможности
 
-В проекте используются два подхода к повторным попыткам:
+### Content Service
 
-- ETL применяет собственные `BackoffPolicy`, `BackoffRetryExecutor` и `@retryable` для PostgreSQL, Elasticsearch и Redis state;
-- Async API использует retry-механизмы клиентских библиотек на транспортном уровне.
+- получение фильмов, жанров и персон по UUID;
+- пагинация и сортировка списков;
+- фильтрация фильмов по жанру;
+- полнотекстовый поиск;
+- поиск похожих фильмов;
+- получение фильмов, связанных с персоной;
+- кеширование ответов в Redis;
+- retry и exponential backoff на уровне клиентов Redis и Elasticsearch.
 
-В Async API:
+### Auth Service
 
-- Elasticsearch повторяет ошибки соединения, таймауты и настроенные HTTP-статусы с exponential backoff и jitter;
-- Redis использует `Retry` вместе с `ExponentialWithJitterBackoff` для ошибок соединения и таймаутов.
+- регистрация и вход пользователей;
+- access JWT и refresh-token rotation;
+- logout текущей и остальных сессий;
+- управление профилем и паролем;
+- история входов;
+- роли и permissions;
+- кеширование read-запросов в Redis;
+- миграции PostgreSQL через Alembic.
 
-Параметры количества повторов и задержек задаются в `async_api/.env` и передаются клиентам при их инициализации.
+### Content ETL
+
+- независимые pipelines для фильмов, жанров и персон;
+- пакетная инкрементальная загрузка;
+- хранение курсоров в Redis;
+- создание индексов по Elasticsearch mappings;
+- exponential backoff для PostgreSQL, Elasticsearch и Redis.
+
+## Технологии
+
+- Python 3.10 и 3.12;
+- FastAPI и Uvicorn;
+- PostgreSQL 16;
+- Elasticsearch 9.4.2;
+- Redis 7;
+- SQLAlchemy 2.0 и asyncpg;
+- psycopg2;
+- Pydantic v2;
+- Alembic;
+- pytest, pytest-asyncio, aiohttp и coverage.py;
+- Docker Compose;
+- mypy и Radon.
 
 ## Быстрый запуск
 
-### 1. Создать файлы окружения
+### 1. Подготовить окружение
+
+Из корня репозитория:
 
 ```bash
-cp async_api/.env.example async_api/.env
-cp etl/.env.example etl/.env
+cp services/content_service/.env.example services/content_service/.env
+cp services/content_etl/.env.example services/content_etl/.env
+cp services/auth_service/.env.example services/auth_service/.env
 ```
 
-Для локального Docker Compose пароль PostgreSQL в `etl/.env` должен совпадать со значением из корневого `docker-compose.yml`:
-
-```env
-POSTGRES_PASSWORD=secret
-```
+Пароли и имена баз в `.env` должны соответствовать значениям корневого `docker-compose.yml`.
 
 ### 2. Запустить проект
 
@@ -148,35 +169,36 @@ POSTGRES_PASSWORD=secret
 docker compose up --build
 ```
 
-При первом запуске:
-
-1. PostgreSQL загружает `database_dump.sql`;
-2. ETL создаёт индексы `movies`, `genres` и `persons`;
-3. ETL переносит данные в Elasticsearch;
-4. Async API становится доступен на `http://localhost:8000`.
-
-После смены major-версии Elasticsearch рекомендуется чистый запуск:
+Запуск в фоне:
 
 ```bash
-docker compose down -v
-docker compose up --build
+docker compose up -d --build
 ```
 
-Команда `down -v` удаляет volumes PostgreSQL, Elasticsearch и Redis, поэтому все локальные данные будут созданы заново.
+Проверить состояние контейнеров:
+
+```bash
+docker compose ps
+```
+
+Посмотреть логи приложений:
+
+```bash
+docker compose logs -f content-service content-etl auth-service
+```
 
 ### 3. Проверить сервисы
 
-Swagger UI:
+Content Service:
 
-```text
-http://localhost:8000/api/openapi
-```
+- Swagger UI: `http://localhost:8000/api/openapi`
+- OpenAPI JSON: `http://localhost:8000/api/openapi.json`
 
-OpenAPI JSON:
+Auth Service:
 
-```text
-http://localhost:8000/api/openapi.json
-```
+- Swagger UI: `http://localhost:8008/docs`
+- OpenAPI JSON: `http://localhost:8008/openapi.json`
+- Healthcheck: `http://localhost:8008/health`
 
 Elasticsearch:
 
@@ -188,60 +210,64 @@ curl "http://localhost:9200/genres/_count?pretty"
 curl "http://localhost:9200/persons/_count?pretty"
 ```
 
-### 4. Остановить проект
+## Запуск отдельных компонентов
 
-Сохранить данные в Docker volumes:
+```bash
+docker compose up --build content-service
+docker compose up --build auth-service
+docker compose up --build content-etl
+```
+
+Compose автоматически поднимет зависимости, указанные в `depends_on`.
+
+## Остановка и очистка
+
+Остановить контейнеры с сохранением данных:
 
 ```bash
 docker compose down
 ```
 
-Удалить контейнеры вместе с данными PostgreSQL, Elasticsearch и Redis:
+Полностью пересоздать локальное окружение:
 
 ```bash
 docker compose down -v
+docker compose up --build
 ```
 
-## API
+`down -v` удаляет named volumes PostgreSQL, Elasticsearch и Redis. Используйте эту команду только тогда, когда локальные данные можно удалить.
 
-Базовый префикс: `/api/v1`.
+## Функциональные тесты
 
-| Метод | URL | Назначение |
-| --- | --- | --- |
-| `GET` | `/films/` | Список фильмов, сортировка и фильтр по жанру |
-| `GET` | `/films/search` | Полнотекстовый поиск фильмов |
-| `GET` | `/films/{film_id}` | Фильм по UUID |
-| `GET` | `/films/{film_id}/similar` | Похожие фильмы |
-| `GET` | `/genres/` | Список и поиск жанров |
-| `GET` | `/genres/{genre_id}` | Жанр по UUID |
-| `GET` | `/persons/search` | Список и поиск персон |
-| `GET` | `/persons/{person_id}` | Персона по UUID |
-| `GET` | `/persons/{person_id}/films` | Фильмы персоны |
+Content Service:
+
+```bash
+cd services/content_service/tests/functional
+docker compose up --build --abort-on-container-exit --exit-code-from tests tests
+```
+
+Auth Service:
+
+```bash
+cd services/auth_service/tests/functional
+docker compose up --build --abort-on-container-exit --exit-code-from tests tests
+```
+
+Подробные команды запуска, coverage и очистки описаны в README соответствующих тестов.
 
 ## Проверка типов
 
-Из корня проекта:
+Content Service и Content ETL из корня репозитория:
 
 ```bash
-mypy async_api/src etl/postgres_to_es
+mypy services/content_service/src services/content_etl/postgres_to_es
 ```
 
-## Maintainability Index
-
-Проверка выполняется из корня проекта:
+Auth Service рекомендуется проверять из каталога самого сервиса:
 
 ```bash
-radon mi async_api/src -s
-radon mi etl/postgres_to_es -s
-radon mi tests/functional -s
+cd services/auth_service
+mypy src
 ```
 
-На текущем состоянии все проверенные Python-модули имеют категорию `A`.
-
-| Компонент | Минимальное значение MI | Модуль |
-| --- | ---: | --- |
-| Async API | `55.89` | `async_api/src/api/v1/schemas/films.py` |
-| ETL | `32.72` | `etl/postgres_to_es/sources/postgres.py` |
-| Functional tests | `26.33` | `tests/functional/src/films/test_film_similar.py` |
-
-Низкие значения отдельных тестовых файлов связаны главным образом с большим количеством сценариев, параметризаций и проверок внутри одного endpoint-модуля. Тесты при этом уже разделены по ресурсам и endpoint, а дальнейшее дробление ухудшило бы навигацию без заметной архитектурной пользы.
+Так исключается неоднозначность одинаково названных верхнеуровневых пакетов разных сервисов.

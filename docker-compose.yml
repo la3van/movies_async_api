@@ -1,10 +1,10 @@
 services:
   auth-service:
     build:
-      context: ./auth_service
+      context: ./services/auth_service
       dockerfile: Dockerfile
     env_file:
-      - ./auth_service/.env
+      - ./services/auth_service/.env
     ports:
       - "127.0.0.1:8008:8000"
     depends_on:
@@ -15,7 +15,7 @@ services:
   auth-postgres:
     image: postgres:16
     env_file:
-      - ./auth_service/.env
+      - ./services/auth_service/.env
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -25,12 +25,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-  async_api:
+  content-service:
     build:
-      context: ./async_api
+      context: ./services/content_service
       dockerfile: Dockerfile
     env_file:
-      - ./async_api/.env
+      - ./services/content_service/.env
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -46,7 +46,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
     volumes:
-      - ./database_dump.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./infrastructure/postgres/threatre/init:/docker-entrypoint-initdb.d:ro
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d theatre"]
@@ -82,16 +82,16 @@ services:
       timeout: 5s
       retries: 10
 
-  etl:
+  content-etl:
     build:
-      context: ./etl
+      context: ./services/content_etl
       dockerfile: Dockerfile
     env_file:
-      - ./etl/.env
+      - ./services/content_etl/.env
     environment:
-      SCHEMAS_DIR: /app/schemas
+      SCHEMAS_DIR: /app/mappings
     volumes:
-      - ./schemas:/app/schemas:ro
+      - ./infrastructure/elasticsearch/mappings:/app/mappings:ro
     depends_on:
       theatre-db:
         condition: service_healthy
