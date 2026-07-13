@@ -36,10 +36,10 @@ def get_second_permission_create_data() -> dict[str, str | None]:
 def get_permission_update_data(
     *,
     code: str | None | UnsetType = UNSET,
-    description: str | UnsetType = UNSET,
+    description: str | None | UnsetType = UNSET,
 ) -> dict[str, str | None]:
     """Возвращает payload частичного обновления permission."""
-    data: dict[str, None] = {}
+    data: dict[str, str | None] = {}
 
     if not isinstance(code, UnsetType):
         data['code'] = code
