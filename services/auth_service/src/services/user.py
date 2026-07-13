@@ -89,7 +89,6 @@ class UserService:
 
         try:
             user_model = await self._user_repository.save(user_model)
-            await self._session.commit()
 
             fresh_user_model = await self._user_repository.get_by_id(
                 user_model.id,
@@ -97,17 +96,16 @@ class UserService:
 
             user = UserResponse.model_validate(fresh_user_model)
 
-            await self._cache.delete(get_user_cache_key(user_id))
-            await self._cache.set_model(
-                key=get_user_cache_key(user_id),
-                value=user,
-                ttl=self._user_cache_ttl,
-            )
-
-            return user
+            await self._session.commit()
         except Exception:
             await self._session.rollback()
             raise
+
+        await self._cache.delete(
+            get_user_cache_key(user_id),
+        )
+
+        return user
 
     async def change_password(
         self,
@@ -136,11 +134,11 @@ class UserService:
             )
 
             await self._session.commit()
-
-            await self._cache.delete(get_user_cache_key(user_id))
         except Exception:
             await self._session.rollback()
             raise
+
+        await self._cache.delete(get_user_cache_key(user_id))
 
     async def get_login_history(
         self,
@@ -208,12 +206,14 @@ class UserService:
             )
             await self._session.commit()
 
-            await self._cache.delete(get_user_cache_key(user_id))
-
-            return UserResponse.model_validate(user_model)
+            user = UserResponse.model_validate(user_model)
         except Exception:
             await self._session.rollback()
             raise
+
+        await self._cache.delete(get_user_cache_key(user_id))
+
+        return user
 
     async def remove_role(
         self,
@@ -236,9 +236,11 @@ class UserService:
             )
             await self._session.commit()
 
-            await self._cache.delete(get_user_cache_key(user_id))
-
-            return UserResponse.model_validate(user_model)
+            user = UserResponse.model_validate(user_model)
         except Exception:
             await self._session.rollback()
             raise
+
+        await self._cache.delete(get_user_cache_key(user_id))
+
+        return user

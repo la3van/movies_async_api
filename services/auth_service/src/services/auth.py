@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.schemas.auth import LoginRequest, RegisterRequest
+from cache.base import Cache
 from core.security import hash_password, hash_token, verify_password
 from models.refresh_session import RefreshSession
 from repositories.interfaces.login_history import LoginHistoryRepository
@@ -19,6 +20,7 @@ from services.exceptions import (
     UserNotFoundError,
 )
 from services.token import TokenPair, TokenService
+from services.cache_keys.users import get_login_history_cache_pattern
 
 
 class AuthService:
@@ -31,6 +33,7 @@ class AuthService:
         refresh_session_repository: RefreshSessionRepository,
         login_history_repository: LoginHistoryRepository,
         token_service: TokenService,
+        cache: Cache,
     ) -> None:
         """Инициализирует сервис аутентификации."""
         self._session = session
@@ -39,6 +42,7 @@ class AuthService:
         self._refresh_session_repository = refresh_session_repository
         self._login_history_repository = login_history_repository
         self._token_service = token_service
+        self._cache = cache
 
     async def register(
         self,
@@ -167,11 +171,13 @@ class AuthService:
             )
 
             await self._session.commit()
-
-            return token_pair
         except Exception:
             await self._session.rollback()
             raise
+
+        await self._invalidate_login_history_cache(user.id)
+
+        return token_pair
 
     async def refresh(
         self,
@@ -258,6 +264,9 @@ class AuthService:
             await self._session.rollback()
             raise
 
+        if user_id is not None:
+            await self._invalidate_login_history_cache(user_id)
+
     async def _get_valid_refresh_session(
         self,
         refresh_token: str,
@@ -292,3 +301,12 @@ class AuthService:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
 
         return expires_at <= datetime.now(timezone.utc)
+
+    async def _invalidate_login_history_cache(
+        self,
+        user_id: UUID,
+    ) -> None:
+        """Инвалидирует все страницы истории входов пользователя."""
+        await self._cache.delete_by_pattern(
+            get_login_history_cache_pattern(user_id),
+        )

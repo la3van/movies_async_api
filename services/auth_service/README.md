@@ -2,36 +2,37 @@
 
 HTTP API для аутентификации, авторизации и управления пользователями онлайн-кинотеатра.
 
-Сервис отвечает за регистрацию, вход, refresh-token rotation, logout, профили пользователей, роли, permissions и проверку прав. Данные хранятся в отдельной PostgreSQL-базе, а read-запросы кешируются в Redis.
+Сервис отвечает за регистрацию и вход пользователей, ротацию refresh-токенов, завершение сессий, управление профилем, ролями и permissions, проверку прав доступа и хранение истории входов. Данные сервиса находятся в отдельной PostgreSQL-базе, а результаты GET-запросов кешируются в Redis.
 
 ## Стек
 
 - Python 3.10;
-- FastAPI;
-- Uvicorn;
-- SQLAlchemy 2.0 async;
-- asyncpg;
+- FastAPI и Uvicorn;
+- SQLAlchemy 2.0 Async и asyncpg;
+- PostgreSQL 16;
 - Alembic;
-- PostgreSQL;
-- Redis;
+- Redis 7;
 - Pydantic v2;
 - PyJWT;
 - passlib и bcrypt;
-- ORJSONResponse.
+- ORJSONResponse;
+- Typer для служебных CLI-команд.
 
 ## Архитектура
 
 ```text
 HTTP endpoint
     ↓
+Dependency / authentication
+    ↓
 Service
-    ├── Cache
-    │      ↑
-    │   Redis
-    └── Repository interface
-           ↑
-      PostgreSQL repository
+    ├── Cache interface ───── Redis
+    └── Repository interface ─ PostgreSQL repository
+                                  ↓
+                              PostgreSQL
 ```
+
+Endpoints работают с сервисным слоем, а сервисы — с абстракциями репозиториев и кеша. PostgreSQL- и Redis-реализации подключаются через FastAPI dependencies.
 
 ## Структура
 
@@ -39,18 +40,21 @@ Service
 auth_service/
 ├── alembic/                  # миграции PostgreSQL
 ├── src/
-│   ├── api/                  # endpoints, роутеры и API-схемы
-│   ├── cache/                # кеш и Redis-реализация
-│   ├── commands/             # служебные команды
+│   ├── api/                  # endpoints, dependencies, schemas и handlers
+│   ├── cache/                # интерфейс кеша и Redis-реализация
+│   ├── commands/             # служебные CLI-команды
 │   ├── core/                 # settings, JWT, security и logging
-│   ├── db/                   # PostgreSQL и Redis clients
+│   ├── db/                   # инициализация PostgreSQL и Redis
 │   ├── models/               # SQLAlchemy-модели
 │   ├── repositories/
 │   │   ├── interfaces/       # контракты репозиториев
-│   │   └── postgres/         # реализации PostgreSQL
-│   ├── services/             # бизнес-логика
+│   │   └── postgres/         # реализации для PostgreSQL
+│   ├── services/
+│   │   ├── cache_keys/       # формирование ключей и шаблонов Redis
+│   │   └── ...               # бизнес-логика
 │   └── main.py
 ├── tests/
+│   └── functional/           # функциональные HTTP-тесты
 ├── alembic.ini
 ├── .coveragerc
 ├── .env.example
@@ -63,13 +67,13 @@ auth_service/
 
 | Таблица | Назначение |
 | --- | --- |
-| `users` | Пользователи |
-| `roles` | Роли |
-| `permissions` | Разрешения |
-| `user_roles` | Связь пользователей и ролей |
-| `role_permissions` | Связь ролей и permissions |
-| `refresh_sessions` | Refresh-token сессии |
-| `login_history` | История успешных и неуспешных входов |
+| `users` | Пользователи и их состояние |
+| `roles` | Роли пользователей |
+| `permissions` | Права доступа |
+| `user_roles` | Связь many-to-many между пользователями и ролями |
+| `role_permissions` | Связь many-to-many между ролями и permissions |
+| `refresh_sessions` | Refresh-сессии и их состояние |
+| `login_history` | История успешных и неуспешных попыток входа |
 
 ## Конфигурация
 
@@ -79,7 +83,7 @@ auth_service/
 cp .env.example .env
 ```
 
-Основные настройки:
+Основные переменные окружения:
 
 ```env
 PROJECT_NAME=auth-service
@@ -106,22 +110,27 @@ REDIS_MAX_RETRIES=2
 REDIS_RETRY_BACKOFF_BASE=0.1
 REDIS_RETRY_BACKOFF_CAP=1.0
 
-JWT_SECRET_KEY=change_me_to_strong_random_secret
+USER_CACHE_EXPIRE_IN_SECONDS=300
+ROLE_CACHE_EXPIRE_IN_SECONDS=300
+PERMISSION_CACHE_EXPIRE_IN_SECONDS=300
+TOKEN_CLAIMS_CACHE_EXPIRE_IN_SECONDS=300
+LOGIN_HISTORY_CACHE_EXPIRE_IN_SECONDS=60
+
+JWT_SECRET_KEY=change_me
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=30
 
 SUPERUSER_LOGIN=admin
-SUPERUSER_PASSWORD=admin
+SUPERUSER_EMAIL=admin@example.com
+SUPERUSER_PASSWORD=admin_password
 SUPERUSER_FIRST_NAME=Admin
 SUPERUSER_LAST_NAME=User
 ```
 
-Для production необходимо заменить `JWT_SECRET_KEY`, пароли БД и данные superuser.
+В production необходимо заменить `JWT_SECRET_KEY`, пароли БД и данные суперпользователя.
 
 ## PostgreSQL и Alembic
-
-Auth Service использует отдельную PostgreSQL-базу.
 
 Применить миграции:
 
@@ -150,28 +159,63 @@ alembic current
 
 Refresh token не хранится в открытом виде. В `refresh_sessions` сохраняется его SHA-256 hash.
 
-При refresh:
+При обновлении токенов:
 
-1. старая refresh-сессия отзывается;
-2. создаётся новая сессия;
-3. клиент получает новую пару токенов.
+1. проверяется refresh-сессия;
+2. старая сессия отзывается;
+3. создаётся новая refresh-сессия;
+4. клиент получает новую пару токенов.
 
-Logout отзывает текущую сессию, а logout others — остальные refresh-сессии пользователя.
+Повторное использование отозванного refresh token запрещено. `logout` отзывает выбранную сессию, а `logout-others` — остальные refresh-сессии текущего пользователя.
 
-## Redis
+## Роли и permissions
 
-Redis кеширует read endpoints, включая:
+- роль может содержать несколько permissions;
+- пользователь может иметь несколько ролей;
+- permissions пользователя определяются через его роли;
+- superuser проходит проверку permissions без явного назначения права;
+- роли с `is_default=true` назначаются новым пользователям при регистрации.
+
+Административные операции с ролями, permissions и назначением ролей пользователям доступны только активному superuser.
+
+## Redis-кеширование
+
+Кешируются все GET-endpoints Auth Service:
 
 ```text
 GET /api/v1/users/me
 GET /api/v1/users/me/login-history
+GET /api/v1/permissions/
 GET /api/v1/permissions/{permission_id}
+GET /api/v1/roles/
 GET /api/v1/roles/{role_id}
 ```
 
-После изменения пользователей, ролей и permissions соответствующие записи кеша обновляются или удаляются.
+Списки permissions, ролей и истории входов кешируются отдельно для каждой комбинации `limit` и `offset`.
 
-В корневом Docker Compose Auth Service использует Redis DB `2`.
+Основные зависимости инвалидации:
+
+```text
+изменение permission
+    → permission item cache
+    → permissions list caches
+    → role item caches
+    → roles list caches
+    → user profile caches
+
+изменение или удаление role
+    → role item cache
+    → roles list caches
+    → user profile caches
+
+обновление profile / password / user roles
+    → user profile cache
+
+новая попытка login
+    → login-history caches пользователя
+```
+
+Redis-ключи получают общий префикс из `REDIS_KEY_PREFIX`. В корневом Docker Compose Auth Service использует Redis DB `2`.
 
 ## Запуск через Docker Compose
 
@@ -181,19 +225,19 @@ GET /api/v1/roles/{role_id}
 docker compose up --build auth-service
 ```
 
-Полное окружение:
+Запуск всего окружения:
 
 ```bash
 docker compose up --build
 ```
 
-Логи:
+Логи сервиса:
 
 ```bash
 docker compose logs -f auth-service
 ```
 
-Контейнер применяет Alembic-миграции перед запуском приложения.
+Перед запуском приложения контейнер применяет Alembic-миграции.
 
 ## Локальный запуск
 
@@ -205,7 +249,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Укажите в `.env` адреса PostgreSQL и Redis, доступные с хоста.
+Укажите в `.env` адреса PostgreSQL и Redis, доступные с хоста, затем выполните:
 
 ```bash
 alembic upgrade head
@@ -214,6 +258,16 @@ PYTHONPATH=src uvicorn src.main:app \
   --port 8000 \
   --reload
 ```
+
+## Создание superuser
+
+Команда использует переменные `SUPERUSER_*` из окружения:
+
+```bash
+PYTHONPATH=src python -m src.commands.create_superuser
+```
+
+Если пользователь с таким логином уже существует, команда активирует его и выдаёт права superuser. Конфликт существующего email с другим логином завершает команду с ошибкой.
 
 ## Healthcheck
 
@@ -233,9 +287,9 @@ GET /health
 
 В корневом Compose сервис опубликован на порту `8008`:
 
-- Swagger UI: `http://localhost:8008/docs`
-- OpenAPI JSON: `http://localhost:8008/openapi.json`
-- базовый API-префикс: `/api/v1`
+- Swagger UI: `http://localhost:8008/docs`;
+- OpenAPI JSON: `http://localhost:8008/openapi.json`;
+- базовый API-префикс: `/api/v1`.
 
 ## Endpoints
 
@@ -252,35 +306,35 @@ POST /api/v1/auth/logout-others
 ### Users
 
 ```text
-GET /api/v1/users/me
-PATCH /api/v1/users/me
-PATCH /api/v1/users/me/password
-GET /api/v1/users/me/login-history
-POST /api/v1/users/{user_id}/roles/{role_id}
+GET    /api/v1/users/me
+PATCH  /api/v1/users/me
+PATCH  /api/v1/users/me/password
+GET    /api/v1/users/me/login-history
+POST   /api/v1/users/{user_id}/roles/{role_id}
 DELETE /api/v1/users/{user_id}/roles/{role_id}
 ```
 
 ### Permissions
 
 ```text
-POST /api/v1/permissions/
-GET /api/v1/permissions/
-GET /api/v1/permissions/{permission_id}
+POST  /api/v1/permissions/
+GET   /api/v1/permissions/
+GET   /api/v1/permissions/{permission_id}
 PATCH /api/v1/permissions/{permission_id}
-POST /api/v1/permissions/check
+POST  /api/v1/permissions/check
 ```
 
 ### Roles
 
 ```text
-POST /api/v1/roles/
-GET /api/v1/roles/
-GET /api/v1/roles/{role_id}
-PATCH /api/v1/roles/{role_id}
+POST   /api/v1/roles/
+GET    /api/v1/roles/
+GET    /api/v1/roles/{role_id}
+PATCH  /api/v1/roles/{role_id}
 DELETE /api/v1/roles/{role_id}
 ```
 
-## Авторизация
+## Авторизация запросов
 
 Для защищённых endpoints используется Bearer access token:
 
@@ -288,15 +342,15 @@ DELETE /api/v1/roles/{role_id}
 Authorization: Bearer <access_token>
 ```
 
-Операции управления ролями и permissions доступны superuser.
+Access token должен быть валидным, неистёкшим и принадлежать активному пользователю. Refresh token нельзя использовать вместо access token.
 
 ## Функциональные тесты
 
-Тесты находятся в [`tests/functional`](tests/functional) и используют отдельные PostgreSQL и Redis.
+Тесты находятся в [`tests/functional`](tests/functional) и выполняют реальные HTTP-запросы к Auth Service с отдельными PostgreSQL и Redis.
 
-Инструкции: [tests/README.md](tests/README.md).
+На текущем наборе запускается `245` сценариев с учётом параметризации. Последний зафиксированный отчёт: `1373` statements, `236` missed, branch coverage `78%`.
 
-На момент текущего рефакторинга зафиксировано `76%` покрытия кода. Дальнейшая работа по расширению тестов описана в TODO тестового README.
+Подробная инструкция: [`tests/functional/README.md`](tests/functional/README.md).
 
 ## Проверка типов
 

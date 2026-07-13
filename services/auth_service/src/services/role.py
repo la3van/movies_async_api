@@ -5,14 +5,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.schemas.roles import RoleCreate, RoleResponse, RoleUpdate
 from cache.base import Cache
+from models.role import Role
 from repositories.interfaces.role import RoleRepository
-from services.cache_keys.roles import get_role_cache_key
+from services.cache_keys.roles import (
+    get_role_cache_key,
+    get_roles_cache_key,
+    get_roles_cache_pattern,
+)
+from services.cache_keys.users import get_users_cache_pattern
 from services.exceptions import RoleAlreadyExistsError, RoleNotFoundError
 from services.permission import PermissionService
 
 
 class RoleService:
     """Сервис управления ролями."""
+
     def __init__(
         self,
         session: AsyncSession,
@@ -59,17 +66,40 @@ class RoleService:
         offset: int,
     ) -> list[RoleResponse]:
         """Возвращает список ролей."""
+        roles_cache_key = get_roles_cache_key(
+            limit=limit,
+            offset=offset,
+        )
+
+        roles = await self._cache.get_models(
+            key=roles_cache_key,
+            model_type=RoleResponse,
+        )
+        if roles is not None:
+            return roles
+
         role_models = await self._role_repository.get_all(
             limit=limit,
             offset=offset,
         )
 
-        return [
+        roles = [
             RoleResponse.model_validate(role_model)
             for role_model in role_models
         ]
 
-    async def get_models_by_ids(self, role_ids: list[UUID]):
+        await self._cache.set_models(
+            key=roles_cache_key,
+            values=roles,
+            ttl=self._role_cache_ttl,
+        )
+
+        return roles
+
+    async def get_models_by_ids(
+        self,
+        role_ids: list[UUID],
+    ) -> list[Role]:
         """Возвращает ORM-модели ролей по списку идентификаторов."""
         roles = await self._role_repository.get_by_ids(role_ids)
 
@@ -95,26 +125,20 @@ class RoleService:
                 is_default=role_data.is_default,
                 permissions=permissions,
             )
-
             await self._session.commit()
-
-            fresh_role_model = await self._role_repository.get_by_id(
-                role_model.id
-            )
-
-            role = RoleResponse.model_validate(fresh_role_model)
-
-            await self._cache.set_model(
-                key=get_role_cache_key(role_model.id),
-                value=role,
-                ttl=self._role_cache_ttl,
-            )
-
-            return role
-
         except Exception:
             await self._session.rollback()
             raise
+
+        fresh_role_model = await self._role_repository.get_by_id(role_model.id)
+        if fresh_role_model is None:
+            raise RoleNotFoundError('Role not found')
+
+        role = RoleResponse.model_validate(fresh_role_model)
+
+        await self._invalidate_role_collection_cache()
+
+        return role
 
     async def update(
         self,
@@ -155,25 +179,19 @@ class RoleService:
         try:
             role_model = await self._role_repository.save(role_model)
             await self._session.commit()
-
-            fresh_role_model = await self._role_repository.get_by_id(
-                role_model.id
-            )
-
-            role = RoleResponse.model_validate(fresh_role_model)
-
-            await self._cache.delete(get_role_cache_key(role_id))
-            await self._cache.set_model(
-                key=get_role_cache_key(role_id),
-                value=role,
-                ttl=self._role_cache_ttl,
-            )
-
-            return role
-
         except Exception:
             await self._session.rollback()
             raise
+
+        fresh_role_model = await self._role_repository.get_by_id(role_model.id)
+        if fresh_role_model is None:
+            raise RoleNotFoundError('Role not found')
+
+        role = RoleResponse.model_validate(fresh_role_model)
+
+        await self._invalidate_role_cache(role_id)
+
+        return role
 
     async def delete(self, role_id: UUID) -> None:
         """Удаляет роль."""
@@ -184,8 +202,24 @@ class RoleService:
         try:
             await self._role_repository.delete(role_model)
             await self._session.commit()
-
-            await self._cache.delete(get_role_cache_key(role_id))
         except Exception:
             await self._session.rollback()
             raise
+
+        await self._invalidate_role_cache(role_id)
+
+    async def _invalidate_role_collection_cache(self) -> None:
+        """Инвалидирует кеши коллекций ролей."""
+        await self._cache.delete_by_pattern(
+            get_roles_cache_pattern(),
+        )
+
+    async def _invalidate_role_cache(self, role_id: UUID) -> None:
+        """Инвалидирует кеши, зависящие от роли."""
+        await self._cache.delete(
+            get_role_cache_key(role_id),
+        )
+        await self._invalidate_role_collection_cache()
+        await self._cache.delete_by_pattern(
+            get_users_cache_pattern(),
+        )

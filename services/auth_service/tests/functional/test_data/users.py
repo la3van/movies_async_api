@@ -1,4 +1,6 @@
 """Тестовые данные для users эндпоинтов."""
+from tests.functional.test_data.common import UnsetType, UNSET
+
 UPDATED_FIRST_NAME = 'Updated'
 UPDATED_LAST_NAME = 'User'
 
@@ -8,14 +10,27 @@ WRONG_OLD_PASSWORD = 'wrong_old_password123'
 
 def get_update_profile_data(
     *,
-    first_name: str | None = UPDATED_FIRST_NAME,
-    last_name: str | None = UPDATED_LAST_NAME,
+    first_name: str | None | UnsetType = UNSET,
+    last_name: str | None | UnsetType = UNSET,
 ) -> dict[str, str | None]:
-    """Возвращает payload обновления профиля пользователя."""
-    return {
-        'first_name': first_name,
-        'last_name': last_name,
-    }
+    """Возвращает payload частичного обновления профиля пользователя."""
+    data: dict[str, str | None] = {}
+
+    if not isinstance(first_name, UnsetType):
+        data['first_name'] = first_name
+
+    if not isinstance(last_name, UnsetType):
+        data['last_name'] = last_name
+
+    return data
+
+
+def get_full_update_profile_data() -> dict[str, str | None]:
+    """Возвращает payload обновления имени и фамилии пользователя."""
+    return get_update_profile_data(
+        first_name=UPDATED_FIRST_NAME,
+        last_name=UPDATED_LAST_NAME,
+    )
 
 
 def get_change_password_data(

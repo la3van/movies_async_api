@@ -53,6 +53,7 @@ async def get_redis_cache(
 
 async def get_auth_service(
     session: AsyncSession = Depends(get_db_session),
+    cache: RedisCache = Depends(get_redis_cache),
 ) -> AuthService:
     """Возвращает сервис аутентификации."""
     return AuthService(
@@ -62,6 +63,7 @@ async def get_auth_service(
         refresh_session_repository=PostgresRefreshSessionRepository(session),
         login_history_repository=PostgresLoginHistoryRepository(session),
         token_service=TokenService(),
+        cache=cache,
     )
 
 
@@ -153,7 +155,7 @@ async def get_current_active_user(
 
 
 async def require_superuser(
-    current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_active_user),
 ) -> UserResponse:
     """Проверяет, что текущий пользователь является суперпользователем."""
     if not current_user.is_superuser:

@@ -89,3 +89,15 @@ class RedisCache(Cache):
             return
 
         await self._redis.delete(*keys)
+
+    async def delete_by_pattern(self, pattern: str) -> None:
+        """Удаляет значения из Redis по шаблону ключа."""
+        keys = [
+            key
+            async for key in self._redis.scan_iter(
+                match=pattern,
+                count=100,
+            )
+        ]
+
+        await self.delete_many(keys)

@@ -59,3 +59,8 @@ class Cache(ABC):
     async def delete_many(self, keys: Sequence[str]) -> None:
         """Удаляет несколько значений из кеша."""
         pass  # pragma: no cover
+
+    @abstractmethod
+    async def delete_by_pattern(self, pattern: str) -> None:
+        """Удаляет значения из кеша по шаблону ключа."""
+        pass  # pragma: no cover

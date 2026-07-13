@@ -72,6 +72,7 @@ class PostgresUserRepository(UserRepository):
             last_name=last_name,
             is_active=is_active,
             is_superuser=is_superuser,
+            roles=[],
         )
 
         self.session.add(user)

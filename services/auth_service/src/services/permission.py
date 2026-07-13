@@ -10,7 +10,16 @@ from api.v1.schemas.permissions import (
 )
 from cache.base import Cache
 from repositories.interfaces.permission import PermissionRepository
-from services.cache_keys.permissions import get_permission_cache_key
+from services.cache_keys.permissions import (
+    get_permission_cache_key,
+    get_permissions_cache_key,
+    get_permissions_cache_pattern,
+)
+from services.cache_keys.roles import (
+    get_role_cache_pattern,
+    get_roles_cache_pattern,
+)
+from services.cache_keys.users import get_users_cache_pattern
 from services.exceptions import (
     PermissionAlreadyExistsError,
     PermissionNotFoundError,
@@ -66,15 +75,32 @@ class PermissionService:
         offset: int = 0,
     ) -> list[PermissionResponse]:
         """Возвращает список прав доступа."""
-        permissions = await self._permission_repository.get_all(
+        cache_key = get_permissions_cache_key(limit, offset)
+
+        permissions = await self._cache.get_models(
+            key=cache_key,
+            model_type=PermissionResponse,
+        )
+        if permissions is not None:
+            return permissions
+
+        permission_models = await self._permission_repository.get_all(
             limit=limit,
             offset=offset,
         )
 
-        return [
+        permissions = [
             PermissionResponse.model_validate(permission)
-            for permission in permissions
+            for permission in permission_models
         ]
+
+        await self._cache.set_models(
+            key=cache_key,
+            values=permissions,
+            ttl=self._permission_cache_ttl,
+        )
+
+        return permissions
 
     async def get_models_by_ids(self, permission_ids: list[UUID]):
         """Возвращает ORM-модели прав доступа по списку идентификаторов."""
@@ -103,29 +129,24 @@ class PermissionService:
                 code=permission_data.code,
                 description=permission_data.description,
             )
-
             await self._session.commit()
-
-            fresh_permission_model = (
-                await self._permission_repository.get_by_id(
-                    permission_model.id,
-                )
-            )
-
-            permission = PermissionResponse.model_validate(
-                fresh_permission_model,
-            )
-
-            await self._cache.set_model(
-                key=get_permission_cache_key(permission_model.id),
-                value=permission,
-                ttl=self._permission_cache_ttl,
-            )
-
-            return permission
         except Exception:
             await self._session.rollback()
             raise
+
+        fresh_permission_model = (
+            await self._permission_repository.get_by_id(
+                permission_model.id,
+            )
+        )
+
+        permission = PermissionResponse.model_validate(
+            fresh_permission_model,
+        )
+
+        await self._invalidate_permission_collection_cache()
+
+        return permission
 
     async def update(
         self,
@@ -163,25 +184,46 @@ class PermissionService:
                 permission_model,
             )
             await self._session.commit()
-
-            fresh_permission_model = (
-                await self._permission_repository.get_by_id(
-                    permission_model.id,
-                )
-            )
-
-            permission = PermissionResponse.model_validate(
-                fresh_permission_model,
-            )
-
-            await self._cache.delete(get_permission_cache_key(permission_id))
-            await self._cache.set_model(
-                key=get_permission_cache_key(permission_id),
-                value=permission,
-                ttl=self._permission_cache_ttl,
-            )
-
-            return permission
         except Exception:
             await self._session.rollback()
             raise
+
+        fresh_permission_model = (
+            await self._permission_repository.get_by_id(
+                permission_model.id,
+            )
+        )
+
+        permission = PermissionResponse.model_validate(
+            fresh_permission_model,
+        )
+
+        await self._invalidate_permission_cache(permission_id)
+
+        return permission
+
+    async def _invalidate_permission_collection_cache(self) -> None:
+        """Инвалидирует кеш списков прав доступа."""
+        await self._cache.delete_by_pattern(
+            get_permissions_cache_pattern(),
+        )
+
+    async def _invalidate_permission_cache(
+        self,
+        permission_id: UUID,
+    ) -> None:
+        """Инвалидирует кеши, зависящие от права доступа."""
+        await self._cache.delete(
+            get_permission_cache_key(permission_id),
+        )
+        await self._invalidate_permission_collection_cache()
+
+        await self._cache.delete_by_pattern(
+            get_role_cache_pattern(),
+        )
+        await self._cache.delete_by_pattern(
+            get_roles_cache_pattern(),
+        )
+        await self._cache.delete_by_pattern(
+            get_users_cache_pattern(),
+        )

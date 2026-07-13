@@ -1,4 +1,6 @@
 """Тестовые данные для permissions эндпоинтов."""
+from tests.functional.test_data.common import UNSET, UnsetType
+
 PERMISSION_CODE = 'movies:watch_premium'
 PERMISSION_DESCRIPTION = 'Разрешает смотреть премиум-фильмы'
 
@@ -33,14 +35,26 @@ def get_second_permission_create_data() -> dict[str, str | None]:
 
 def get_permission_update_data(
     *,
-    code: str | None = UPDATED_PERMISSION_CODE,
-    description: str | None = UPDATED_PERMISSION_DESCRIPTION,
+    code: str | None | UnsetType = UNSET,
+    description: str | UnsetType = UNSET,
 ) -> dict[str, str | None]:
-    """Возвращает payload обновления permission."""
-    return {
-        'code': code,
-        'description': description,
-    }
+    """Возвращает payload частичного обновления permission."""
+    data: dict[str, None] = {}
+
+    if not isinstance(code, UnsetType):
+        data['code'] = code
+    if not isinstance(description, UnsetType):
+        data['description'] = description
+
+    return data
+
+
+def get_full_permission_update_data() -> dict[str, str | None]:
+    """Возвращает payload обновления всех полей permission."""
+    return get_permission_update_data(
+        code=UPDATED_PERMISSION_CODE,
+        description=UPDATED_PERMISSION_DESCRIPTION,
+    )
 
 
 def get_duplicate_permission_create_data() -> dict[str, str | None]:
