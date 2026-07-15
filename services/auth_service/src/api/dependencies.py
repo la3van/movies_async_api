@@ -1,26 +1,18 @@
 """FastAPI dependencies auth-сервиса."""
-from collections.abc import AsyncGenerator
 from uuid import UUID
 
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from jwt import ExpiredSignatureError, InvalidTokenError
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from api.v1.schemas.users import UserResponse
 from cache.redis import RedisCache
 from core.config import get_settings
 from core.jwt import ACCESS_TOKEN_TYPE, decode_jwt_token
-from db.postgres import get_session
+from db.postgres import get_session_factory
 from db.redis import get_redis
-from repositories.postgres.login_history import PostgresLoginHistoryRepository
-from repositories.postgres.permission import PostgresPermissionRepository
-from repositories.postgres.refresh_session import (
-    PostgresRefreshSessionRepository
-)
-from repositories.postgres.role import PostgresRoleRepository
-from repositories.postgres.user import PostgresUserRepository
 from services.auth import AuthService
 from services.exceptions import (
     InactiveUserError,
@@ -31,6 +23,8 @@ from services.permission import PermissionService
 from services.role import RoleService
 from services.token import TokenService
 from services.user import UserService
+from unit_of_work.base import AbstractUnitOfWork, UnitOfWorkFactory
+from unit_of_work.postgres import SQLAlchemyUnitOfWork
 
 
 oauth2_scheme = OAuth2PasswordBearer(
@@ -38,10 +32,17 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Возвращает SQLAlchemy-сессию."""
-    async for session in get_session():
-        yield session
+def get_uow_factory(
+    session_factory: async_sessionmaker[AsyncSession] = Depends(
+        get_session_factory,
+    ),
+) -> UnitOfWorkFactory:
+    """Возвращает фабрику Unit of Work для сервисного слоя."""
+
+    def factory() -> AbstractUnitOfWork:
+        return SQLAlchemyUnitOfWork(session_factory)
+
+    return factory
 
 
 async def get_redis_cache(
@@ -52,73 +53,59 @@ async def get_redis_cache(
 
 
 async def get_auth_service(
-    session: AsyncSession = Depends(get_db_session),
+    uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
     cache: RedisCache = Depends(get_redis_cache),
 ) -> AuthService:
     """Возвращает сервис аутентификации."""
     return AuthService(
-        session=session,
-        user_repository=PostgresUserRepository(session),
-        role_repository=PostgresRoleRepository(session),
-        refresh_session_repository=PostgresRefreshSessionRepository(session),
-        login_history_repository=PostgresLoginHistoryRepository(session),
+        uow_factory=uow_factory,
         token_service=TokenService(),
         cache=cache,
     )
 
 
 async def get_user_service(
-    session: AsyncSession = Depends(get_db_session),
+    uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
     cache: RedisCache = Depends(get_redis_cache),
 ) -> UserService:
     """Возвращает сервис пользователей."""
     settings = get_settings()
 
     return UserService(
-        session=session,
-        user_repository=PostgresUserRepository(session),
-        role_repository=PostgresRoleRepository(session),
-        login_history_repository=PostgresLoginHistoryRepository(session),
-        refresh_session_repository=PostgresRefreshSessionRepository(session),
+        uow_factory=uow_factory,
         cache=cache,
         user_cache_ttl=settings.user_cache_expire_in_seconds,
-        login_history_cache_ttl=settings.login_history_cache_expire_in_seconds,
+        login_history_cache_ttl=(
+            settings.login_history_cache_expire_in_seconds
+        ),
     )
 
 
 async def get_permission_service(
-    session: AsyncSession = Depends(get_db_session),
+    uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
     cache: RedisCache = Depends(get_redis_cache),
 ) -> PermissionService:
     """Возвращает сервис прав доступа."""
     settings = get_settings()
 
     return PermissionService(
-        session=session,
-        permission_repository=PostgresPermissionRepository(session),
+        uow_factory=uow_factory,
         cache=cache,
-        permission_cache_ttl=settings.permission_cache_expire_in_seconds,
+        permission_cache_ttl=(
+            settings.permission_cache_expire_in_seconds
+        ),
     )
 
 
 async def get_role_service(
-    session: AsyncSession = Depends(get_db_session),
+    uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
     cache: RedisCache = Depends(get_redis_cache),
 ) -> RoleService:
     """Возвращает сервис ролей."""
     settings = get_settings()
 
-    permission_service = PermissionService(
-        session=session,
-        permission_repository=PostgresPermissionRepository(session),
-        cache=cache,
-        permission_cache_ttl=settings.permission_cache_expire_in_seconds,
-    )
-
     return RoleService(
-        session=session,
-        role_repository=PostgresRoleRepository(session),
-        permission_service=permission_service,
+        uow_factory=uow_factory,
         cache=cache,
         role_cache_ttl=settings.role_cache_expire_in_seconds,
     )

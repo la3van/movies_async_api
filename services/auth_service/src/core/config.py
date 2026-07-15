@@ -73,10 +73,6 @@ class Settings(BaseSettings):
             f'{self.postgres_port}/{self.postgres_db}'
         )
 
-    def buil_redis_key(self, key: str) -> str:
-        """Добавляет auth-префикс к Redis-ключу."""
-        return f'{self.redis_key_prefix}:{key}'
-
 
 @lru_cache()
 def get_settings() -> Settings:

@@ -9,6 +9,8 @@ HTTP request
     → FastAPI routing и validation
     → authentication / dependencies
     → service layer
+    → UnitOfWorkFactory / SQLAlchemyUnitOfWork
+    → repositories на одной AsyncSession
     → PostgreSQL и Redis
     → HTTP response
 ```
@@ -27,6 +29,14 @@ HTTP request
 | `tests` | Контейнер с pytest |
 
 Перед запуском приложения контейнер `auth-service` применяет Alembic-миграции.
+
+## Unit of Work в функциональном контуре
+
+Сервисы больше не получают отдельные SQLAlchemy-сессии и репозитории через FastAPI dependencies. Dependency `get_uow_factory` передаёт сервису фабрику, которая создаёт новый `SQLAlchemyUnitOfWork` для каждой бизнес-операции.
+
+Внутри UoW репозитории пользователей, ролей, permissions, refresh-сессий и истории входов используют одну `AsyncSession`. Поэтому, например, получение permissions и создание роли либо назначение роли пользователю выполняются в одной транзакции.
+
+Функциональные тесты не подменяют UoW и не требуют специальных overrides: тестовый Auth Service запускается с обычной DI-конфигурацией и реальной тестовой PostgreSQL. Изменение внутренней транзакционной архитектуры не меняет HTTP-контракты и сами тестовые сценарии.
 
 ## Структура
 
@@ -349,18 +359,20 @@ branch = True
 sigterm = True
 ```
 
-Последний зафиксированный результат:
+Последний зафиксированный результат после перехода сервисов на Unit of Work:
 
 ```text
-246 passed
-1373 statements
-236 missed
-150 branches
-10 partial branches
-78% total coverage
+246 passed in 86.08s
+1344 statements
+174 missed
+148 branches
+9 partial branches
+81% total coverage
 ```
 
-`skip_empty = True` исключает из отчёта пустые Python-файлы, например пустые `__init__.py`. Сообщение `13 empty files skipped` не относится к Markdown, JSON или другим непитоновским файлам.
+`skip_empty = True` исключает из отчёта пустые Python-файлы, например пустые `__init__.py`. Сообщение `14 empty files skipped` не относится к Markdown, JSON или другим непитоновским файлам.
+
+В текущем отчёте `src/unit_of_work/base.py` и `src/unit_of_work/postgres.py` покрыты выполнением функциональных сценариев. При этом отчёт остаётся функциональным: он измеряет код приложения, который был исполнен при HTTP-тестах, а не заменяет отдельные unit-тесты аварийных ветвей транзакций.
 
 Слабее всего функциональными тестами покрываются внутренние аварийные ветви:
 

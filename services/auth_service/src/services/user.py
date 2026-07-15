@@ -1,16 +1,14 @@
 """Сервис работы с пользователями."""
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from api.v1.schemas.login_history import LoginHistoryResponse
-from api.v1.schemas.users import UserPasswordUpdate, UserResponse, UserUpdate
+from api.v1.schemas.users import (
+    UserPasswordUpdate,
+    UserResponse,
+    UserUpdate,
+)
 from cache.base import Cache
 from core.security import hash_password, verify_password
-from repositories.interfaces.login_history import LoginHistoryRepository
-from repositories.interfaces.refresh_session import RefreshSessionRepository
-from repositories.interfaces.role import RoleRepository
-from repositories.interfaces.user import UserRepository
 from services.cache_keys.users import (
     get_login_history_cache_key,
     get_user_cache_key,
@@ -20,27 +18,20 @@ from services.exceptions import (
     RoleNotFoundError,
     UserNotFoundError,
 )
+from unit_of_work.base import UnitOfWorkFactory
 
 
 class UserService:
     """Сервис пользовательских сценариев."""
     def __init__(
         self,
-        session: AsyncSession,
-        user_repository: UserRepository,
-        role_repository: RoleRepository,
-        login_history_repository: LoginHistoryRepository,
-        refresh_session_repository: RefreshSessionRepository,
+        uow_factory: UnitOfWorkFactory,
         cache: Cache,
         user_cache_ttl: int,
         login_history_cache_ttl: int,
     ) -> None:
         """Инициализирует сервис пользователей."""
-        self._session = session
-        self._user_repository = user_repository
-        self._role_repository = role_repository
-        self._login_history_repository = login_history_repository
-        self._refresh_session_repository = refresh_session_repository
+        self._uow_factory = uow_factory
         self._cache = cache
         self._user_cache_ttl = user_cache_ttl
         self._login_history_cache_ttl = login_history_cache_ttl
@@ -56,11 +47,12 @@ class UserService:
         if user is not None:
             return user
 
-        user_model = await self._user_repository.get_by_id(user_id)
-        if user_model is None:
-            raise UserNotFoundError('User not found')
+        async with self._uow_factory() as uow:
+            user_model = await uow.users.get_by_id(user_id)
+            if user_model is None:
+                raise UserNotFoundError('User not found')
 
-        user = UserResponse.model_validate(user_model)
+            user = UserResponse.model_validate(user_model)
 
         await self._cache.set_model(
             key=user_cache_key,
@@ -76,30 +68,28 @@ class UserService:
         user_data: UserUpdate,
     ) -> UserResponse:
         """Обновляет профиль пользователя."""
-        user_model = await self._user_repository.get_by_id(user_id)
-        if user_model is None:
-            raise UserNotFoundError('User not found')
+        async with self._uow_factory() as uow:
+            user_model = await uow.users.get_by_id(user_id)
+            if user_model is None:
+                raise UserNotFoundError('User not found')
 
-        fields_set = user_data.model_fields_set
+            fields_set = user_data.model_fields_set
 
-        if 'first_name' in fields_set:
-            user_model.first_name = user_data.first_name
-        if 'last_name' in fields_set:
-            user_model.last_name = user_data.last_name
+            if 'first_name' in fields_set:
+                user_model.first_name = user_data.first_name
 
-        try:
-            user_model = await self._user_repository.save(user_model)
+            if 'last_name' in fields_set:
+                user_model.last_name = user_data.last_name
 
-            fresh_user_model = await self._user_repository.get_by_id(
+            user_model = await uow.users.save(user_model)
+
+            fresh_user_model = await uow.users.get_by_id(
                 user_model.id,
             )
 
             user = UserResponse.model_validate(fresh_user_model)
 
-            await self._session.commit()
-        except Exception:
-            await self._session.rollback()
-            raise
+            await uow.commit()
 
         await self._cache.delete(
             get_user_cache_key(user_id),
@@ -113,32 +103,31 @@ class UserService:
         password_data: UserPasswordUpdate,
     ) -> None:
         """Меняет пароль пользователя и отзывает refresh-сессии."""
-        user_model = await self._user_repository.get_by_id(user_id)
-        if user_model is None:
-            raise UserNotFoundError('User not found')
+        async with self._uow_factory() as uow:
+            user_model = await uow.users.get_by_id(user_id)
+            if user_model is None:
+                raise UserNotFoundError('User not found')
 
-        if not verify_password(
-            password_data.old_password,
-            user_model.password_hash,
-        ):
-            raise InvalidCredentialsError('Invalid old password')
+            if not verify_password(
+                password_data.old_password,
+                user_model.password_hash,
+            ):
+                raise InvalidCredentialsError('Invalid old password')
 
-        try:
             user_model.password_hash = hash_password(
                 password_data.new_password,
             )
 
-            await self._user_repository.save(user_model)
-            await self._refresh_session_repository.revoke_all_by_user_id(
+            await uow.users.save(user_model)
+            await uow.refresh_sessions.revoke_all_by_user_id(
                 user_id,
             )
 
-            await self._session.commit()
-        except Exception:
-            await self._session.rollback()
-            raise
+            await uow.commit()
 
-        await self._cache.delete(get_user_cache_key(user_id))
+        await self._cache.delete(
+            get_user_cache_key(user_id),
+        )
 
     async def get_login_history(
         self,
@@ -161,21 +150,23 @@ class UserService:
         if login_history is not None:
             return login_history
 
-        user_model = await self._user_repository.get_by_id(user_id)
-        if user_model is None:
-            raise UserNotFoundError('User not found')
+        async with self._uow_factory() as uow:
+            user_model = await uow.users.get_by_id(user_id)
+            if user_model is None:
+                raise UserNotFoundError('User not found')
 
-        login_history_models = (
-            await self._login_history_repository.get_by_user_id(
-                user_id,
-                limit=limit,
-                offset=offset,
+            login_history_models = (
+                await uow.login_history.get_by_user_id(
+                    user_id,
+                    limit=limit,
+                    offset=offset,
+                )
             )
-        )
-        login_history = [
-            LoginHistoryResponse.model_validate(history_record)
-            for history_record in login_history_models
-        ]
+
+            login_history = [
+                LoginHistoryResponse.model_validate(history_record)
+                for history_record in login_history_models
+            ]
 
         await self._cache.set_models(
             key=login_history_cache_key,
@@ -191,27 +182,27 @@ class UserService:
         role_id: UUID,
     ) -> UserResponse:
         """Назначает роль пользователю."""
-        user_model = await self._user_repository.get_by_id(user_id)
-        if user_model is None:
-            raise UserNotFoundError('User not found')
+        async with self._uow_factory() as uow:
+            user_model = await uow.users.get_by_id(user_id)
+            if user_model is None:
+                raise UserNotFoundError('User not found')
 
-        role_model = await self._role_repository.get_by_id(role_id)
-        if role_model is None:
-            raise RoleNotFoundError('Role not found')
+            role_model = await uow.roles.get_by_id(role_id)
+            if role_model is None:
+                raise RoleNotFoundError('Role not found')
 
-        try:
-            user_model = await self._user_repository.add_role(
+            user_model = await uow.users.add_role(
                 user_model,
                 role_model,
             )
-            await self._session.commit()
+
+            await uow.commit()
 
             user = UserResponse.model_validate(user_model)
-        except Exception:
-            await self._session.rollback()
-            raise
 
-        await self._cache.delete(get_user_cache_key(user_id))
+        await self._cache.delete(
+            get_user_cache_key(user_id),
+        )
 
         return user
 
@@ -221,26 +212,26 @@ class UserService:
         role_id: UUID,
     ) -> UserResponse:
         """Удаляет роль у пользователя."""
-        user_model = await self._user_repository.get_by_id(user_id)
-        if user_model is None:
-            raise UserNotFoundError('User not found')
+        async with self._uow_factory() as uow:
+            user_model = await uow.users.get_by_id(user_id)
+            if user_model is None:
+                raise UserNotFoundError('User not found')
 
-        role_model = await self._role_repository.get_by_id(role_id)
-        if role_model is None:
-            raise RoleNotFoundError('Role not found')
+            role_model = await uow.roles.get_by_id(role_id)
+            if role_model is None:
+                raise RoleNotFoundError('Role not found')
 
-        try:
-            user_model = await self._user_repository.remove_role(
+            user_model = await uow.users.remove_role(
                 user_model,
                 role_model,
             )
-            await self._session.commit()
+
+            await uow.commit()
 
             user = UserResponse.model_validate(user_model)
-        except Exception:
-            await self._session.rollback()
-            raise
 
-        await self._cache.delete(get_user_cache_key(user_id))
+        await self._cache.delete(
+            get_user_cache_key(user_id),
+        )
 
         return user

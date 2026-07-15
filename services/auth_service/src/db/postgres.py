@@ -1,5 +1,5 @@
 """Модуль зависимостей относительно PostgreSQL."""
-from typing import AsyncIterator, Optional
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -59,10 +59,11 @@ async def close_postgres() -> None:
     async_session_factory = None
 
 
-async def get_session() -> AsyncIterator[AsyncSession]:
-    """Возвращает PostgreSQL-сессию для dependency injection."""
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Возвращает инициализированную фабрику PostgreSQL-сессий."""
     if async_session_factory is None:
-        raise RuntimeError('PostgreSQL session factory is not initialized')
+        raise RuntimeError(
+            'PostgreSQL session factory is not initialized',
+        )
 
-    async with async_session_factory() as session:
-        yield session
+    return async_session_factory

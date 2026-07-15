@@ -23,16 +23,27 @@ HTTP API для аутентификации, авторизации и упра
 ```text
 HTTP endpoint
     ↓
-Dependency / authentication
+FastAPI dependencies / authentication
     ↓
 Service
-    ├── Cache interface ───── Redis
-    └── Repository interface ─ PostgreSQL repository
-                                  ↓
-                              PostgreSQL
+    ├── Cache interface ───────────────────────── Redis
+    └── UnitOfWorkFactory
+            ↓
+        SQLAlchemyUnitOfWork
+            ├── UserRepository
+            ├── RoleRepository
+            ├── PermissionRepository
+            ├── RefreshSessionRepository
+            └── LoginHistoryRepository
+                    ↓
+              одна AsyncSession
+                    ↓
+                PostgreSQL
 ```
 
-Endpoints работают с сервисным слоем, а сервисы — с абстракциями репозиториев и кеша. PostgreSQL- и Redis-реализации подключаются через FastAPI dependencies.
+Endpoints работают с сервисным слоем. Сервисы зависят от интерфейса кеша и фабрики Unit of Work, но не создают SQLAlchemy-сессии и PostgreSQL-репозитории напрямую. `SQLAlchemyUnitOfWork` открывает одну `AsyncSession` на бизнес-операцию и создаёт все нужные репозитории на этой сессии.
+
+FastAPI dependencies собирают сервисы, передавая им `UnitOfWorkFactory` и Redis-кеш. Конкретные PostgreSQL-репозитории создаются только внутри реализации Unit of Work.
 
 ## Структура
 
@@ -49,6 +60,7 @@ auth_service/
 │   ├── repositories/
 │   │   ├── interfaces/       # контракты репозиториев
 │   │   └── postgres/         # реализации для PostgreSQL
+│   ├── unit_of_work/         # границы транзакций и SQLAlchemy UoW
 │   ├── services/
 │   │   ├── cache_keys/       # формирование ключей и шаблонов Redis
 │   │   └── ...               # бизнес-логика
@@ -62,6 +74,25 @@ auth_service/
 ├── requirements.txt
 └── README.md
 ```
+
+## Unit of Work и транзакции
+
+`AbstractUnitOfWork` описывает доступные репозитории и операции `commit` / `rollback`. `SQLAlchemyUnitOfWork` является PostgreSQL-реализацией этого контракта.
+
+Типичная операция записи выглядит так:
+
+```python
+async with self._uow_factory() as uow:
+    user = await uow.users.get_by_id(user_id)
+    role = await uow.roles.get_by_id(role_id)
+
+    await uow.users.add_role(user, role)
+    await uow.commit()
+```
+
+Все репозитории внутри блока используют одну `AsyncSession`, поэтому составная бизнес-операция выполняется в одной транзакции. Успешная запись фиксируется явным `commit()`. Если внутри `async with` возникает исключение, Unit of Work вызывает `rollback()` и в любом случае закрывает сессию.
+
+Для GET-операций используется тот же UoW, но `commit()` не вызывается. Проверка Redis выполняется до открытия UoW, чтобы при cache hit не создавать SQLAlchemy-сессию.
 
 ## Основные сущности
 
@@ -346,11 +377,22 @@ Access token должен быть валидным, неистёкшим и п�
 
 ## Функциональные тесты
 
-Тесты находятся в [`tests/functional`](tests/functional) и выполняют реальные HTTP-запросы к Auth Service с отдельными PostgreSQL и Redis.
+Тесты находятся в [`tests/functional`](tests/functional) и выполняют реальные HTTP-запросы к Auth Service с отдельными PostgreSQL и Redis. Через публичный API проверяется вся цепочка `endpoint → service → Unit of Work → repositories → PostgreSQL`, а также Redis-кеширование и инвалидация.
 
-На текущем наборе запускается `245` сценариев с учётом параметризации. Последний зафиксированный отчёт: `1373` statements, `236` missed, branch coverage `78%`.
+В исходном коде находится `137` тестовых функций. За счёт параметризации они разворачиваются в `246` сценариев.
 
-Подробная инструкция: [`tests/functional/README.md`](tests/functional/README.md).
+Последний зафиксированный результат:
+
+```text
+246 passed
+1344 statements
+174 missed
+148 branches
+9 partial branches
+81% total coverage
+```
+
+Подробная инструкция: [`tests/README.md`](tests/README.md).
 
 ## Проверка типов
 

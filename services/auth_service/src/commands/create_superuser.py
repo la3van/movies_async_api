@@ -6,7 +6,7 @@ import typer
 from core.config import get_settings
 from core.security import hash_password
 from db import postgres
-from repositories.postgres.user import PostgresUserRepository
+from unit_of_work.postgres import SQLAlchemyUnitOfWork
 
 app = typer.Typer(
     help='Команды управления суперпользователем auth-сервиса.',
@@ -21,42 +21,40 @@ def create_superuser() -> None:
 
 async def _create_superuser() -> None:
     """Создаёт суперпользователя из переменных окружения."""
-
     settings = get_settings()
 
     await postgres.init_postgres()
 
     try:
-        if postgres.async_session_factory is None:
-            raise RuntimeError('PostgreSQL session factory is not initialized')
+        session_factory = postgres.get_session_factory()
 
-        async with postgres.async_session_factory() as session:
-            user_repository = PostgresUserRepository(session)
-
-            existing_user = await user_repository.get_by_login(
-                settings.superuser.login,
+        async with SQLAlchemyUnitOfWork(session_factory) as uow:
+            existing_user = await uow.users.get_by_login(
+                settings.superuser_login,
             )
+
             if existing_user is not None:
                 if existing_user.is_superuser and existing_user.is_active:
                     typer.echo(
-                        f'Superuser "{existing_user.login}" already exists.'
+                        f'Superuser "{existing_user.login}" already exists.',
                     )
                     return
 
                 existing_user.is_superuser = True
                 existing_user.is_active = True
 
-                session.add(existing_user)
-                await session.commit()
+                await uow.users.save(existing_user)
+                await uow.commit()
 
                 typer.echo(
                     f'User "{existing_user.login}" promoted to superuser.',
                 )
                 return
 
-            existing_user_by_email = await user_repository.get_by_email(
+            existing_user_by_email = await uow.users.get_by_email(
                 settings.superuser_email,
             )
+
             if existing_user_by_email is not None:
                 typer.echo(
                     (
@@ -67,20 +65,23 @@ async def _create_superuser() -> None:
                 )
                 raise typer.Exit(code=1)
 
-            superuser = await user_repository.create(
+            superuser = await uow.users.create(
                 login=settings.superuser_login,
                 email=settings.superuser_email,
-                password_hash=hash_password(settings.superuser_password),
+                password_hash=hash_password(
+                    settings.superuser_password,
+                ),
                 first_name=settings.superuser_first_name,
                 last_name=settings.superuser_last_name,
                 is_active=True,
                 is_superuser=True,
             )
 
-            await session.commit()
+            await uow.commit()
 
-            typer.echo(f'Superuser "{superuser.login}" created.')
-
+            typer.echo(
+                f'Superuser "{superuser.login}" created.',
+            )
     finally:
         await postgres.close_postgres()
 
