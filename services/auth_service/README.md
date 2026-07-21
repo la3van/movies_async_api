@@ -250,11 +250,21 @@ Redis-ключи получают общий префикс из `REDIS_KEY_PREF
 
 ## Запуск через Docker Compose
 
-Из корня репозитория:
+Для доступа с хоста через общую точку входа:
+
+```bash
+docker compose up --build nginx
+```
+
+Nginx запускает Auth Service и остальные HTTP-сервисы, указанные в его `depends_on`.
+
+Запуск только Auth Service для внутренних проверок:
 
 ```bash
 docker compose up --build auth-service
 ```
+
+В этом режиме сервис доступен контейнерам по адресу `auth-service:8000`, но его порт не опубликован на хост.
 
 Запуск всего окружения:
 
@@ -262,10 +272,10 @@ docker compose up --build auth-service
 docker compose up --build
 ```
 
-Логи сервиса:
+Логи сервиса и reverse proxy:
 
 ```bash
-docker compose logs -f auth-service
+docker compose logs -f auth-service nginx
 ```
 
 Перед запуском приложения контейнер применяет Alembic-миграции.
@@ -316,11 +326,14 @@ GET /health
 
 ## Документация API
 
-В корневом Compose сервис опубликован на порту `8008`:
+В корневом Compose Auth Service не публикует собственный порт. Внешние запросы маршрутизирует Nginx на `127.0.0.1:8000`:
 
-- Swagger UI: `http://localhost:8008/docs`;
-- OpenAPI JSON: `http://localhost:8008/openapi.json`;
+- Swagger UI: `http://127.0.0.1:8000/docs`;
+- OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`;
+- healthcheck: `http://127.0.0.1:8000/health`;
 - базовый API-префикс: `/api/v1`.
+
+Внутри Docker-сети Admin Service и другие контейнеры обращаются к Auth Service напрямую по адресу `http://auth-service:8000`.
 
 ## Endpoints
 

@@ -1,25 +1,40 @@
 services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:8000:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      content-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
+      admin-service:
+        condition: service_started
+    restart: unless-stopped
   auth-service:
     build:
       context: ./services/auth_service
       dockerfile: Dockerfile
     env_file:
       - ./services/auth_service/.env
-    ports:
-      - "127.0.0.1:8008:8000"
+    expose:
+      - "8000"
     depends_on:
       auth-postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
   admin-service:
     build:
       context: ./services/admin_service
       dockerfile: Dockerfile
     env_file:
       - ./services/admin_service/.env
-    ports:
-      - "127.0.0.1:8001:8000"
+    expose:
+      - "8000"
     volumes:
       - admin_service_data:/app/data
     depends_on:
@@ -47,8 +62,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./services/content_service/.env
-    ports:
-      - "127.0.0.1:8000:8000"
+    expose:
+      - "8000"
     depends_on:
       elasticsearch:
         condition: service_healthy

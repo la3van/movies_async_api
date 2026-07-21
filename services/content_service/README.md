@@ -17,6 +17,8 @@
 ## Архитектура
 
 ```text
+Nginx
+    ↓
 HTTP endpoint
     ↓
 Service
@@ -121,22 +123,32 @@ Redis-клиент использует `Retry` и `ExponentialWithJitterBackoff
 
 ## Запуск через Docker Compose
 
-Из корня репозитория:
+Для доступа с хоста через общую точку входа:
+
+```bash
+docker compose up --build nginx
+```
+
+Nginx запускает Content Service и остальные HTTP-сервисы, указанные в его `depends_on`.
+
+Запуск только Content Service для внутренних проверок:
 
 ```bash
 docker compose up --build content-service
 ```
 
-Полное окружение:
+В этом режиме сервис доступен контейнерам по адресу `content-service:8000`, но его порт не опубликован на хост.
+
+Полное окружение, включая Content ETL:
 
 ```bash
 docker compose up --build
 ```
 
-Логи:
+Логи сервиса и reverse proxy:
 
 ```bash
-docker compose logs -f content-service
+docker compose logs -f content-service nginx
 ```
 
 ## Локальный запуск
@@ -160,9 +172,13 @@ PYTHONPATH=src uvicorn src.main:app \
 
 ## Документация API
 
-- Swagger UI: `http://localhost:8000/api/openapi`
-- OpenAPI JSON: `http://localhost:8000/api/openapi.json`
+В корневом Compose Content Service доступен с хоста только через Nginx:
+
+- Swagger UI: `http://127.0.0.1:8000/api/openapi`
+- OpenAPI JSON: `http://127.0.0.1:8000/api/openapi.json`
 - базовый API-префикс: `/api/v1`
+
+Внутри Docker-сети сервис доступен по адресу `http://content-service:8000`.
 
 ## Endpoints
 

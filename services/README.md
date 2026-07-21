@@ -35,7 +35,7 @@ services/
 
 Каталоги `src/services/` внутри FastAPI-приложений имеют другой смысл и содержат слой бизнес-логики конкретного приложения.
 
-Общие для нескольких приложений инфраструктурные ресурсы вынесены в [`../infrastructure`](../infrastructure).
+Общие для нескольких приложений инфраструктурные ресурсы вынесены в [`../infrastructure`](../infrastructure). Внешний HTTP-трафик маршрутизирует [Nginx](../infrastructure/nginx/README.md).
 
 ## Admin Service
 
@@ -126,14 +126,21 @@ content_etl/
 ## Связи сервисов
 
 ```text
+HTTP clients
+    ↓
+Nginx
+├── /api/v1/films, /genres, /persons → Content Service
+├── /admin/, /static/                → Admin Service
+└── /api/v1/auth, /users, /roles     → Auth Service
+
 Admin Service
 ├── HTTP       → Auth Service
 ├── PostgreSQL → theatre-db / schema content
 └── SQLite     → служебные данные Django
 
 Content ETL
-├── PostgreSQL   → theatre-db
-├── Redis DB 0   → pipeline state
+├── PostgreSQL    → theatre-db
+├── Redis DB 0    → pipeline state
 └── Elasticsearch → movies / genres / persons
 
 Content Service
@@ -144,6 +151,8 @@ Auth Service
 ├── PostgreSQL → auth-postgres
 └── Redis DB 2 → cache
 ```
+
+Nginx публикует единственный внешний порт для прикладных HTTP-сервисов: `127.0.0.1:8000`. `content-service`, `auth-service` и `admin-service` доступны по порту `8000` только внутри Docker-сети.
 
 ## Переменные окружения
 
@@ -179,16 +188,27 @@ docker compose up --build
 docker compose up -d --build
 ```
 
-Отдельные сервисы из корня репозитория:
+Только публичный HTTP-контур через Nginx:
+
+```bash
+docker compose up --build nginx
+```
+
+Compose автоматически запускает HTTP-сервисы и зависимости, описанные в `depends_on`. Фоновый `content-etl` при таком запуске нужно поднять отдельно:
+
+```bash
+docker compose up --build content-etl
+```
+
+Отдельные HTTP-сервисы можно запускать для внутренних проверок:
 
 ```bash
 docker compose up --build content-service
 docker compose up --build auth-service
 docker compose up --build admin-service
-docker compose up --build content-etl
 ```
 
-Compose автоматически запускает зависимости, описанные в `depends_on`.
+Они не публикуют порты на хост. Для открытия API или Django Admin в браузере должен работать Nginx.
 
 ## Создание администратора
 
@@ -210,12 +230,13 @@ services/auth_service/.env
 После этого пользователь может войти в Django Admin:
 
 ```text
-http://127.0.0.1:8001/admin/
+http://127.0.0.1:8000/admin/
 ```
 
 ## Просмотр логов
 
 ```bash
+docker compose logs -f nginx
 docker compose logs -f content-service
 docker compose logs -f auth-service
 docker compose logs -f admin-service
