@@ -40,10 +40,13 @@ Django Admin для управления фильмами, жанрами и п�
 Browser
    │
    ▼
+Nginx
+   │ /admin/, /static/, /__debug__/
+   ▼
 Admin Service
-   ├── HTTP → Auth Service
-   │          ├── проверка логина и пароля
-   │          └── получение текущего пользователя
+   ├── internal HTTP → Auth Service
+   │                    ├── проверка логина и пароля
+   │                    └── получение текущего пользователя
    │
    ├── SQLite
    │   ├── shadow users
@@ -60,6 +63,8 @@ Admin Service
            ├── genre_film_work
            └── person_film_work
 ```
+
+С хоста Admin Service доступен только через Nginx. Внутреннее обращение к Auth Service выполняется напрямую по адресу `auth-service:8000`, без повторного прохождения через Nginx.
 
 ## Структура
 
@@ -263,7 +268,7 @@ cp services/admin_service/.env.example \
 | `ENABLE_DEBUG_TOOLBAR` | Дополнительный флаг Django Debug Toolbar |
 | `SECRET_KEY` | Секрет подписи внутренних данных Django |
 | `ALLOWED_HOSTS` | Разрешённые значения заголовка Host |
-| `CSRF_TRUSTED_ORIGINS` | Доверенные origins для CSRF-защиты |
+| `CSRF_TRUSTED_ORIGINS` | Доверенные origins Nginx для CSRF-защиты, локально `http://localhost:8000` и `http://127.0.0.1:8000` |
 | `LANGUAGE_CODE` | Язык интерфейса Django |
 | `TIME_ZONE` | Часовой пояс Django |
 
@@ -323,25 +328,33 @@ SECRET_KEY=generate_me
 
 ## Запуск
 
-Из корня репозитория:
+Для доступа из браузера запустите Nginx и его зависимости из корня репозитория:
 
 ```bash
-docker compose up --build admin-service
+docker compose up --build nginx
 ```
 
 Запуск в фоне:
 
 ```bash
-docker compose up -d --build admin-service
+docker compose up -d --build nginx
 ```
 
-Compose также запускает зависимости, указанные в `depends_on`.
+Nginx автоматически поднимет `admin-service`, `auth-service`, `content-service` и необходимые инфраструктурные зависимости.
 
 Админка доступна по адресу:
 
 ```text
-http://127.0.0.1:8001/admin/
+http://127.0.0.1:8000/admin/
 ```
+
+Прямой запуск:
+
+```bash
+docker compose up --build admin-service
+```
+
+поднимает Admin Service и его зависимости только внутри Docker-сети. Порт Admin Service на хост не публикуется.
 
 ## Создание суперпользователя
 
@@ -435,10 +448,10 @@ docker compose exec admin-service \
   python manage.py collectstatic --noinput
 ```
 
-Посмотреть логи:
+Посмотреть логи Admin Service и reverse proxy:
 
 ```bash
-docker compose logs -f admin-service
+docker compose logs -f admin-service nginx
 ```
 
 Пересобрать образ после изменения зависимостей:
@@ -449,9 +462,9 @@ docker compose build --no-cache admin-service
 
 ## Проверка интеграции
 
-1. Запустите `theatre-db`, `auth-service` и `admin-service`.
+1. Запустите `docker compose up -d --build nginx content-etl`.
 2. Создайте суперпользователя в Auth Service.
-3. Откройте `http://127.0.0.1:8001/admin/`.
+3. Откройте `http://127.0.0.1:8000/admin/`.
 4. Войдите с учётными данными Auth Service.
 5. Откройте список фильмов, жанров или персон.
 6. Измените тестовую запись.

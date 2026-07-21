@@ -12,6 +12,9 @@ infrastructure/
 │   │   ├── movies.json
 │   │   └── persons.json
 │   └── README.md
+├── nginx/
+│   ├── nginx.conf
+│   └── README.md
 ├── postgres/
 │   ├── theatre/
 │   │   └── init/
@@ -35,6 +38,20 @@ infrastructure/
 
 Подробнее: [elasticsearch/README.md](elasticsearch/README.md).
 
+## Nginx
+
+[`nginx/nginx.conf`](nginx/nginx.conf) настраивает единую точку входа для прикладных HTTP-сервисов на `127.0.0.1:8000`.
+
+Основные маршруты:
+
+- `/api/v1/films`, `/genres`, `/persons` и `/api/openapi*` → Content Service;
+- `/api/v1/auth`, `/users`, `/roles`, `/permissions`, `/docs`, `/openapi.json` и `/health` → Auth Service;
+- `/admin/`, `/static/` и `/__debug__/` → Admin Service.
+
+`content-service`, `auth-service` и `admin-service` доступны только внутри Docker-сети. Из этих прикладных HTTP-сервисов порт на хост публикует только Nginx.
+
+Подробнее: [nginx/README.md](nginx/README.md).
+
 ## PostgreSQL
 
 [`postgres/theatre/init`](postgres/theatre/init) содержит SQL-инициализацию исходной базы контента.
@@ -48,6 +65,7 @@ SQL-файлы монтируются в `/docker-entrypoint-initdb.d` конт�
 - инфраструктурные файлы не должны импортироваться как Python-пакеты;
 - mappings должны меняться синхронно с ETL и запросами Content Service;
 - SQL init-скрипты выполняются только при создании новой PostgreSQL data directory;
+- маршруты Nginx должны меняться синхронно с публичными URL HTTP-сервисов;
 - порядок SQL-скриптов задаётся числовым префиксом имени файла;
 - секреты и локальные `.env` в этот каталог не добавляются.
 

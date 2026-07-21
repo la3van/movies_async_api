@@ -9,6 +9,7 @@ Backend онлайн-кинотеатра, оформленный как мон�
 - сервис аутентификации и авторизации;
 - инкрементальную синхронизацию данных PostgreSQL → Elasticsearch;
 - кеширование ответов и хранение состояния ETL в Redis;
+- единую точку входа для прикладных HTTP-сервисов через Nginx;
 - изолированные функциональные тесты сервисов.
 
 ## Архитектура
@@ -16,6 +17,7 @@ Backend онлайн-кинотеатра, оформленный как мон�
 ```mermaid
 flowchart TB
     clients["HTTP clients"]
+    nginx["Nginx<br/>reverse proxy"]
 
     content["Content Service<br/>films / genres / persons"]
     admin["Admin Service<br/>Django Admin"]
@@ -33,16 +35,18 @@ flowchart TB
     etl["Content ETL"]
     redis_etl["Redis DB 0<br/>ETL state"]
 
-    clients --> content
-    clients --> admin
-    clients --> auth
+    clients --> nginx
+
+    nginx -->|content API| content
+    nginx -->|Django Admin| admin
+    nginx -->|auth API| auth
 
     content --> elasticsearch
     content --> redis_content
 
     admin --> sqlite
     admin --> theatre
-    admin -->|HTTP auth| auth
+    admin -->|internal HTTP auth| auth
 
     auth --> auth_postgres
     auth --> redis_auth
@@ -52,7 +56,9 @@ flowchart TB
     etl --> redis_etl
 ```
 
-`Admin Service` проверяет логин и пароль через `Auth Service`, а после успешного входа использует собственную Django-сессию.
+`Nginx` является единственной внешней точкой входа для прикладных HTTP-сервисов и публикуется на `127.0.0.1:8000`. HTTP-сервисы доступны Nginx по внутренней Docker-сети и не публикуют собственные порты на хост.
+
+`Admin Service` проверяет логин и пароль через `Auth Service` по внутреннему адресу `auth-service:8000`, а после успешного входа использует собственную Django-сессию.
 
 Контентные модели Django подключены к существующим таблицам схемы `content` в PostgreSQL. Django не управляет структурой этих таблиц через миграции.
 
@@ -60,6 +66,7 @@ flowchart TB
 
 | Компонент | Назначение |
 | --- | --- |
+| `nginx` | Единая точка входа и маршрутизация прикладных HTTP-запросов |
 | `content-service` | Read-only FastAPI API для фильмов, жанров и персон |
 | `admin-service` | Django Admin для управления фильмами, жанрами и персонами |
 | `auth-service` | Аутентификация, авторизация, роли и permissions |
@@ -82,6 +89,9 @@ flowchart TB
 │   │   │   ├── genres.json
 │   │   │   ├── movies.json
 │   │   │   └── persons.json
+│   │   └── README.md
+│   ├── nginx/
+│   │   ├── nginx.conf
 │   │   └── README.md
 │   ├── postgres/
 │   │   ├── theatre/
@@ -126,6 +136,7 @@ flowchart TB
 - [Функциональные тесты Auth Service](services/auth_service/tests/README.md)
 - [Content ETL](services/content_etl/README.md)
 - [Инфраструктура](infrastructure/README.md)
+- [Nginx](infrastructure/nginx/README.md)
 - [Elasticsearch](infrastructure/elasticsearch/README.md)
 - [PostgreSQL](infrastructure/postgres/README.md)
 - [Поддерживаемость кода](docs/CODE_MAINTAINABILITY.md)
@@ -196,6 +207,7 @@ flowchart TB
 - HTTPX;
 - pytest, pytest-asyncio, aiohttp и coverage.py;
 - Docker Compose;
+- Nginx;
 - mypy и Radon.
 
 ## Быстрый запуск
@@ -243,6 +255,7 @@ docker compose ps
 
 ```bash
 docker compose logs -f \
+  nginx \
   content-service \
   content-etl \
   auth-service \
@@ -268,22 +281,24 @@ docker compose exec auth-service \
 
 ### 4. Проверить сервисы
 
+Все внешние HTTP-запросы проходят через `http://127.0.0.1:8000`.
+
 Content Service:
 
-- Swagger UI: `http://localhost:8000/api/openapi`
-- OpenAPI JSON: `http://localhost:8000/api/openapi.json`
+- Swagger UI: `http://127.0.0.1:8000/api/openapi`
+- OpenAPI JSON: `http://127.0.0.1:8000/api/openapi.json`
 
 Admin Service:
 
-- Django Admin: `http://127.0.0.1:8001/admin/`
+- Django Admin: `http://127.0.0.1:8000/admin/`
 
 В форму входа Django Admin необходимо вводить логин и пароль суперпользователя из `auth-service`.
 
 Auth Service:
 
-- Swagger UI: `http://localhost:8008/docs`
-- OpenAPI JSON: `http://localhost:8008/openapi.json`
-- Healthcheck: `http://localhost:8008/health`
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
+- Healthcheck: `http://127.0.0.1:8000/health`
 
 Elasticsearch:
 
@@ -297,14 +312,27 @@ curl "http://localhost:9200/persons/_count?pretty"
 
 ## Запуск отдельных компонентов
 
+HTTP-контур с единой внешней точкой входа:
+
+```bash
+docker compose up --build nginx
+```
+
+Compose автоматически запустит `content-service`, `auth-service`, `admin-service` и их зависимости. `content-etl` не является зависимостью Nginx и при необходимости запускается отдельно:
+
+```bash
+docker compose up --build content-etl
+```
+
+Отдельный HTTP-сервис можно поднять для внутренних проверок:
+
 ```bash
 docker compose up --build content-service
 docker compose up --build auth-service
 docker compose up --build admin-service
-docker compose up --build content-etl
 ```
 
-Compose автоматически поднимет зависимости, указанные в `depends_on`.
+При таком запуске сервис доступен другим контейнерам, но не браузеру на хосте, потому что в Compose используется `expose`, а не `ports`. Для внешнего доступа запустите Nginx или всё окружение.
 
 ## Команды Admin Service
 
