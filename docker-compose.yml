@@ -12,6 +12,22 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  admin-service:
+    build:
+      context: ./services/admin_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/admin_service/.env
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - admin_service_data:/app/data
+    depends_on:
+      theatre-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    restart: unless-stopped
   auth-postgres:
     image: postgres:16
     env_file:
@@ -46,7 +62,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
     volumes:
-      - ./infrastructure/postgres/threatre/init:/docker-entrypoint-initdb.d:ro
+      - ./infrastructure/postgres/theatre/init:/docker-entrypoint-initdb.d:ro
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d theatre"]
@@ -106,3 +122,4 @@ volumes:
   postgres_data:
   elasticsearch_data:
   redis_data:
+  admin_service_data:
