@@ -1,5 +1,5 @@
-fastapi[standart]==0.112.0
-uvicorn[standart]==0.30.6
+fastapi[standard]==0.112.0
+uvicorn[standard]==0.30.6
 pydantic-settings==2.14.1
 email-validator==2.2.0
 orjson==3.11.9
@@ -21,3 +21,13 @@ pytest==7.4.3
 pytest-asyncio==0.21.0
 httpx==0.27.2
 coverage==7.14.2
+
+# OpenTelemetry core
+opentelemetry-api==1.43.0
+opentelemetry-sdk==1.43.0
+opentelemetry-exporter-otlp-proto-grpc==1.43.0
+
+# OpenTelemetry instrumentation
+opentelemetry-instrumentation-fastapi==0.64b0
+opentelemetry-instrumentation-sqlalchemy==0.64b0
+opentelemetry-instrumentation-redis==0.64b0

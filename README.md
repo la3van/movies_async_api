@@ -10,6 +10,7 @@ Backend онлайн-кинотеатра, оформленный как мон�
 - инкрементальную синхронизацию данных PostgreSQL → Elasticsearch;
 - кеширование ответов и хранение состояния ETL в Redis;
 - единую точку входа для прикладных HTTP-сервисов через Nginx;
+- распределённую трассировку HTTP-запросов через OpenTelemetry и Jaeger;
 - изолированные функциональные тесты сервисов.
 
 ## Архитектура
@@ -35,6 +36,8 @@ flowchart TB
     etl["Content ETL"]
     redis_etl["Redis DB 0<br/>ETL state"]
 
+    jaeger["Jaeger<br/>trace storage and UI"]
+
     clients --> nginx
 
     nginx -->|content API| content
@@ -51,6 +54,10 @@ flowchart TB
     auth --> auth_postgres
     auth --> redis_auth
 
+    content -. OTLP/gRPC .-> jaeger
+    admin -. OTLP/gRPC .-> jaeger
+    auth -. OTLP/gRPC .-> jaeger
+
     etl -->|incremental read| theatre
     etl --> elasticsearch
     etl --> redis_etl
@@ -58,7 +65,9 @@ flowchart TB
 
 `Nginx` является единственной внешней точкой входа для прикладных HTTP-сервисов и публикуется на `127.0.0.1:8000`. HTTP-сервисы доступны Nginx по внутренней Docker-сети и не публикуют собственные порты на хост.
 
-`Admin Service` проверяет логин и пароль через `Auth Service` по внутреннему адресу `auth-service:8000`, а после успешного входа использует собственную Django-сессию.
+`Admin Service` проверяет логин и пароль через `Auth Service` по внутреннему адресу `auth-service:8000`, а после успешного входа использует собственную Django-сессию. Контекст OpenTelemetry передаётся между этими сервисами автоматически через HTTP-заголовок `traceparent`.
+
+Nginx назначает или сохраняет `X-Request-ID`, передаёт его backend-сервисам и возвращает клиенту. Сервисы сохраняют этот идентификатор в серверных spans, поэтому один запрос можно сопоставлять между Jaeger и Nginx access log.
 
 Контентные модели Django подключены к существующим таблицам схемы `content` в PostgreSQL. Django не управляет структурой этих таблиц через миграции.
 
@@ -67,6 +76,7 @@ flowchart TB
 | Компонент | Назначение |
 | --- | --- |
 | `nginx` | Единая точка входа и маршрутизация прикладных HTTP-запросов |
+| `jaeger` | Приём, хранение и просмотр OpenTelemetry traces |
 | `content-service` | Read-only FastAPI API для фильмов, жанров и персон |
 | `admin-service` | Django Admin для управления фильмами, жанрами и персонами |
 | `auth-service` | Аутентификация, авторизация, роли и permissions |
@@ -89,6 +99,8 @@ flowchart TB
 │   │   │   ├── genres.json
 │   │   │   ├── movies.json
 │   │   │   └── persons.json
+│   │   └── README.md
+│   ├── jaeger/
 │   │   └── README.md
 │   ├── nginx/
 │   │   ├── nginx.conf
@@ -137,6 +149,7 @@ flowchart TB
 - [Content ETL](services/content_etl/README.md)
 - [Инфраструктура](infrastructure/README.md)
 - [Nginx](infrastructure/nginx/README.md)
+- [Jaeger и OpenTelemetry](infrastructure/jaeger/README.md)
 - [Elasticsearch](infrastructure/elasticsearch/README.md)
 - [PostgreSQL](infrastructure/postgres/README.md)
 - [Поддерживаемость кода](docs/CODE_MAINTAINABILITY.md)
@@ -152,7 +165,9 @@ flowchart TB
 - поиск похожих фильмов;
 - получение фильмов, связанных с персоной;
 - кеширование ответов в Redis;
-- retry и exponential backoff на уровне клиентов Redis и Elasticsearch.
+- retry и exponential backoff на уровне клиентов Redis и Elasticsearch;
+- автоматическую трассировку FastAPI, Redis и Elasticsearch;
+- ручные spans для методов сервисного слоя.
 
 ### Admin Service
 
@@ -166,7 +181,8 @@ flowchart TB
 - локальные Django-сессии без хранения настоящего пароля;
 - подключение к существующим таблицам схемы `content`;
 - опциональная Django Debug Toolbar;
-- раздача статических файлов через WhiteNoise.
+- раздача статических файлов через WhiteNoise;
+- распределённую трассировку Django, PostgreSQL и HTTPX-вызовов Auth Service.
 
 ### Auth Service
 
@@ -178,7 +194,8 @@ flowchart TB
 - роли и permissions;
 - кеширование read-запросов в Redis;
 - миграции PostgreSQL через Alembic;
-- CLI-команда создания суперпользователя.
+- CLI-команда создания суперпользователя;
+- трассировку FastAPI, Redis, SQLAlchemy и бизнес-методов.
 
 ### Content ETL
 
@@ -208,6 +225,8 @@ flowchart TB
 - pytest, pytest-asyncio, aiohttp и coverage.py;
 - Docker Compose;
 - Nginx;
+- OpenTelemetry и OTLP/gRPC;
+- Jaeger;
 - mypy и Radon.
 
 ## Быстрый запуск
@@ -259,7 +278,8 @@ docker compose logs -f \
   content-service \
   content-etl \
   auth-service \
-  admin-service
+  admin-service \
+  jaeger
 ```
 
 ### 3. Создать суперпользователя Auth Service
@@ -300,6 +320,10 @@ Auth Service:
 - OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
 - Healthcheck: `http://127.0.0.1:8000/health`
 
+Jaeger:
+
+- Trace UI: `http://127.0.0.1:16686/`
+
 Elasticsearch:
 
 ```bash
@@ -309,6 +333,64 @@ curl "http://localhost:9200/movies/_count?pretty"
 curl "http://localhost:9200/genres/_count?pretty"
 curl "http://localhost:9200/persons/_count?pretty"
 ```
+
+## Распределённая трассировка
+
+`content-service`, `auth-service` и `admin-service` экспортируют traces в Jaeger по OTLP/gRPC:
+
+```text
+HTTP client
+    ↓
+Nginx ── X-Request-ID ──► HTTP service
+                              │
+                              ├── automatic framework span
+                              ├── manual service span
+                              ├── Redis / SQL / Elasticsearch span
+                              └── OTLP/gRPC ──► Jaeger:4317
+```
+
+В локальном окружении используется `ALWAYS_ON`, поэтому записывается каждый trace. Jaeger UI доступен по адресу:
+
+```text
+http://127.0.0.1:16686/
+```
+
+Пример проверки Content Service:
+
+```bash
+curl -i \
+  -H "X-Request-ID: readme-content-check-001" \
+  "http://127.0.0.1:8000/api/v1/films/?page_number=1&page_size=5"
+```
+
+Ожидаемое дерево при cache miss:
+
+```text
+GET /api/v1/films/
+└── content.films.get_sorted
+    ├── Redis GET
+    ├── Elasticsearch search
+    └── Redis SET
+```
+
+Повтор того же запроса обычно показывает cache hit: внутри `content.films.get_sorted` остаётся только чтение Redis.
+
+Вход через Django Admin формирует распределённый trace сразу для двух приложений:
+
+```text
+admin-service: POST /admin/login/
+└── admin.authenticate
+    └── HTTPX POST /api/v1/auth/login
+        └── auth-service: POST /api/v1/auth/login
+            └── auth.login
+                ├── SQL SELECT
+                ├── tokens.create_pair
+                └── SQL INSERT
+```
+
+`traceparent` связывает spans OpenTelemetry между сервисами. `X-Request-ID` является отдельным прикладным идентификатором для сопоставления trace с proxy-логами.
+
+Подробности, список инструментаторов, переменные окружения и диагностика: [infrastructure/jaeger/README.md](infrastructure/jaeger/README.md).
 
 ## Запуск отдельных компонентов
 

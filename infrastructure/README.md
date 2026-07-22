@@ -12,6 +12,8 @@ infrastructure/
 │   │   ├── movies.json
 │   │   └── persons.json
 │   └── README.md
+├── jaeger/
+│   └── README.md
 ├── nginx/
 │   ├── nginx.conf
 │   └── README.md
@@ -52,6 +54,19 @@ infrastructure/
 
 Подробнее: [nginx/README.md](nginx/README.md).
 
+## Jaeger и OpenTelemetry
+
+[`jaeger/README.md`](jaeger/README.md) описывает распределённую трассировку HTTP-сервисов.
+
+Корневой Docker Compose запускает `jaegertracing/all-in-one`:
+
+- OTLP/gRPC внутри Docker-сети: `jaeger:4317`;
+- Jaeger UI на хосте: `http://127.0.0.1:16686/`.
+
+Traces экспортируют `content-service`, `auth-service` и `admin-service`. Nginx не создаёт OpenTelemetry spans, но назначает `X-Request-ID`, который сохраняется в серверных spans и access log.
+
+Подробнее: [jaeger/README.md](jaeger/README.md).
+
 ## PostgreSQL
 
 [`postgres/theatre/init`](postgres/theatre/init) содержит SQL-инициализацию исходной базы контента.
@@ -66,6 +81,8 @@ SQL-файлы монтируются в `/docker-entrypoint-initdb.d` конт�
 - mappings должны меняться синхронно с ETL и запросами Content Service;
 - SQL init-скрипты выполняются только при создании новой PostgreSQL data directory;
 - маршруты Nginx должны меняться синхронно с публичными URL HTTP-сервисов;
+- имена OpenTelemetry-сервисов и OTLP endpoint должны совпадать с Compose-конфигурацией;
+- в span-атрибуты нельзя записывать пароли, JWT, refresh-токены и другие секреты;
 - порядок SQL-скриптов задаётся числовым префиксом имени файла;
 - секреты и локальные `.env` в этот каталог не добавляются.
 

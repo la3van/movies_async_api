@@ -32,7 +32,9 @@ Django Admin для управления фильмами, жанрами и п�
 - SQLite;
 - PostgreSQL;
 - WhiteNoise;
-- Django Debug Toolbar.
+- Django Debug Toolbar;
+- OpenTelemetry SDK и OTLP/gRPC exporter;
+- Jaeger.
 
 ## Архитектура
 
@@ -62,6 +64,8 @@ Admin Service
            ├── person
            ├── genre_film_work
            └── person_film_work
+
+Admin Service ── OTLP/gRPC ──► Jaeger
 ```
 
 С хоста Admin Service доступен только через Nginx. Внутреннее обращение к Auth Service выполняется напрямую по адресу `auth-service:8000`, без повторного прохождения через Nginx.
@@ -80,6 +84,7 @@ admin_service/
 │   ├── asgi.py
 │   ├── debug_toolbar.py
 │   ├── settings.py
+│   ├── tracing.py
 │   ├── urls.py
 │   └── wsgi.py
 ├── content/
@@ -306,6 +311,63 @@ cp services/admin_service/.env.example \
 | `AUTH_SERVICE_CONNECT_TIMEOUT` | Таймаут подключения к Auth Service |
 | `AUTH_SERVICE_READ_TIMEOUT` | Таймаут ожидания ответа Auth Service |
 
+### OpenTelemetry
+
+| Переменная | Назначение |
+| --- | --- |
+| `OTEL_ENABLED` | Включает настройку provider и instrumentors |
+| `OTEL_SERVICE_NAME` | Имя сервиса в Jaeger, локально `admin-service` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP/gRPC endpoint, локально `http://jaeger:4317` |
+| `OTEL_EXPORTER_OTLP_INSECURE` | Использование незашифрованного gRPC внутри Docker-сети |
+| `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST` | Список входящих заголовков для span attributes, локально `x-request-id` |
+
+## Распределённая трассировка
+
+`configure_tracing()` вызывается в `admin_panel/wsgi.py` и `admin_panel/asgi.py` до создания Django application.
+
+Автоматически подключаются:
+
+| Instrumentor | Что отображается в Jaeger |
+| --- | --- |
+| `DjangoInstrumentor` | серверные Django HTTP-spans |
+| `HTTPXClientInstrumentor` | запросы `admin-service → auth-service` и передача `traceparent` |
+| `PsycopgInstrumentor` | SQL-запросы к PostgreSQL theatre |
+
+Authentication backend содержит ручные spans:
+
+```text
+admin.authenticate
+admin.get_user
+```
+
+Ожидаемый distributed trace успешного входа:
+
+```text
+admin-service: POST /admin/login/
+└── admin.authenticate
+    ├── HTTPX POST /api/v1/auth/login
+    │   └── auth-service: POST /api/v1/auth/login
+    │       └── auth.login
+    ├── HTTPX GET /api/v1/users/me
+    │   └── auth-service: GET /api/v1/users/me
+    └── HTTPX POST /api/v1/auth/logout
+        └── auth-service: POST /api/v1/auth/logout
+```
+
+`AuthServiceBackend._build_headers()` дополнительно передаёт входящий `X-Request-ID` в запросы `/auth/login` и `/users/me`. Поэтому соответствующие серверные spans Admin Service и Auth Service можно сопоставить по одному значению `http.request.header.x_request_id`. Вспомогательный вызов `/auth/logout` сейчас не получает этот прикладной заголовок.
+
+`traceparent` передаётся OpenTelemetry-инструментацией автоматически и объединяет все три HTTPX-вызова в один `trace_id`, включая `/auth/logout`. `X-Request-ID` используется отдельно для корреляции с Nginx access log.
+
+Проверка:
+
+1. Откройте `http://127.0.0.1:8000/admin/login/`.
+2. Выполните успешный вход.
+3. Откройте `http://127.0.0.1:16686/`.
+4. Выберите `admin-service` и операцию `POST /admin/login/`.
+5. Убедитесь, что trace содержит два сервиса: `admin-service` и `auth-service`.
+
+Общие сведения и диагностика: [../../infrastructure/jaeger/README.md](../../infrastructure/jaeger/README.md).
+
 ## Генерация Django `SECRET_KEY`
 
 Создайте отдельный ключ для Admin Service:
@@ -451,7 +513,7 @@ docker compose exec admin-service \
 Посмотреть логи Admin Service и reverse proxy:
 
 ```bash
-docker compose logs -f admin-service nginx
+docker compose logs -f admin-service nginx jaeger
 ```
 
 Пересобрать образ после изменения зависимостей:

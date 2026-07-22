@@ -1,4 +1,5 @@
 """Сервис работы с правами доступа."""
+from core.tracing import trace_method
 from uuid import UUID
 
 from api.v1.schemas.permissions import (
@@ -37,6 +38,7 @@ class PermissionService:
         self._cache = cache
         self._permission_cache_ttl = permission_cache_ttl
 
+    @trace_method("permissions.get_by_id")
     async def get_by_id(
         self,
         permission_id: UUID,
@@ -70,6 +72,7 @@ class PermissionService:
 
         return permission
 
+    @trace_method("permissions.get_all")
     async def get_all(
         self,
         *,
@@ -105,6 +108,7 @@ class PermissionService:
 
         return permissions
 
+    @trace_method("permissions.create")
     async def create(
         self,
         permission_data: PermissionCreate,
@@ -138,6 +142,7 @@ class PermissionService:
 
         return permission
 
+    @trace_method("permissions.update")
     async def update(
         self,
         permission_id: UUID,

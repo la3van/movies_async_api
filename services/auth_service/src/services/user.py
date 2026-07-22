@@ -1,4 +1,5 @@
 """Сервис работы с пользователями."""
+from core.tracing import trace_method
 from uuid import UUID
 
 from api.v1.schemas.login_history import LoginHistoryResponse
@@ -36,6 +37,7 @@ class UserService:
         self._user_cache_ttl = user_cache_ttl
         self._login_history_cache_ttl = login_history_cache_ttl
 
+    @trace_method("users.get_by_id")
     async def get_by_id(self, user_id: UUID) -> UserResponse:
         """Возвращает пользователя по идентификатору."""
         user_cache_key = get_user_cache_key(user_id)
@@ -62,6 +64,7 @@ class UserService:
 
         return user
 
+    @trace_method("users.update_profile")
     async def update_profile(
         self,
         user_id: UUID,
@@ -97,6 +100,7 @@ class UserService:
 
         return user
 
+    @trace_method("users.change_password")
     async def change_password(
         self,
         user_id: UUID,
@@ -129,6 +133,7 @@ class UserService:
             get_user_cache_key(user_id),
         )
 
+    @trace_method("users.get_login_history")
     async def get_login_history(
         self,
         user_id: UUID,
@@ -176,6 +181,7 @@ class UserService:
 
         return login_history
 
+    @trace_method("users.assign_role")
     async def assign_role(
         self,
         user_id: UUID,
@@ -206,6 +212,7 @@ class UserService:
 
         return user
 
+    @trace_method("users.remove_role")
     async def remove_role(
         self,
         user_id: UUID,

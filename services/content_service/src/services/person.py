@@ -1,4 +1,5 @@
 """Модуль бизнес-логики для работы с персонами."""
+from core.tracing import trace_method
 from cache.base import Cache
 from models.person import Person
 from models.film import ShortFilm
@@ -29,6 +30,7 @@ class PersonService:
         self._cache = cache
         self._cache_ttl = cache_ttl
 
+    @trace_method("content.persons.get_by_id")
     async def get_person_by_id(
         self,
         person_id: str
@@ -55,6 +57,7 @@ class PersonService:
 
         return person
 
+    @trace_method("content.persons.get_many")
     async def get_persons(
         self,
         query: str | None = None,
@@ -99,6 +102,7 @@ class PersonService:
 
         return persons
 
+    @trace_method("content.persons.get_films")
     async def get_person_films(
         self,
         person_id: str,

@@ -16,7 +16,9 @@ HTTP API для аутентификации, авторизации и упра
 - PyJWT;
 - passlib и bcrypt;
 - ORJSONResponse;
-- Typer для служебных CLI-команд.
+- Typer для служебных CLI-команд;
+- OpenTelemetry SDK и OTLP/gRPC exporter;
+- Jaeger.
 
 ## Архитектура
 
@@ -39,6 +41,8 @@ Service
               одна AsyncSession
                     ↓
                 PostgreSQL
+
+Service ── OTLP/gRPC ──► Jaeger
 ```
 
 Endpoints работают с сервисным слоем. Сервисы зависят от интерфейса кеша и фабрики Unit of Work, но не создают SQLAlchemy-сессии и PostgreSQL-репозитории напрямую. `SQLAlchemyUnitOfWork` открывает одну `AsyncSession` на бизнес-операцию и создаёт все нужные репозитории на этой сессии.
@@ -54,7 +58,7 @@ auth_service/
 │   ├── api/                  # endpoints, dependencies, schemas и handlers
 │   ├── cache/                # интерфейс кеша и Redis-реализация
 │   ├── commands/             # служебные CLI-команды
-│   ├── core/                 # settings, JWT, security и logging
+│   ├── core/                 # settings, JWT, security, logging и tracing
 │   ├── db/                   # инициализация PostgreSQL и Redis
 │   ├── models/               # SQLAlchemy-модели
 │   ├── repositories/
@@ -247,6 +251,81 @@ GET /api/v1/roles/{role_id}
 ```
 
 Redis-ключи получают общий префикс из `REDIS_KEY_PREFIX`. В корневом Docker Compose Auth Service использует Redis DB `2`.
+
+## Распределённая трассировка
+
+Provider и OTLP exporter настраиваются в `src/core/tracing.py`. FastAPI и Redis подключаются в `src/main.py`, а SQLAlchemy — после создания async engine в `src/db/postgres.py` через `engine.sync_engine`.
+
+### Автоматические spans
+
+| Instrumentor | Что отображается в Jaeger |
+| --- | --- |
+| `FastAPIInstrumentor` | входящие HTTP-запросы Auth Service |
+| `RedisInstrumentor` | операции auth cache |
+| `SQLAlchemyInstrumentor` | соединения и SQL-запросы PostgreSQL |
+
+### Ручные spans
+
+Сервисный слой размечен декоратором `@trace_method(...)`:
+
+```text
+auth.register
+auth.login
+auth.refresh
+auth.logout
+auth.logout_others
+users.get_by_id
+users.update_profile
+users.change_password
+users.get_login_history
+users.assign_role
+users.remove_role
+roles.get_by_id
+roles.get_all
+roles.create
+roles.update
+roles.delete
+permissions.get_by_id
+permissions.get_all
+permissions.create
+permissions.update
+tokens.create_access
+tokens.create_refresh
+tokens.create_pair
+```
+
+`auth.*`, `users.*`, `roles.*` и `permissions.*` являются асинхронными spans. Методы `TokenService` синхронные, поэтому они также проверяют sync-ветку общего декоратора.
+
+Пример trace входа:
+
+```text
+POST /api/v1/auth/login
+└── auth.login
+    ├── SQL SELECT
+    ├── tokens.create_pair
+    │   ├── tokens.create_access
+    │   └── tokens.create_refresh
+    ├── SQL INSERT
+    └── SQL INSERT
+```
+
+При вызове из Django Admin этот фрагмент продолжается в том же trace, потому что `HTTPXClientInstrumentor` Admin Service передаёт `traceparent`.
+
+### Переменные OpenTelemetry
+
+```env
+OTEL_ENABLED=true
+OTEL_SERVICE_NAME=auth-service
+OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+OTEL_EXPORTER_OTLP_INSECURE=true
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=x-request-id
+```
+
+Не добавляйте в attributes и events пароль, JWT, refresh-token, password hash, email или полный login. Ошибочный вход должен быть виден как error span без раскрытия учётных данных.
+
+Проверка проще всего выполняется через вход в Django Admin: в Jaeger один trace должен содержать `admin-service` и `auth-service`.
+
+Общие сведения и диагностика: [../../infrastructure/jaeger/README.md](../../infrastructure/jaeger/README.md).
 
 ## Запуск через Docker Compose
 

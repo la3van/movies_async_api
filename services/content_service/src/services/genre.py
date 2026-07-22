@@ -1,4 +1,5 @@
 """Модуль бизнес-логики для работы с жанрами."""
+from core.tracing import trace_method
 from cache.base import Cache
 from models.genre import Genre
 from repositories.interfaces.genre import GenreRepository
@@ -26,6 +27,7 @@ class GenreService:
         self._cache = cache
         self._cache_ttl = cache_ttl
 
+    @trace_method("content.genres.get_by_id")
     async def get_genre_by_id(
         self,
         genre_id: str
@@ -53,6 +55,7 @@ class GenreService:
 
         return genre
 
+    @trace_method("content.genres.get_many")
     async def get_genres(
         self,
         query: str | None = None,

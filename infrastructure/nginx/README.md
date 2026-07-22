@@ -100,6 +100,48 @@ X-Request-ID
 
 Если клиент уже передал `X-Request-ID`, Nginx сохраняет его. Иначе используется автоматически созданный `$request_id`. Этот же идентификатор добавляется в ответ клиенту.
 
+## Связь с распределённой трассировкой
+
+Nginx не инструментирован OpenTelemetry и сам не создаёт spans. Его задача в observability-контуре — передать стабильный `X-Request-ID`:
+
+```text
+client request
+    ↓
+Nginx: сохранить клиентский X-Request-ID
+       или создать $request_id
+    ↓
+backend server span:
+http.request.header.x_request_id = ["..."]
+```
+
+`X-Request-ID` и OpenTelemetry `trace_id` решают разные задачи:
+
+| Идентификатор | Назначение |
+| --- | --- |
+| `X-Request-ID` | Сопоставление Nginx access log, ответа клиенту и серверного span |
+| `trace_id` | Объединение всех spans одного distributed trace |
+| `traceparent` | Передача OpenTelemetry-контекста между сервисами |
+
+Nginx передаёт `X-Request-ID`, но не формирует `traceparent`. Заголовок `traceparent` автоматически добавляется клиентской OpenTelemetry-инструментацией, например при HTTPX-вызове `admin-service → auth-service`.
+
+Запрос, отклонённый самим Nginx, не попадёт в Jaeger, потому что backend не будет вызван. Такой запрос нужно искать в Nginx access log по `X-Request-ID`.
+
+Проверка:
+
+```bash
+curl -i \
+  -H "X-Request-ID: nginx-trace-check-001" \
+  http://127.0.0.1:8000/api/v1/films/
+```
+
+В ответе должен присутствовать тот же `X-Request-ID`, а в Jaeger — атрибут серверного span:
+
+```text
+http.request.header.x_request_id = ["nginx-trace-check-001"]
+```
+
+Полная документация трассировки: [../jaeger/README.md](../jaeger/README.md).
+
 ## Запуск
 
 Из корня репозитория:
@@ -172,6 +214,8 @@ Access log содержит:
 - полное время запроса;
 - время ответа backend;
 - `X-Request-ID`.
+
+По этому значению запрос можно сопоставить с серверным span в Jaeger.
 
 ## Типичные ошибки
 

@@ -9,12 +9,15 @@ from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.models import AbstractBaseUser
 from django.http import HttpRequest
 
+from admin_panel.tracing import trace_method
+
 
 logger = logging.getLogger(__name__)
 
 
 class AuthServiceBackend(BaseBackend):
     """Проверяет учётные данные через внешний auth-service."""
+    @trace_method("admin.authenticate")
     def authenticate(
         self,
         request: HttpRequest | None,
@@ -104,6 +107,7 @@ class AuthServiceBackend(BaseBackend):
             profile,
         )
 
+    @trace_method("admin.get_user")
     def get_user(
         self,
         user_id: int,
@@ -131,9 +135,15 @@ class AuthServiceBackend(BaseBackend):
         user_agent = request.headers.get(
             "User-Agent",
         )
+        request_id = request.headers.get(
+            "X-Request-ID",
+        )
 
         if user_agent:
             headers["User-Agent"] = user_agent
+
+        if request_id:
+            headers["X-Request-ID"] = request_id
 
         return headers
 
