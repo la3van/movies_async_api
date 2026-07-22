@@ -1,4 +1,5 @@
 """Сервис работы с токенами."""
+from core.tracing import trace_method
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -30,6 +31,7 @@ class TokenService:
         """Запоминаем настройки auth-сервиса."""
         self._settings = get_settings()
 
+    @trace_method("tokens.create_access")
     def create_access_token_for_user(self, user: User) -> str:
         """Создаёт access-токен для пользователя."""
         roles = sorted(role.name for role in user.roles)
@@ -52,6 +54,7 @@ class TokenService:
             },
         )
 
+    @trace_method("tokens.create_refresh")
     def create_refresh_token_data(self) -> RefreshTokenData:
         """Создаёт refresh-токен и данные для хранения в БД."""
         token = generate_secure_token()
@@ -66,6 +69,7 @@ class TokenService:
             expires_at=expires_at,
         )
 
+    @trace_method("tokens.create_pair")
     def create_token_pair(
         self,
         user: User

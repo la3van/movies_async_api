@@ -1,4 +1,5 @@
 """Сервис аутентификации."""
+from core.tracing import trace_method
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -36,6 +37,7 @@ class AuthService:
         self._token_service = token_service
         self._cache = cache
 
+    @trace_method("auth.register")
     async def register(
         self,
         register_data: RegisterRequest,
@@ -108,6 +110,7 @@ class AuthService:
 
         return token_pair
 
+    @trace_method("auth.login")
     async def login(
         self,
         login_data: LoginRequest,
@@ -186,6 +189,7 @@ class AuthService:
 
         return token_pair
 
+    @trace_method("auth.refresh")
     async def refresh(
         self,
         refresh_token: str,
@@ -228,6 +232,7 @@ class AuthService:
 
         return token_pair
 
+    @trace_method("auth.logout")
     async def logout(self, refresh_token: str) -> None:
         """Завершает одну refresh-сессию."""
         async with self._uow_factory() as uow:
@@ -242,6 +247,7 @@ class AuthService:
 
             await uow.commit()
 
+    @trace_method("auth.logout_others")
     async def logout_others(self, refresh_token: str) -> None:
         """Завершает все refresh-сессии пользователя, кроме текущей."""
         async with self._uow_factory() as uow:

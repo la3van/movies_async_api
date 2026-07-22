@@ -12,7 +12,9 @@
 - `elasticsearch[async]`;
 - `redis.asyncio`;
 - Pydantic v2;
-- ORJSONResponse.
+- ORJSONResponse;
+- OpenTelemetry SDK и OTLP/gRPC exporter;
+- Jaeger.
 
 ## Архитектура
 
@@ -28,6 +30,8 @@ Service
     └── Repository interface
            ↑
       Elasticsearch repository
+
+Service ── OTLP/gRPC ──► Jaeger
 ```
 
 ## Структура
@@ -37,7 +41,7 @@ content_service/
 ├── src/
 │   ├── api/                  # endpoints, DI, API-схемы и мапперы
 │   ├── cache/                # интерфейс кеша и Redis-реализация
-│   ├── core/                 # настройки и логирование
+│   ├── core/                 # настройки, логирование и tracing
 │   ├── db/                   # клиенты Redis и Elasticsearch
 │   ├── models/               # внутренние Pydantic-модели
 │   ├── repositories/
@@ -120,6 +124,78 @@ PERSON_CACHE_EXPIRE_IN_SECONDS=300
 Redis-клиент использует `Retry` и `ExponentialWithJitterBackoff` для ошибок соединения и таймаутов.
 
 Репозитории, кеш и бизнес-сервисы не дублируют retry-логику.
+
+## Распределённая трассировка
+
+Трассировка настраивается в `src/core/tracing.py` и подключается в `src/main.py` до обработки запросов.
+
+### Автоматические spans
+
+| Instrumentor | Что отображается в Jaeger |
+| --- | --- |
+| `FastAPIInstrumentor` | серверный HTTP-span для endpoint |
+| `RedisInstrumentor` | `GET`, `SET` и другие Redis-команды |
+| `ElasticsearchInstrumentor` | Elasticsearch search/get-запросы |
+
+### Ручные spans сервисного слоя
+
+Декоратор `@trace_method(...)` создаёт дочерний span вокруг бизнес-метода:
+
+```text
+content.films.get_by_id
+content.films.get_sorted
+content.films.search
+content.films.get_similar
+content.genres.get_by_id
+content.genres.get_many
+content.persons.get_by_id
+content.persons.get_many
+content.persons.get_films
+```
+
+Декоратор поддерживает sync- и async-функции. В Content Service используются асинхронные wrappers, а Redis и Elasticsearch spans автоматически становятся дочерними текущего service-span.
+
+Пример cache miss:
+
+```text
+GET /api/v1/films/
+└── content.films.get_sorted
+    ├── Redis GET
+    ├── Elasticsearch search
+    └── Redis SET
+```
+
+При повторе запроса с теми же параметрами обычно отображается cache hit:
+
+```text
+GET /api/v1/films/
+└── content.films.get_sorted
+    └── Redis GET
+```
+
+### Переменные OpenTelemetry
+
+```env
+OTEL_ENABLED=true
+OTEL_SERVICE_NAME=content-service
+OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+OTEL_EXPORTER_OTLP_INSECURE=true
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=x-request-id
+```
+
+`OTEL_ENABLED=false` отключает настройку provider и instrumentors. В локальной конфигурации sampler равен `ALWAYS_ON`, поэтому записывается каждый запрос.
+
+Проверка:
+
+```bash
+curl -i \
+  -H "X-Request-ID: content-trace-check-001" \
+  "http://127.0.0.1:8000/api/v1/films/?page_number=1&page_size=5"
+```
+
+Откройте `http://127.0.0.1:16686/`, выберите `content-service` и найдите последний trace. На серверном span должен быть атрибут `http.request.header.x_request_id`.
+
+Общие сведения и диагностика: [../../infrastructure/jaeger/README.md](../../infrastructure/jaeger/README.md).
 
 ## Запуск через Docker Compose
 

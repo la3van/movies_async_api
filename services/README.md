@@ -35,7 +35,7 @@ services/
 
 Каталоги `src/services/` внутри FastAPI-приложений имеют другой смысл и содержат слой бизнес-логики конкретного приложения.
 
-Общие для нескольких приложений инфраструктурные ресурсы вынесены в [`../infrastructure`](../infrastructure). Внешний HTTP-трафик маршрутизирует [Nginx](../infrastructure/nginx/README.md).
+Общие для нескольких приложений инфраструктурные ресурсы вынесены в [`../infrastructure`](../infrastructure). Внешний HTTP-трафик маршрутизирует [Nginx](../infrastructure/nginx/README.md), а HTTP-сервисы экспортируют traces в [Jaeger](../infrastructure/jaeger/README.md).
 
 ## Admin Service
 
@@ -64,7 +64,8 @@ admin_service/
 - не управляет структурой контентных таблиц через Django migrations;
 - запускается через Gunicorn;
 - отдаёт статические файлы через WhiteNoise;
-- поддерживает опциональную Django Debug Toolbar.
+- поддерживает опциональную Django Debug Toolbar;
+- трассирует Django-запросы, HTTPX-вызовы и PostgreSQL-операции.
 
 Документация: [admin_service/README.md](admin_service/README.md).
 
@@ -81,7 +82,7 @@ content_service/
 └── README.md
 ```
 
-Сервис читает данные из Elasticsearch и кеширует ответы в Redis.
+Сервис читает данные из Elasticsearch, кеширует ответы в Redis и создаёт OpenTelemetry spans для HTTP-запросов, бизнес-методов, Redis и Elasticsearch.
 
 Документация: [content_service/README.md](content_service/README.md).
 
@@ -101,7 +102,7 @@ auth_service/
 
 Auth Service является источником истины для пользователей и паролей.
 
-Admin Service использует его endpoints входа и получения текущего пользователя, но не хранит настоящий пароль администратора в своей SQLite-базе.
+Admin Service использует его endpoints входа и получения текущего пользователя, но не хранит настоящий пароль администратора в своей SQLite-базе. HTTPX автоматически передаёт `traceparent`, поэтому Admin Service и Auth Service отображаются в одном distributed trace.
 
 Документация: [auth_service/README.md](auth_service/README.md).
 
@@ -150,9 +151,39 @@ Content Service
 Auth Service
 ├── PostgreSQL → auth-postgres
 └── Redis DB 2 → cache
+
+Content Service ─┐
+Auth Service ────┼── OTLP/gRPC → Jaeger
+Admin Service ───┘
 ```
 
 Nginx публикует единственный внешний порт для прикладных HTTP-сервисов: `127.0.0.1:8000`. `content-service`, `auth-service` и `admin-service` доступны по порту `8000` только внутри Docker-сети.
+
+## Распределённая трассировка
+
+Трассировка включена для трёх HTTP-приложений:
+
+| Сервис | Автоматическая инструментация | Ручные spans |
+| --- | --- | --- |
+| `content-service` | FastAPI, Redis, Elasticsearch | `content.films.*`, `content.genres.*`, `content.persons.*` |
+| `auth-service` | FastAPI, Redis, SQLAlchemy | `auth.*`, `users.*`, `roles.*`, `permissions.*`, `tokens.*` |
+| `admin-service` | Django, HTTPX, psycopg | `admin.authenticate`, `admin.get_user` |
+
+Общий декоратор `trace_method()` поддерживает и `async def`, и обычные `def`. Он создаёт span вокруг бизнес-метода, а instrumentor-библиотеки автоматически добавляют вложенные spans Redis, PostgreSQL, Elasticsearch и HTTPX.
+
+Для всех трёх сервисов используются переменные:
+
+```env
+OTEL_ENABLED=true
+OTEL_SERVICE_NAME=<service-name>
+OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+OTEL_EXPORTER_OTLP_INSECURE=true
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=x-request-id
+```
+
+`content-etl` в текущей конфигурации не экспортирует traces: это отдельный синхронный фоновый процесс без HTTP API.
+
+Полное описание: [Jaeger и OpenTelemetry](../infrastructure/jaeger/README.md).
 
 ## Переменные окружения
 
@@ -240,6 +271,7 @@ docker compose logs -f nginx
 docker compose logs -f content-service
 docker compose logs -f auth-service
 docker compose logs -f admin-service
+docker compose logs -f jaeger
 docker compose logs -f content-etl
 ```
 

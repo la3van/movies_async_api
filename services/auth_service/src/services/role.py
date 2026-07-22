@@ -1,4 +1,5 @@
 """Сервис работы с ролями."""
+from core.tracing import trace_method
 from uuid import UUID
 
 from api.v1.schemas.roles import RoleCreate, RoleResponse, RoleUpdate
@@ -30,6 +31,7 @@ class RoleService:
         self._cache = cache
         self._role_cache_ttl = role_cache_ttl
 
+    @trace_method("roles.get_by_id")
     async def get_by_id(self, role_id: UUID) -> RoleResponse:
         """Возвращает роль по идентификатору."""
         role_cache_key = get_role_cache_key(role_id)
@@ -56,6 +58,7 @@ class RoleService:
 
         return role
 
+    @trace_method("roles.get_all")
     async def get_all(
         self,
         limit: int,
@@ -93,6 +96,7 @@ class RoleService:
 
         return roles
 
+    @trace_method("roles.create")
     async def create(self, role_data: RoleCreate) -> RoleResponse:
         """Создаёт роль."""
         async with self._uow_factory() as uow:
@@ -127,6 +131,7 @@ class RoleService:
 
         return role
 
+    @trace_method("roles.update")
     async def update(
         self,
         role_id: UUID,
@@ -192,6 +197,7 @@ class RoleService:
 
         return role
 
+    @trace_method("roles.delete")
     async def delete(self, role_id: UUID) -> None:
         """Удаляет роль."""
         async with self._uow_factory() as uow:

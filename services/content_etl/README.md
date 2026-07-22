@@ -175,6 +175,20 @@ docker compose up --build
 
 Команда удаляет данные PostgreSQL, Elasticsearch и Redis.
 
+## Наблюдаемость
+
+В текущей конфигурации Content ETL не экспортирует OpenTelemetry traces в Jaeger. Распределённая трассировка настроена для HTTP-приложений `content-service`, `auth-service` и `admin-service`.
+
+ETL диагностируется по собственным логам, состоянию Redis и результатам загрузки Elasticsearch:
+
+```bash
+docker compose logs -f content-etl
+docker compose exec redis redis-cli --scan --pattern 'etl_state:*'
+curl "http://localhost:9200/_cat/indices?v"
+```
+
+Если трассировка фонового процесса будет добавлена позднее, полезными границами spans будут отдельная итерация ETL, обработка batch и retry-попытка, а не каждая чистая transform-функция.
+
 ## Проверка результата
 
 ```bash

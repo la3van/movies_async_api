@@ -1,4 +1,5 @@
 """Модуль бизнес-логики для работы с фильмами."""
+from core.tracing import trace_method
 from cache.base import Cache
 from models.film import Film, ShortFilm
 from repositories.interfaces.film import FilmRepository
@@ -28,6 +29,7 @@ class FilmService:
         self._cache = cache
         self._cache_ttl = cache_ttl
 
+    @trace_method("content.films.get_by_id")
     async def get_film_by_id(
         self,
         film_id: str
@@ -54,6 +56,7 @@ class FilmService:
 
         return film
 
+    @trace_method("content.films.get_sorted")
     async def get_sorted_films(
         self,
         sort: str = '-imdb_rating',
@@ -91,6 +94,7 @@ class FilmService:
 
         return sorted_films
 
+    @trace_method("content.films.search")
     async def get_searched_films(
         self,
         query: str,
@@ -125,6 +129,7 @@ class FilmService:
 
         return searched_films
 
+    @trace_method("content.films.get_similar")
     async def get_similar_films(
         self,
         film_id: str,

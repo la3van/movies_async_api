@@ -11,6 +11,10 @@ from sqlalchemy.orm import DeclarativeBase
 
 from core.config import get_settings
 
+from opentelemetry.instrumentation.sqlalchemy import (
+    SQLAlchemyInstrumentor,
+)
+
 
 class Base(DeclarativeBase):
     """Базовый класс для всех SQLAlchemy-моделей."""
@@ -39,6 +43,10 @@ async def init_postgres() -> None:
                 ),
             },
         },
+    )
+
+    SQLAlchemyInstrumentor().instrument(
+        engine=engine.sync_engine,
     )
 
     async_session_factory = async_sessionmaker(
