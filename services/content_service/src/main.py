@@ -10,6 +10,7 @@ from logging.config import dictConfig
 from api.v1.router import api_router
 from core.config import get_settings
 from core.logger import LOGGING
+from core.request_id import RequestIdMiddleware
 from db.elastic import close_elastic, init_elastic
 from db.redis import close_redis, init_redis
 from auth.client import (
@@ -23,7 +24,11 @@ from opentelemetry.instrumentation.elasticsearch import (
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 
-from core.tracing import configure_tracing
+from core.tracing import configure_tracing, shutdown_tracing
+
+from opentelemetry.instrumentation.httpx import (
+    HTTPXClientInstrumentor,
+)
 
 dictConfig(LOGGING)
 
@@ -41,6 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await close_elastic()
         await close_redis()
         await close_auth_client()
+        shutdown_tracing()
 
 
 settings = get_settings()
@@ -54,6 +60,9 @@ if tracer_provider is not None:
         tracer_provider=tracer_provider,
     )
     ElasticsearchInstrumentor().instrument(
+        tracer_provider=tracer_provider,
+    )
+    HTTPXClientInstrumentor().instrument(
         tracer_provider=tracer_provider,
     )
 
@@ -75,6 +84,7 @@ if tracer_provider is not None:
         app,
         tracer_provider=tracer_provider,
     )
+app.add_middleware(RequestIdMiddleware)
 
 app.include_router(
     api_router,

@@ -85,6 +85,17 @@ def configure_tracing(
     return provider
 
 
+def shutdown_tracing() -> None:
+    """Отправляет оствшиеся spans и завершает provider."""
+    if _configured_provider is None:
+        return
+
+    _configured_provider.force_flush(
+        timeout_millis=5000,
+    )
+    _configured_provider.shutdown()
+
+
 def trace_method(span_name: str) -> Callable[[CallableT], CallableT]:
     """Оборачивает синхронный или асинхронный метод в дочерний span."""
     def decorator(func: CallableT) -> CallableT:
