@@ -12,6 +12,10 @@ from core.config import get_settings
 from core.logger import LOGGING
 from db.elastic import close_elastic, init_elastic
 from db.redis import close_redis, init_redis
+from auth.client import (
+    close_auth_client,
+    init_auth_client,
+)
 
 from opentelemetry.instrumentation.elasticsearch import (
     ElasticsearchInstrumentor,
@@ -29,11 +33,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Упарвляет жизненным циклом приложения."""
     await init_elastic()
     await init_redis()
+    await init_auth_client()
 
-    yield
-
-    await close_elastic()
-    await close_redis()
+    try:
+        yield
+    finally:
+        await close_elastic()
+        await close_redis()
+        await close_auth_client()
 
 
 settings = get_settings()

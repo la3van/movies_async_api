@@ -1,5 +1,6 @@
 """FastAPI dependencies auth-сервиса."""
 from uuid import UUID
+from ipaddress import ip_address
 
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
@@ -157,8 +158,28 @@ def get_request_user_agent(request: Request) -> str | None:
 
 
 def get_request_ip_address(request: Request) -> str | None:
-    """Возвращает IP-адрес клиента из запроса."""
+    """
+    Возвращает исходный IP-адрес пользователя.
+
+    Внешний запрос проходит через доверенный Nginx, а запрос
+    Django Admin дополнительно проходит через admin-service.
+    Оба сервиса передают исходный адрес в X-Real-IP.
+    """
+    forwarded_ip = request.headers.get(
+        "x-real-ip",
+    )
+    if forwarded_ip:
+        try:
+            return str(ip_address(forwarded_ip.strip()))
+        except ValueError:
+            pass
+
     if request.client is None:
         return None
 
-    return request.client.host
+    client_host = request.client.host
+
+    try:
+        return str(client_host)
+    except ValueError:
+        return client_host

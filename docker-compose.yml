@@ -49,8 +49,6 @@ services:
     depends_on:
       theatre-db:
         condition: service_healthy
-      auth-service:
-        condition: service_started
       jaeger:
         condition: service_started
     restart: unless-stopped

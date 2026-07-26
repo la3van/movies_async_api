@@ -59,6 +59,30 @@ class Settings(BaseSettings):
     redis_retry_backoff_base: float = 0.1
     redis_retry_backoff_cap: float = 1.0
 
+    # Auth-service
+    auth_service_host: str = 'auth-service'
+    auth_service_port: int = 8000
+    auth_service_api_prefix: str = '/api/v1'
+
+    auth_service_connect_timeout: int = 1
+    auth_service_read_timeout: int = 2
+
+    auth_permission_cache_ttl: int = 60
+
+    # JWT
+    jwt_secret_key: str
+    jwt_algorithm: str = 'HS256'
+
+    @property
+    def auth_service_base_url(self) -> str:
+        """Возвращает внутренний URL Auth Service."""
+        api_prefix = self.auth_service_api_prefix.strip('/')
+
+        return (
+            f'http://{self.auth_service_host}:'
+            f'{self.auth_service_port}/{api_prefix}/'
+        )
+
     @property
     def elastic_url(self) -> str:
         """Возвращает URL Elasticsearch."""
