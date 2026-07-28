@@ -43,3 +43,39 @@ class PermissionAlreadyExistsError(AuthServiceError):
 
 class PermissionNotFoundError(AuthServiceError):
     """Ошибка отсутствующего права доступа."""
+
+
+class InvalidOAuthStateError(AuthServiceError):
+    """Ошибка отсутствующего, просроченного или неверного OAuth-state."""
+
+
+class OAuthStateStorageError(AuthServiceError):
+    """Ошибка хранилища OAuth-state."""
+
+
+class OAuthProviderError(AuthServiceError):
+    """Базовая ошибка внешнего OAuth-провайдера."""
+
+
+class OAuthProviderUnavailableError(OAuthProviderError):
+    """OAuth-провайдер недоступен по сети или вернил 5xx."""
+
+
+class OAuthProviderResponseError(OAuthProviderError):
+    """OAuth-провайдер отклонил запрос или вернул неверный ответ."""
+
+
+class OAuthProviderNotConfiguredError(AuthServiceError):
+    """Ошибка отсутствующей конфигурации OAuth-провайдера."""
+
+
+class OAuthAuthorizationError(AuthServiceError):
+    """OAuth-провайдер вернул ошибку вместо authorization code."""
+
+
+class OAuthEmailRequiredError(AuthServiceError):
+    """OAuth-провайдер не предоставил подходящий email."""
+
+
+class OAuthAccountLinkRequiredError(AuthServiceError):
+    """Email уже принадлежит локальному аккаунту."""

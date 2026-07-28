@@ -1,6 +1,9 @@
 """FastAPI dependencies auth-сервиса."""
+import httpx
+
 from uuid import UUID
 from ipaddress import ip_address
+from collections.abc import AsyncIterator
 
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
@@ -27,6 +30,15 @@ from services.user import UserService
 from unit_of_work.base import AbstractUnitOfWork, UnitOfWorkFactory
 from unit_of_work.postgres import SQLAlchemyUnitOfWork
 
+from oauth.base import OAuthProvider
+from oauth.state import RedisOAuthStateStore
+from oauth.providers import (
+    YandexOAuthProvider,
+    GoogleOAuthProvider,
+    VkOAuthProvider,
+)
+from oauth.registry import OAuthProviderRegistry
+from services.oauth import OAuthService
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl='/api/v1/auth/login',
@@ -51,6 +63,158 @@ async def get_redis_cache(
 ) -> RedisCache:
     """Возвращает Redis-кеш."""
     return RedisCache(redis)
+
+
+async def get_oauth_state_store(
+    redis: Redis = Depends(get_redis),
+) -> RedisOAuthStateStore:
+    """Возвращает Redis-хранилище OAuth-state."""
+    settings = get_settings()
+
+    return RedisOAuthStateStore(
+        redis=redis,
+        key_prefix=settings.build_redis_key(
+            settings.oauth_state_key_prefix,
+        ),
+        ttl_seconds=settings.oauth_state_ttl_seconds,
+    )
+
+
+async def get_oauth_http_client() -> AsyncIterator[httpx.AsyncClient]:
+    """Возвращает HTTP-клиент для OAuth-провайдеров."""
+    settings = get_settings()
+
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(
+            settings.oauth_http_timeout_seconds,
+        ),
+        follow_redirects=False,
+    ) as client:
+        yield client
+
+
+def get_yandex_oauth_provider(
+    http_client: httpx.AsyncClient = Depends(
+        get_oauth_http_client,
+    ),
+) -> YandexOAuthProvider | None:
+    """Возвращает OAuth-адаптер Яндекса."""
+    settings = get_settings()
+
+    client_id = settings.yandex_oauth_client_id
+    client_secret = (
+        settings.yandex_oauth_client_secret.get_secret_value()
+    )
+
+    if not client_id or not client_secret:
+        return None
+
+    return YandexOAuthProvider(
+        client_id=client_id,
+        client_secret=client_secret,
+        redirect_uri=settings.yandex_oauth_redirect_uri,
+        scopes=settings.yandex_oauth_scopes,
+        http_client=http_client,
+    )
+
+
+def get_google_oauth_provider(
+    http_client: httpx.AsyncClient = Depends(
+        get_oauth_http_client,
+    ),
+) -> GoogleOAuthProvider | None:
+    """Возвращает Google-адаптер, если он настроен."""
+    settings = get_settings()
+
+    client_id = settings.google_oauth_client_id
+    client_secret = (
+        settings.google_oauth_client_secret
+        .get_secret_value()
+    )
+
+    if not client_id or not client_secret:
+        return None
+
+    return GoogleOAuthProvider(
+        client_id=client_id,
+        client_secret=client_secret,
+        redirect_uri=settings.google_oauth_redirect_uri,
+        scopes=settings.google_oauth_scopes,
+        http_client=http_client,
+    )
+
+
+def get_vk_oauth_provider(
+    http_client: httpx.AsyncClient = Depends(
+        get_oauth_http_client,
+    ),
+) -> VkOAuthProvider | None:
+    """Возвращает VK ID-адаптер, если он настроен."""
+
+    settings = get_settings()
+
+    client_id = settings.vk_oauth_client_id
+
+    if not client_id:
+        return None
+
+    return VkOAuthProvider(
+        client_id=client_id,
+        redirect_uri=settings.vk_oauth_redirect_uri,
+        scopes=settings.vk_oauth_scopes,
+        http_client=http_client,
+    )
+
+
+def get_oauth_provider_registry(
+    yandex_provider: YandexOAuthProvider | None = Depends(
+        get_yandex_oauth_provider,
+    ),
+    google_provider: GoogleOAuthProvider | None = Depends(
+        get_google_oauth_provider,
+    ),
+    vk_provider: VkOAuthProvider | None = Depends(
+        get_vk_oauth_provider,
+    ),
+) -> OAuthProviderRegistry:
+    """Возвращает реестр настроенных OAuth-провайдеров."""
+    providers: list[OAuthProvider] = []
+
+    for provider in (
+        yandex_provider,
+        google_provider,
+        vk_provider,
+    ):
+        if provider is not None:
+            providers.append(provider)
+
+    return OAuthProviderRegistry(
+        providers,
+    )
+
+
+def get_oauth_service(
+    provider_registry: OAuthProviderRegistry = Depends(
+        get_oauth_provider_registry,
+    ),
+    state_store: RedisOAuthStateStore = Depends(
+        get_oauth_state_store,
+    ),
+    uow_factory: UnitOfWorkFactory = Depends(
+        get_uow_factory,
+    ),
+    cache: RedisCache = Depends(
+        get_redis_cache,
+    ),
+) -> OAuthService:
+    """Возвращает сервис социальной OAuth-аутентификации."""
+    return OAuthService(
+        provider_registry=provider_registry,
+        state_store=state_store,
+        uow_factory=uow_factory,
+        token_service=TokenService(),
+        cache=cache,
+    )
 
 
 async def get_auth_service(

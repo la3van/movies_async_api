@@ -5,6 +5,7 @@ from models.permission import Permission
 from models.refresh_session import RefreshSession
 from models.role import Role
 from models.user import User
+from models.social_account import SocialAccount
 
 __all__ = (
     'LoginHistory',
@@ -14,4 +15,5 @@ __all__ = (
     'User',
     'role_permissions',
     'user_roles',
+    'SocialAccount',
 )

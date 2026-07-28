@@ -1,6 +1,7 @@
 """Модуль настроек auth-сервиса."""
 from functools import lru_cache
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,6 +44,38 @@ class Settings(BaseSettings):
     # Rate limiting
     rate_limit_enabled: bool = True
     rate_limit_key_prefix: str = 'auth:rate_limit'
+
+    # OAuth
+    oauth_state_ttl_seconds: int = 300
+    oauth_state_key_prefix: str = 'oauth:state'
+
+    # OAuth HTTP
+    oauth_http_timeout_seconds: int = 10
+
+    # Yandex OAuth
+    yandex_oauth_client_id: str = ''
+    yandex_oauth_client_secret: SecretStr = SecretStr('')
+    yandex_oauth_redirect_uri: str = (
+        'http://localhost:8000'
+        '/api/v1/auth/oauth/yandex/callback'
+    )
+    yandex_oauth_scopes: str = 'login:info login:email'
+
+    # Google OAuth
+    google_oauth_client_id: str = ''
+    google_oauth_client_secret: SecretStr = SecretStr('')
+    google_oauth_redirect_uri: str = (
+        'http://localhost:8000'
+        '/api/v1/auth/oauth/google/callback'
+    )
+    google_oauth_scopes: str = 'openid email profile'
+
+    # TODO: Complete VK ID end-to-end setup after obtaining
+    # a trusted public HTTPS domain. VK ID rejects localhost
+    # and temporary trycloudflare.com callback domains.
+    vk_oauth_client_id: str = ''
+    vk_oauth_redirect_uri: str = ''
+    vk_oauth_scopes: str = 'email'
 
     # JWT
     jwt_secret_key: str

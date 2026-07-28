@@ -6,6 +6,9 @@ from repositories.postgres.refresh_session import (
 )
 from repositories.postgres.role import PostgresRoleRepository
 from repositories.postgres.user import PostgresUserRepository
+from repositories.postgres.social_account import (
+    PostgresSocialAccountRepository
+)
 
 __all__ = (
     'PostgresLoginHistoryRepository',
@@ -13,4 +16,5 @@ __all__ = (
     'PostgresRefreshSessionRepository',
     'PostgresRoleRepository',
     'PostgresUserRepository',
+    'PostgresSocialAccountRepository',
 )
