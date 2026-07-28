@@ -167,13 +167,13 @@ def get_vk_oauth_provider(
 
 
 def get_oauth_provider_registry(
-    yandex_provider: YandexOAuthProvider = Depends(
+    yandex_provider: YandexOAuthProvider | None = Depends(
         get_yandex_oauth_provider,
     ),
-    google_provider: GoogleOAuthProvider = Depends(
+    google_provider: GoogleOAuthProvider | None = Depends(
         get_google_oauth_provider,
     ),
-    vk_provider: VkOAuthProvider = Depends(
+    vk_provider: VkOAuthProvider | None = Depends(
         get_vk_oauth_provider,
     ),
 ) -> OAuthProviderRegistry:
