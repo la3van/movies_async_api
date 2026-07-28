@@ -14,6 +14,7 @@ from api.v1.mappers.persons import (
     build_person_response,
     build_short_film_response,
 )
+from core.rate_limit import rate_limit
 
 router = APIRouter()
 
@@ -21,6 +22,15 @@ router = APIRouter()
 @router.get(
     '/search',
     response_model=list[PersonResponse],
+    dependencies=[
+        Depends(
+            rate_limit(
+                scope='persons:search',
+                requests=30,
+                window_seconds=60,
+            ),
+        ),
+    ],
     summary='Поиск персон',
     description=(
         'Выполняет поиск персон по имени. '

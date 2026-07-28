@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     redis_retry_backoff_base: float = 0.1
     redis_retry_backoff_cap: float = 1.0
 
+    # Rate limiting
+    rate_limit_enabled: bool = True
+    rate_limit_key_prefix: str = 'content:rate_limit'
+
     # Auth-service
     auth_service_host: str = 'auth-service'
     auth_service_port: int = 8000

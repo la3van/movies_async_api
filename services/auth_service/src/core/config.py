@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     redis_retry_backoff_base: float = 0.1
     redis_retry_backoff_cap: float = 1.0
 
+    # Rate limiting
+    rate_limit_enabled: bool = True
+    rate_limit_key_prefix: str = 'auth:rate_limit'
+
     # JWT
     jwt_secret_key: str
     jwt_algorithm: str = 'HS256'

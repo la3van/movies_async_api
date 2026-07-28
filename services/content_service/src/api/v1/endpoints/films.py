@@ -15,6 +15,7 @@ from api.v1.mappers.films import (
     build_film_detail_response,
     build_short_film_response,
 )
+from core.rate_limit import rate_limit
 
 router = APIRouter()
 
@@ -77,11 +78,20 @@ async def get_sorted_films(
 @router.get(
     '/search',
     response_model=list[ShortFilmResponse],
+    dependencies=[
+        Depends(
+            rate_limit(
+                scope='films:search',
+                requests=30,
+                window_seconds=60,
+            ),
+        ),
+    ],
     summary='Поиск фильмов',
     description=(
         'Выполняет полнотекстовый поиск по фильмам. '
-        'Поиск учитывает название, описание, актёров, сценаристов и'
-        'режиссёров.'
+        'Поиск учитывает название, описание, актёров, '
+        'сценаристов и режиссёров.'
     ),
     response_description='Список найденных фильмов',
 )
@@ -123,6 +133,15 @@ async def search_films(
 @router.get(
     '/{film_id}/similar',
     response_model=list[ShortFilmResponse],
+    dependencies=[
+        Depends(
+            rate_limit(
+                scope='films:similar',
+                requests=30,
+                window_seconds=60,
+            ),
+        ),
+    ],
     summary='Похожие фильмы',
     description=(
         'Возвращает фильмы, похожие на указанный фильм. '

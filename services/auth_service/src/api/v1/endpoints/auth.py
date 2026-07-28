@@ -15,7 +15,7 @@ from api.v1.schemas.auth import (
     TokenPairResponse,
 )
 from services.auth import AuthService
-
+from core.rate_limit import rate_limit
 
 router = APIRouter(prefix='/auth', tags=['auth'])
 
@@ -24,13 +24,24 @@ router = APIRouter(prefix='/auth', tags=['auth'])
     '/register',
     response_model=TokenPairResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        Depends(
+            rate_limit(
+                scope='auth:register',
+                requests=3,
+                window_seconds=60,
+            ),
+        ),
+    ],
     summary='Регистрация пользователя',
     description=(
         'Создаёт нового пользователя в auth-сервисе, '
         'сохраняет первую login-сессию и возвращает '
         'пару JWT-токенов: access и refresh.'
     ),
-    response_description='Пара access и refresh токенов нового пользователя',
+    response_description=(
+        'Пара access и refresh токенов нового пользователя'
+    ),
 )
 async def register(
     register_data: RegisterRequest,
@@ -49,6 +60,15 @@ async def register(
 @router.post(
     '/login',
     response_model=TokenPairResponse,
+    dependencies=[
+        Depends(
+            rate_limit(
+                scope='auth:login',
+                requests=5,
+                window_seconds=60,
+            ),
+        ),
+    ],
     summary='Вход пользователя',
     description=(
         'Аутентифицирует пользователя по логину и паролю, '
@@ -73,6 +93,15 @@ async def login(
 @router.post(
     '/refresh',
     response_model=TokenPairResponse,
+    dependencies=[
+        Depends(
+            rate_limit(
+                scope='auth:refresh',
+                requests=10,
+                window_seconds=60,
+            ),
+        ),
+    ],
     summary='Обновление токенов',
     description=(
         'Принимает refresh-токен, проверяет его валидность, '
