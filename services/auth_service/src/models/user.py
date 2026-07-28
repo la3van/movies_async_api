@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from models.login_history import LoginHistory
     from models.refresh_session import RefreshSession
     from models.role import Role
+    from models.social_account import SocialAccount
 
 
 class User(UUIDMixin, TimestampMixin, Base):
@@ -76,4 +77,9 @@ class User(UUIDMixin, TimestampMixin, Base):
 
     login_history: Mapped[list[LoginHistory]] = relationship(
         back_populates='user',
+    )
+
+    social_accounts: Mapped[list[SocialAccount]] = relationship(
+        back_populates='user',
+        cascade='all, delete-orphan',
     )

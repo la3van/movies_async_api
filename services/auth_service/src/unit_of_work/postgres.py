@@ -14,6 +14,9 @@ from repositories.postgres.permission import (
 )
 from repositories.postgres.role import PostgresRoleRepository
 from repositories.postgres.user import PostgresUserRepository
+from repositories.postgres.social_account import (
+    PostgresSocialAccountRepository,
+)
 from unit_of_work.base import AbstractUnitOfWork
 
 
@@ -38,6 +41,9 @@ class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
             self.session,
         )
         self.login_history = PostgresLoginHistoryRepository(
+            self.session,
+        )
+        self.social_accounts = PostgresSocialAccountRepository(
             self.session,
         )
 

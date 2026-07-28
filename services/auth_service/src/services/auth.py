@@ -18,6 +18,7 @@ from services.exceptions import (
     UserNotFoundError,
 )
 from services.token import TokenPair, TokenService
+from services.login_session import create_login_session
 from unit_of_work.base import (
     AbstractUnitOfWork,
     UnitOfWorkFactory,
@@ -84,24 +85,10 @@ class AuthService:
             if user_with_roles is None:
                 raise UserNotFoundError('User not found')
 
-            token_pair, refresh_token_data = (
-                self._token_service.create_token_pair(
-                    user_with_roles,
-                )
-            )
-
-            await uow.refresh_sessions.create(
-                user_id=user_with_roles.id,
-                token_hash=refresh_token_data.token_hash,
-                expires_at=refresh_token_data.expires_at,
-                user_agent=user_agent,
-                ip_address=ip_address,
-            )
-
-            await uow.login_history.create(
-                user_id=user_with_roles.id,
-                login=user_with_roles.login,
-                is_successful=True,
+            token_pair = await create_login_session(
+                uow=uow,
+                token_service=self._token_service,
+                user=user_with_roles,
                 user_agent=user_agent,
                 ip_address=ip_address,
             )
@@ -163,22 +150,10 @@ class AuthService:
                 )
                 raise InactiveUserError('User is inactive')
 
-            token_pair, refresh_token_data = (
-                self._token_service.create_token_pair(user)
-            )
-
-            await uow.refresh_sessions.create(
-                user_id=user.id,
-                token_hash=refresh_token_data.token_hash,
-                expires_at=refresh_token_data.expires_at,
-                user_agent=user_agent,
-                ip_address=ip_address,
-            )
-
-            await uow.login_history.create(
-                user_id=user.id,
-                login=user.login,
-                is_successful=True,
+            token_pair = await create_login_session(
+                uow=uow,
+                token_service=self._token_service,
+                user=user,
                 user_agent=user_agent,
                 ip_address=ip_address,
             )

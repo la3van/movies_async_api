@@ -9,6 +9,7 @@ from repositories.interfaces import (
     RefreshSessionRepository,
     RoleRepository,
     UserRepository,
+    SocialAccountRepository,
 )
 
 
@@ -19,6 +20,7 @@ class AbstractUnitOfWork(ABC):
     permissions: PermissionRepository
     refresh_sessions: RefreshSessionRepository
     login_history: LoginHistoryRepository
+    social_accounts: SocialAccountRepository
 
     @abstractmethod
     async def __aenter__(self) -> 'AbstractUnitOfWork':

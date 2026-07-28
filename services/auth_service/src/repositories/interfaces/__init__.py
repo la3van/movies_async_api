@@ -4,6 +4,9 @@ from repositories.interfaces.permission import PermissionRepository
 from repositories.interfaces.refresh_session import RefreshSessionRepository
 from repositories.interfaces.role import RoleRepository
 from repositories.interfaces.user import UserRepository
+from repositories.interfaces.social_account import (
+    SocialAccountRepository,
+)
 
 __all__ = (
     'LoginHistoryRepository',
@@ -11,4 +14,5 @@ __all__ = (
     'RefreshSessionRepository',
     'RoleRepository',
     'UserRepository',
+    'SocialAccountRepository',
 )

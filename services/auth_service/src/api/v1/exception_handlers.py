@@ -5,7 +5,12 @@ from fastapi.responses import ORJSONResponse
 from services.exceptions import (
     InactiveUserError,
     InvalidCredentialsError,
+    InvalidOAuthStateError,
     InvalidRefreshTokenError,
+    OAuthProviderNotConfiguredError,
+    OAuthProviderResponseError,
+    OAuthProviderUnavailableError,
+    OAuthStateStorageError,
     PermissionAlreadyExistsError,
     PermissionDeniedError,
     PermissionNotFoundError,
@@ -13,6 +18,9 @@ from services.exceptions import (
     RoleNotFoundError,
     UserAlreadyExistsError,
     UserNotFoundError,
+    OAuthAccountLinkRequiredError,
+    OAuthAuthorizationError,
+    OAuthEmailRequiredError,
 )
 
 
@@ -27,6 +35,14 @@ EXCEPTION_STATUS_CODES: dict[type[Exception], int] = {
     RoleNotFoundError: status.HTTP_404_NOT_FOUND,
     PermissionAlreadyExistsError: status.HTTP_409_CONFLICT,
     PermissionNotFoundError: status.HTTP_404_NOT_FOUND,
+    InvalidOAuthStateError: status.HTTP_400_BAD_REQUEST,
+    OAuthProviderNotConfiguredError: status.HTTP_503_SERVICE_UNAVAILABLE,
+    OAuthProviderUnavailableError: status.HTTP_503_SERVICE_UNAVAILABLE,
+    OAuthProviderResponseError: status.HTTP_502_BAD_GATEWAY,
+    OAuthStateStorageError: status.HTTP_503_SERVICE_UNAVAILABLE,
+    OAuthAuthorizationError: status.HTTP_400_BAD_REQUEST,
+    OAuthEmailRequiredError: status.HTTP_400_BAD_REQUEST,
+    OAuthAccountLinkRequiredError: status.HTTP_409_CONFLICT,
 }
 
 
