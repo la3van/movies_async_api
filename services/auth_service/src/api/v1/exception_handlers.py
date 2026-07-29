@@ -21,6 +21,7 @@ from services.exceptions import (
     OAuthAccountLinkRequiredError,
     OAuthAuthorizationError,
     OAuthEmailRequiredError,
+    InvalidLoginHistoryDateRangeError,
 )
 
 
@@ -43,6 +44,7 @@ EXCEPTION_STATUS_CODES: dict[type[Exception], int] = {
     OAuthAuthorizationError: status.HTTP_400_BAD_REQUEST,
     OAuthEmailRequiredError: status.HTTP_400_BAD_REQUEST,
     OAuthAccountLinkRequiredError: status.HTTP_409_CONFLICT,
+    InvalidLoginHistoryDateRangeError: status.HTTP_422_UNPROCESSABLE_ENTITY,
 }
 
 

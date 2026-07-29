@@ -1,5 +1,6 @@
 """Эндпоинты пользователей."""
 from uuid import UUID
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
@@ -113,6 +114,14 @@ async def get_my_login_history(
         description='Смещение от начала списка',
         examples=[0],
     ),
+    created_from: datetime | None = Query(  # noqa: B008
+        description='Нижняя граница времени входа включительно.',
+        examples=['2026-07-01T00:00:00Z'],
+    ),
+    created_to: datetime | None = Query(  # noqa: B008
+        description='Верхняя граница времени входа не включительно.',
+        examples=['2026-08-01T00:00:00Z'],
+    ),
     current_user: UserResponse = (
         Depends(get_current_active_user)  # noqa: B008
     ),
@@ -124,6 +133,8 @@ async def get_my_login_history(
         user_id=current_user.id,
         limit=limit,
         offset=offset,
+        created_from=created_from,
+        created_to=created_to,
     )
 
 

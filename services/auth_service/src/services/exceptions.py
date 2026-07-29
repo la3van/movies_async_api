@@ -79,3 +79,7 @@ class OAuthEmailRequiredError(AuthServiceError):
 
 class OAuthAccountLinkRequiredError(AuthServiceError):
     """Email уже принадлежит локальному аккаунту."""
+
+
+class InvalidLoginHistoryDateRangeError(AuthServiceError):
+    """Начало диапазона истории не меньше его окончания."""

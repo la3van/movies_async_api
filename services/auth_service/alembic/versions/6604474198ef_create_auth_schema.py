@@ -1,10 +1,11 @@
-"""create auth tables
+"""create auth schema
 
-Revision ID: 063da50fd6fc
+Revision ID: 6604474198ef
 Revises: 
-Create Date: 2026-07-11 20:02:43.561790
+Create Date: 2026-07-29 17:12:39.939723
 
 """
+from datetime import date
 from typing import Sequence, Union
 
 from alembic import op
@@ -13,10 +14,90 @@ import sqlalchemy as sa
 
 
 # Revision identifiers, used by Alembic.
-revision: str = '063da50fd6fc'
+revision: str = '6604474198ef'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
+
+PARTITION_START = date(2025, 1, 1)
+PARTITION_END = date(2028, 1, 1)
+
+
+def _next_month(value: date) -> date:
+    """Возвращает первый день следующего месяца."""
+    if value.month == 12:
+        return date(value.year + 1, 1, 1)
+
+    return date(value.year, value.month + 1, 1)
+
+
+def _iter_partition_ranges():
+    """Возвращает месячные диапазоны партиций."""
+    partition_start = PARTITION_START
+
+    while partition_start < PARTITION_END:
+        partition_end = _next_month(partition_start)
+
+        yield partition_start, partition_end
+
+        partition_start = partition_end
+
+
+def _get_partition_name(partition_start: date) -> str:
+    """Формирует имя месячной партиции."""
+    return (
+        f'login_history_'
+        f'{partition_start.year}_'
+        f'{partition_start.month:02d}'
+    )
+
+
+def _create_login_history_partitions() -> None:
+    """Создаёт месячные и DEFAULT-партиции."""
+    for partition_start, partition_end in _iter_partition_ranges():
+        partition_name = _get_partition_name(partition_start)
+
+        op.execute(
+            f"""
+            CREATE TABLE "{partition_name}"
+            PARTITION OF login_history
+            FOR VALUES FROM (
+                '{partition_start.isoformat()} 00:00:00+00'
+            )
+            TO (
+                '{partition_end.isoformat()} 00:00:00+00'
+            )
+            """
+        )
+
+    op.execute(
+        """
+        CREATE TABLE login_history_default
+        PARTITION OF login_history
+        DEFAULT    
+        """
+    )
+
+
+def _drop_login_history_partitions() -> None:
+    """Удаляет DEFAULT и месячные партиции."""
+    op.execute(
+        """
+        DROP TABLE IF EXISTS login_history_default
+        """
+    )
+
+    partition_ranges = list(_iter_partition_ranges())
+
+    for partition_start, _ in reversed(partition_ranges):
+        partition_name = _get_partition_name(partition_start)
+
+        op.execute(
+            f"""
+            DROP TABLE IF EXISTS "{partition_name}"
+            """
+        )
 
 
 def upgrade() -> None:
@@ -58,6 +139,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('ix_users_login'), 'users', ['login'], unique=True)
     op.create_table('login_history',
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=True),
     sa.Column('login', sa.String(length=255), nullable=False),
     sa.Column('is_successful', sa.Boolean(), server_default=sa.text('false'), nullable=False),
@@ -65,13 +147,14 @@ def upgrade() -> None:
     sa.Column('user_agent', sa.String(length=512), nullable=True),
     sa.Column('ip_address', sa.String(length=45), nullable=True),
     sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('created_at', 'id'),
+    postgresql_partition_by='RANGE (created_at)'
     )
-    op.create_index(op.f('ix_login_history_login'), 'login_history', ['login'], unique=False)
-    op.create_index(op.f('ix_login_history_user_id'), 'login_history', ['user_id'], unique=False)
+    _create_login_history_partitions()
+    op.create_index('ix_login_history_login_created_at_id', 'login_history', ['login', sa.text('created_at DESC'), sa.text('id DESC')], unique=False)
+    op.create_index('ix_login_history_user_created_at_id', 'login_history', ['user_id', sa.text('created_at DESC'), sa.text('id DESC')], unique=False)
     op.create_table('refresh_sessions',
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('token_hash', sa.String(length=128), nullable=False),
@@ -94,6 +177,19 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['role_id'], ['roles.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('role_id', 'permission_id')
     )
+    op.create_table('social_accounts',
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('provider', sa.String(length=50), nullable=False),
+    sa.Column('provider_user_id', sa.String(length=255), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=True),
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('provider', 'provider_user_id', name='uq_social_accounts_provider_provider_user_id')
+    )
+    op.create_index(op.f('ix_social_accounts_user_id'), 'social_accounts', ['user_id'], unique=False)
     op.create_table('user_roles',
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('role_id', sa.UUID(), nullable=False),
@@ -109,12 +205,15 @@ def downgrade() -> None:
 
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('user_roles')
+    op.drop_index(op.f('ix_social_accounts_user_id'), table_name='social_accounts')
+    op.drop_table('social_accounts')
     op.drop_table('role_permissions')
     op.drop_index(op.f('ix_refresh_sessions_user_id'), table_name='refresh_sessions')
     op.drop_index(op.f('ix_refresh_sessions_token_hash'), table_name='refresh_sessions')
     op.drop_table('refresh_sessions')
-    op.drop_index(op.f('ix_login_history_user_id'), table_name='login_history')
-    op.drop_index(op.f('ix_login_history_login'), table_name='login_history')
+    op.drop_index('ix_login_history_user_created_at_id', table_name='login_history')
+    op.drop_index('ix_login_history_login_created_at_id', table_name='login_history')
+    _drop_login_history_partitions()
     op.drop_table('login_history')
     op.drop_index(op.f('ix_users_login'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')

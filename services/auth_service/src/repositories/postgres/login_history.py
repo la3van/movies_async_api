@@ -1,7 +1,8 @@
 """PostgreSQL-репозиторий истории входов."""
 from uuid import UUID
+from datetime import datetime
 
-from sqlalchemy import desc, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.login_history import LoginHistory
@@ -20,18 +21,35 @@ class PostgresLoginHistoryRepository(LoginHistoryRepository):
         *,
         limit: int = 50,
         offset: int = 0,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
     ) -> list[LoginHistory]:
         """Возвращает историю входов пользователя."""
+        statement = select(LoginHistory).where(
+            LoginHistory.user_id == user_id,
+        )
+
+        if created_from is not None:
+            statement = statement.where(
+                LoginHistory.created_at >= created_from,
+            )
+        if created_to is not None:
+            statement = statement.where(
+                LoginHistory.created_at < created_to,
+            )
+
         statement = (
-            select(LoginHistory)
-            .where(LoginHistory.user_id == user_id)
-            .order_by(desc(LoginHistory.created_at))
+            statement
+            .order_by(
+                LoginHistory.created_at.desc(),
+                LoginHistory.id.desc(),
+            )
             .limit(limit)
             .offset(offset)
         )
 
         result = await self.session.execute(statement)
-        return list(result.scalars().all())
+        return list(result.scalaras().all())
 
     async def create(
         self,

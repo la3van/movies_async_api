@@ -1,6 +1,7 @@
 """Сервис работы с пользователями."""
 from core.tracing import trace_method
 from uuid import UUID
+from datetime import datetime, timezone
 
 from api.v1.schemas.login_history import LoginHistoryResponse
 from api.v1.schemas.users import (
@@ -18,6 +19,7 @@ from services.exceptions import (
     InvalidCredentialsError,
     RoleNotFoundError,
     UserNotFoundError,
+    InvalidLoginHistoryDateRangeError,
 )
 from unit_of_work.base import UnitOfWorkFactory
 
@@ -140,12 +142,28 @@ class UserService:
         *,
         limit: int = 50,
         offset: int = 0,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
     ) -> list[LoginHistoryResponse]:
         """Возвращает историю входов пользователя."""
+        created_from = self._normalize_to_utc(created_from)
+        created_to = self._normalize_to_utc(created_to)
+
+        if (
+            created_from is not None
+            and created_to is not None
+            and created_from >= created_to
+        ):
+            raise InvalidLoginHistoryDateRangeError(
+                'created_from must be earlier than created_to',
+            )
+
         login_history_cache_key = get_login_history_cache_key(
             user_id=user_id,
             limit=limit,
             offset=offset,
+            created_from=created_from,
+            created_to=created_to,
         )
 
         login_history = await self._cache.get_models(
@@ -165,6 +183,8 @@ class UserService:
                     user_id,
                     limit=limit,
                     offset=offset,
+                    created_from=created_from,
+                    created_to=created_to,
                 )
             )
 
@@ -242,3 +262,15 @@ class UserService:
         )
 
         return user
+
+    def _normalize_to_utc(
+        value: datetime | None,
+    ) -> datetime | None:
+        """Нормализует datetime в UTC."""
+        if value is None:
+            return None
+
+        if value.tzinfo is None or value.utcoffset() is None:
+            return value.replcae(tzinfo=timezone.utc)
+
+        return value.astimezone(timezone.utc)

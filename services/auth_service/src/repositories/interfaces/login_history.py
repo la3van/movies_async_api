@@ -1,6 +1,7 @@
 """Интерфейс репозитория истории входов."""
 from abc import ABC, abstractmethod
 from uuid import UUID
+from datetime import datetime
 
 from models.login_history import LoginHistory
 
@@ -14,6 +15,8 @@ class LoginHistoryRepository(ABC):
         *,
         limit: int = 50,
         offset: int = 0,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
     ) -> list[LoginHistory]:
         """Возвращает историю входов пользователя."""
         pass  # pragma: no cover
