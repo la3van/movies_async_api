@@ -1,8 +1,6 @@
 """FastAPI dependencies auth-сервиса."""
 import httpx
 
-from uuid import UUID
-from ipaddress import ip_address
 from collections.abc import AsyncIterator
 
 from fastapi import Depends, Request
@@ -14,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from api.v1.schemas.users import UserResponse
 from cache.redis import RedisCache
 from core.config import get_settings
-from core.jwt import ACCESS_TOKEN_TYPE, decode_jwt_token
+from core.jwt import decode_access_token
+from core.client_ip import get_client_ip
 from db.postgres import get_session_factory
 from db.redis import get_redis
 from services.auth import AuthService
@@ -39,6 +38,13 @@ from oauth.providers import (
 )
 from oauth.registry import OAuthProviderRegistry
 from services.oauth import OAuthService
+
+from token_revocation.base import (
+    AccessTokenRevocationStore,
+)
+from token_revocation.redis import (
+    RedisAccessTokenRevocationStore,
+)
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl='/api/v1/auth/login',
@@ -77,6 +83,26 @@ async def get_oauth_state_store(
             settings.oauth_state_key_prefix,
         ),
         ttl_seconds=settings.oauth_state_ttl_seconds,
+    )
+
+
+async def get_access_token_revocation_store(
+    redis: Redis = Depends(get_redis),
+) -> AccessTokenRevocationStore:
+    """Возвращает хранилище отзывов access-токенов."""
+    settings = get_settings()
+
+    return RedisAccessTokenRevocationStore(
+        redis=redis,
+        key_prefix=settings.build_redis_key(
+            settings.access_token_revocation_key_prefix,
+        ),
+        session_ttl_seconds=(
+            settings.access_token_expire_minutes * 60
+        ),
+        clock_skew_seconds=(
+            settings.access_token_revocation_clock_skew_seconds
+        ),
     )
 
 
@@ -220,18 +246,25 @@ def get_oauth_service(
 async def get_auth_service(
     uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
     cache: RedisCache = Depends(get_redis_cache),
+    revocation_store: AccessTokenRevocationStore = Depends(
+        get_access_token_revocation_store,
+    ),
 ) -> AuthService:
     """Возвращает сервис аутентификации."""
     return AuthService(
         uow_factory=uow_factory,
         token_service=TokenService(),
         cache=cache,
+        revocation_store=revocation_store,
     )
 
 
 async def get_user_service(
     uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
     cache: RedisCache = Depends(get_redis_cache),
+    revocation_store: AccessTokenRevocationStore = Depends(
+        get_access_token_revocation_store,
+    ),
 ) -> UserService:
     """Возвращает сервис пользователей."""
     settings = get_settings()
@@ -239,6 +272,7 @@ async def get_user_service(
     return UserService(
         uow_factory=uow_factory,
         cache=cache,
+        revocation_store=revocation_store,
         user_cache_ttl=settings.user_cache_expire_in_seconds,
         login_history_cache_ttl=(
             settings.login_history_cache_expire_in_seconds
@@ -279,21 +313,34 @@ async def get_role_service(
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     user_service: UserService = Depends(get_user_service),
+    revocation_store: AccessTokenRevocationStore = Depends(
+        get_access_token_revocation_store,
+    ),
 ) -> UserResponse:
-    """Возвращает текущего пользователя по JWT access-token."""
+    """Возвращает пользователя по access-токену."""
     try:
-        payload = decode_jwt_token(token)
-
-        if payload.get('type') != ACCESS_TOKEN_TYPE:
-            raise InvalidCredentialsError('Invalid token type')
-
-        user_id = UUID(str(payload.get('sub')))
-    except (ExpiredSignatureError, InvalidTokenError, ValueError) as error:
+        claims = decode_access_token(token)
+    except (
+        ExpiredSignatureError,
+        InvalidTokenError,
+    ) as error:
         raise InvalidCredentialsError(
             'Could not validate credentials',
         ) from error
 
-    return await user_service.get_by_id(user_id)
+    is_revoked = await revocation_store.is_revoked(
+        token_id=claims.token_id,
+        session_id=claims.session_id,
+    )
+
+    if is_revoked:
+        raise InvalidCredentialsError(
+            'Access token has been revoked',
+        )
+
+    return await user_service.get_by_id(
+        claims.user_id,
+    )
 
 
 async def get_current_active_user(
@@ -323,27 +370,6 @@ def get_request_user_agent(request: Request) -> str | None:
 
 def get_request_ip_address(request: Request) -> str | None:
     """
-    Возвращает исходный IP-адрес пользователя.
-
-    Внешний запрос проходит через доверенный Nginx, а запрос
-    Django Admin дополнительно проходит через admin-service.
-    Оба сервиса передают исходный адрес в X-Real-IP.
+    Возвращает безопасно определённый IP-адрес пользователя.
     """
-    forwarded_ip = request.headers.get(
-        "x-real-ip",
-    )
-    if forwarded_ip:
-        try:
-            return str(ip_address(forwarded_ip.strip()))
-        except ValueError:
-            pass
-
-    if request.client is None:
-        return None
-
-    client_host = request.client.host
-
-    try:
-        return str(client_host)
-    except ValueError:
-        return client_host
+    return get_client_ip(request)

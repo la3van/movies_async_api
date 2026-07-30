@@ -23,6 +23,7 @@ from unit_of_work.base import (
     AbstractUnitOfWork,
     UnitOfWorkFactory,
 )
+from token_revocation.base import AccessTokenRevocationStore
 
 
 class AuthService:
@@ -32,11 +33,13 @@ class AuthService:
         uow_factory: UnitOfWorkFactory,
         token_service: TokenService,
         cache: Cache,
+        revocation_store: AccessTokenRevocationStore,
     ) -> None:
         """Инициализирует сервис аутентификации."""
         self._uow_factory = uow_factory
         self._token_service = token_service
         self._cache = cache
+        self._revocation_store = revocation_store
 
     @trace_method("auth.register")
     async def register(
@@ -196,6 +199,7 @@ class AuthService:
             )
 
             await uow.refresh_sessions.create(
+                session_id=refresh_token_data.session_id,
                 user_id=user.id,
                 token_hash=refresh_token_data.token_hash,
                 expires_at=refresh_token_data.expires_at,
@@ -203,7 +207,13 @@ class AuthService:
                 ip_address=ip_address,
             )
 
+            old_session_id = refresh_session.id
+
             await uow.commit()
+
+        await self._revocation_store.revoke_sessions(
+            [old_session_id],
+        )
 
         return token_pair
 
@@ -216,11 +226,17 @@ class AuthService:
                 refresh_token,
             )
 
+            session_id = refresh_session.id
+
             await uow.refresh_sessions.revoke(
                 refresh_session,
             )
 
             await uow.commit()
+
+        await self._revocation_store.revoke_sessions(
+            [session_id],
+        )
 
     @trace_method("auth.logout_others")
     async def logout_others(self, refresh_token: str) -> None:
@@ -231,12 +247,19 @@ class AuthService:
                 refresh_token,
             )
 
-            await uow.refresh_sessions.revoke_all_by_user_id(
-                user_id=refresh_session.user_id,
-                exclude_session_id=refresh_session.id,
+            revoked_session_ids = (
+                await uow.refresh_sessions
+                .revoke_all_by_user_id(
+                    user_id=refresh_session.user_id,
+                    exclude_session_id=refresh_session.id,
+                )
             )
 
             await uow.commit()
+
+        await self._revocation_store.revoke_sessions(
+            revoked_session_ids,
+        )
 
     async def _save_failed_login(
         self,

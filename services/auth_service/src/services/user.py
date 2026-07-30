@@ -23,6 +23,8 @@ from services.exceptions import (
 )
 from unit_of_work.base import UnitOfWorkFactory
 
+from token_revocation.base import AccessTokenRevocationStore
+
 
 class UserService:
     """Сервис пользовательских сценариев."""
@@ -30,12 +32,14 @@ class UserService:
         self,
         uow_factory: UnitOfWorkFactory,
         cache: Cache,
+        revocation_store: AccessTokenRevocationStore,
         user_cache_ttl: int,
         login_history_cache_ttl: int,
     ) -> None:
         """Инициализирует сервис пользователей."""
         self._uow_factory = uow_factory
         self._cache = cache
+        self._revocation_store = revocation_store
         self._user_cache_ttl = user_cache_ttl
         self._login_history_cache_ttl = login_history_cache_ttl
 
@@ -125,11 +129,17 @@ class UserService:
             )
 
             await uow.users.save(user_model)
-            await uow.refresh_sessions.revoke_all_by_user_id(
-                user_id,
+
+            revoked_session_ids = (
+                await uow.refresh_sessions
+                .revoke_all_by_user_id(user_id)
             )
 
             await uow.commit()
+
+        await self._revocation_store.revoke_sessions(
+            revoked_session_ids,
+        )
 
         await self._cache.delete(
             get_user_cache_key(user_id),
@@ -271,6 +281,6 @@ class UserService:
             return None
 
         if value.tzinfo is None or value.utcoffset() is None:
-            return value.replcae(tzinfo=timezone.utc)
+            return value.replace(tzinfo=timezone.utc)
 
         return value.astimezone(timezone.utc)

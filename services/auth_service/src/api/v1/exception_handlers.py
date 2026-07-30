@@ -22,6 +22,8 @@ from services.exceptions import (
     OAuthAuthorizationError,
     OAuthEmailRequiredError,
     InvalidLoginHistoryDateRangeError,
+    AuthServiceError,
+    AccessTokenRevocationStorageError,
 )
 
 
@@ -45,6 +47,8 @@ EXCEPTION_STATUS_CODES: dict[type[Exception], int] = {
     OAuthEmailRequiredError: status.HTTP_400_BAD_REQUEST,
     OAuthAccountLinkRequiredError: status.HTTP_409_CONFLICT,
     InvalidLoginHistoryDateRangeError: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    AuthServiceError: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    AccessTokenRevocationStorageError: status.HTTP_503_SERVICE_UNAVAILABLE,
 }
 
 
@@ -53,11 +57,33 @@ async def service_exception_handler(
     exc: Exception,
 ) -> ORJSONResponse:
     """Преобразует сервисное исключение в HTTP-ответ."""
-    status_code = EXCEPTION_STATUS_CODES[type(exc)]
+    status_code = _get_exception_status_code(exc)
+
+    detail = (
+        str(exc)
+        if status_code
+        < status.HTTP_500_INTERNAL_SERVER_ERROR
+        else 'Internal auth service error'
+    )
 
     return ORJSONResponse(
         status_code=status_code,
         content={
-            'detail': str(exc),
+            'detail': detail,
         },
     )
+
+
+def _get_exception_status_code(
+    exc: Exception,
+) -> int:
+    """Находит HTTP-статус с учётом наследования."""
+    for exception_type in type(exc).mro():
+        status_code = EXCEPTION_STATUS_CODES.get(
+            exception_type,
+        )
+
+        if status_code is not None:
+            return status_code
+
+    return status.HTTP_500_INTERNAL_SERVER_ERROR

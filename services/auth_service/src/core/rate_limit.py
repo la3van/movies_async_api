@@ -2,7 +2,6 @@
 import logging
 from collections.abc import Awaitable, Callable
 from hashlib import sha256
-from ipaddress import ip_address
 from time import time
 from typing import Annotated
 
@@ -18,6 +17,7 @@ from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
 from core.config import get_settings
+from core.client_ip import get_client_ip
 from db.redis import get_redis
 
 
@@ -78,7 +78,7 @@ def rate_limit(
         if not settings.rate_limit_enabled:
             return
 
-        client_ip = _get_client_ip(request)
+        client_ip = get_client_ip(request) or 'unknown'
         client_hash = sha256(
             client_ip.encode('utf-8'),
         ).hexdigest()
@@ -187,51 +187,3 @@ def rate_limit(
             response.headers[header_name] = header_value
 
     return dependency
-
-
-def _get_client_ip(request: Request) -> str:
-    """Определяет исходный IP клиента."""
-
-    real_ip = _normalize_ip(
-        request.headers.get('x-real-ip'),
-    )
-    if real_ip is not None:
-        return real_ip
-
-    forwarded_for = request.headers.get(
-        'x-forwarded-for',
-    )
-
-    if forwarded_for:
-        first_forwarded_ip = forwarded_for.split(
-            ',',
-            maxsplit=1,
-        )[0].strip()
-
-        normalized_forwarded_ip = _normalize_ip(
-            first_forwarded_ip,
-        )
-        if normalized_forwarded_ip is not None:
-            return normalized_forwarded_ip
-
-    if request.client is not None:
-        client_ip = _normalize_ip(
-            request.client.host,
-        )
-        if client_ip is not None:
-            return client_ip
-
-    return 'unknown'
-
-
-def _normalize_ip(value: str | None) -> str | None:
-    """Проверяет и нормализует IPv4 или IPv6."""
-    if not value:
-        return None
-
-    try:
-        return str(
-            ip_address(value.strip()),
-        )
-    except ValueError:
-        return None

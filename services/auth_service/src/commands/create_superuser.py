@@ -69,7 +69,7 @@ async def _create_superuser() -> None:
                 login=settings.superuser_login,
                 email=settings.superuser_email,
                 password_hash=hash_password(
-                    settings.superuser_password,
+                    settings.superuser_password.get_secret_value(),
                 ),
                 first_name=settings.superuser_first_name,
                 last_name=settings.superuser_last_name,

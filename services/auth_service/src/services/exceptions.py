@@ -83,3 +83,7 @@ class OAuthAccountLinkRequiredError(AuthServiceError):
 
 class InvalidLoginHistoryDateRangeError(AuthServiceError):
     """Начало диапазона истории не меньше его окончания."""
+
+
+class AccessTokenRevocationStorageError(AuthServiceError):
+    """Ошибка Redis-хранилища отзывов access-токенов."""

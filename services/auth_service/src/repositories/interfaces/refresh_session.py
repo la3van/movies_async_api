@@ -21,6 +21,7 @@ class RefreshSessionRepository(ABC):
     async def create(
         self,
         *,
+        session_id: UUID,
         user_id: UUID,
         token_hash: str,
         expires_at: datetime,
@@ -43,6 +44,6 @@ class RefreshSessionRepository(ABC):
         self,
         user_id: UUID,
         exclude_session_id: UUID | None = None,
-    ) -> None:
-        """Отзывает refresh-сессии пользователя."""
+    ) -> list[UUID]:
+        """Отзывает сессии и возвращает их идентификаторы."""
         pass  # pragma: no cover

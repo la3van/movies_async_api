@@ -1,7 +1,7 @@
 """Модуль настроек auth-сервиса."""
 from functools import lru_cache
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     rate_limit_key_prefix: str = 'auth:rate_limit'
 
+    # Trusted reverse proxies
+    trusted_proxy_sources: str = 'nginx,admin-service'
+
     # OAuth
     oauth_state_ttl_seconds: int = 300
     oauth_state_key_prefix: str = 'oauth:state'
@@ -78,15 +81,21 @@ class Settings(BaseSettings):
     vk_oauth_scopes: str = 'email'
 
     # JWT
-    jwt_secret_key: str
+    jwt_secret_key: SecretStr
     jwt_algorithm: str = 'HS256'
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
 
+    # Access token revocation
+    access_token_revocation_key_prefix: str = (
+        'access_tokens:revoked'
+    )
+    access_token_revocation_clock_skew_seconds: int = 30
+
     # Superuser
     superuser_login: str = 'admin'
     superuser_email: str = 'admin@example.com'
-    superuser_password: str = 'admin_password'
+    superuser_password: SecretStr
     superuser_first_name: str = 'Admin'
     superuser_last_name: str = 'User'
 
@@ -96,6 +105,36 @@ class Settings(BaseSettings):
     permission_cache_expire_in_seconds: int = 300
     token_claims_cache_expire_in_seconds: int = 300
     login_history_cache_expire_in_seconds: int = 60
+
+    @field_validator(
+        'jwt_secret_key',
+        'superuser_password',
+    )
+    @classmethod
+    def validate_required_secret(
+        cls,
+        value: SecretStr,
+    ) -> SecretStr:
+        """Запрещает пустые и заведомо небезопасные секреты."""
+        secret = value.get_secret_value().strip()
+
+        if not secret:
+            raise ValueError(
+                'Secret value must not be empty',
+            )
+
+        forbidden_values = {
+            'generate_me',
+            'admin_password',
+            'change_me',
+            'your_secret',
+        }
+
+        if secret in forbidden_values:
+            raise ValueError(
+                'Replace the insecure example secret',
+            )
+        return value
 
     def build_redis_key(self, key: str) -> str:
         """Добавляет auth-префикс к Redis-ключу."""

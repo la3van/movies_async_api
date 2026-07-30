@@ -32,6 +32,7 @@ class PostgresRefreshSessionRepository(RefreshSessionRepository):
     async def create(
         self,
         *,
+        session_id: UUID,
         user_id: UUID,
         token_hash: str,
         expires_at: datetime,
@@ -40,6 +41,7 @@ class PostgresRefreshSessionRepository(RefreshSessionRepository):
     ) -> RefreshSession:
         """Создаёт refresh-сессию и возвращает созданную модель."""
         refresh_session = RefreshSession(
+            id=session_id,
             user_id=user_id,
             token_hash=token_hash,
             expires_at=expires_at,
@@ -68,13 +70,14 @@ class PostgresRefreshSessionRepository(RefreshSessionRepository):
         self,
         user_id: UUID,
         exclude_session_id: UUID | None = None,
-    ) -> None:
-        """Отзывает refresh-сессии пользователя."""
+    ) -> list[UUID]:
+        """Отзывает сессии и возвращает их ID."""
         statement = (
             update(RefreshSession)
             .where(RefreshSession.user_id == user_id)
             .where(RefreshSession.revoked_at.is_(None))
             .values(revoked_at=datetime.now(timezone.utc))
+            .returning(RefreshSession.id)
         )
 
         if exclude_session_id is not None:
@@ -82,5 +85,7 @@ class PostgresRefreshSessionRepository(RefreshSessionRepository):
                 RefreshSession.id != exclude_session_id
             )
 
-        await self.session.execute(statement)
+        result = await self.session.execute(statement)
         await self.session.flush()
+
+        return list(result.scalars().all())

@@ -1,4 +1,6 @@
 """Сервис работы с токенами."""
+from uuid import UUID, uuid4
+
 from core.tracing import trace_method
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -19,7 +21,8 @@ class TokenPair:
 
 @dataclass(frozen=True, slots=True)
 class RefreshTokenData:
-    """Данные refresh-токена для сохранения refresh-сессии."""
+    """Данные refresh-токена для сохранения сессии."""
+    session_id: UUID
     token: str
     token_hash: str
     expires_at: datetime
@@ -32,38 +35,35 @@ class TokenService:
         self._settings = get_settings()
 
     @trace_method("tokens.create_access")
-    def create_access_token_for_user(self, user: User) -> str:
+    def create_access_token_for_user(
+        self,
+        user: User,
+        session_id: UUID,
+    ) -> str:
         """Создаёт access-токен для пользователя."""
-        roles = sorted(role.name for role in user.roles)
-
-        permissions = sorted(
-            {
-                permission.code
-                for role in user.roles
-                for permission in role.permissions
-            }
-        )
-
         return create_access_token(
             subject=str(user.id),
-            additional_claims={
-                'login': user.login,
-                'roles': roles,
-                'permissions': permissions,
-                'is_superuser': user.is_superuser,
-            },
+            session_id=session_id,
         )
 
     @trace_method("tokens.create_refresh")
     def create_refresh_token_data(self) -> RefreshTokenData:
-        """Создаёт refresh-токен и данные для хранения в БД."""
+        """Создаёт refresh-токен и данные для сессии."""
+        session_id = uuid4()
         token = generate_secure_token()
         token_hash = hash_token(token)
-        expires_at = datetime.now(timezone.utc) + timedelta(
-            days=self._settings.refresh_token_expire_days,
+
+        expires_at = (
+            datetime.now(timezone.utc)
+            + timedelta(
+                days=(
+                    self._settings.refresh_token_expire_days
+                ),
+            )
         )
 
         return RefreshTokenData(
+            session_id=session_id,
             token=token,
             token_hash=token_hash,
             expires_at=expires_at,
@@ -74,11 +74,18 @@ class TokenService:
         self,
         user: User
     ) -> tuple[TokenPair, RefreshTokenData]:
-        """Создаёт пару токенов и данные refresh-токена."""
-        refresh_token_data = self.create_refresh_token_data()
+        """Создаёт пару токенов."""
+        refresh_token_data = (
+            self.create_refresh_token_data()
+        )
+
+        access_token = self.create_access_token_for_user(
+            user=user,
+            session_id=refresh_token_data.session_id,
+        )
 
         token_pair = TokenPair(
-            access_token=self.create_access_token_for_user(user),
+            access_token=access_token,
             refresh_token=refresh_token_data.token,
         )
 

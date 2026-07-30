@@ -19,6 +19,7 @@ async def create_login_session(
     )
 
     await uow.refresh_sessions.create(
+        session_id=refresh_token_data.session_id,
         user_id=user.id,
         token_hash=refresh_token_data.token_hash,
         expires_at=refresh_token_data.expires_at,
