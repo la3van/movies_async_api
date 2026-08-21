@@ -15,3 +15,7 @@ class KafkaCommitError(KafkaConsumerError):
 
 class KafkaConsumerClosed(KafkaConsumerError):
     """Kafka Consumer уже завершил работу."""
+
+
+class KafkaDeadLetterPublishError(Exception):
+    """Ошибка публикации некорректного события в Kafka DLQ."""

@@ -242,18 +242,25 @@ services:
       kafka-2:
         condition: service_healthy
     entrypoint:
-      - /opt/kafka/bin/kafka-topics.sh
+      - /bin/sh
+      - -c
     command:
-      - --bootstrap-server
-      - kafka-0:9092
-      - --create
-      - --if-not-exists
-      - --topic
-      - user-events
-      - --partitions
-      - "6"
-      - --replication-factor
-      - "3"
+      - |
+        set -e
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka-0:9092 \
+          --create \
+          --if-not-exists \
+          --topic user-events \
+          --partitions 6 \
+          --replication-factor 3
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka-0:9092 \
+          --create \
+          --if-not-exists \
+          --topic user-events-dlq \
+          --partitions 6 \
+          --replication-factor 3
     restart: "no"
 
   clickhouse:
@@ -296,6 +303,10 @@ services:
     depends_on:
       kafka-init:
         condition: service_completed_successfully
+      auth-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
       jaeger:
         condition: service_started
     healthcheck:

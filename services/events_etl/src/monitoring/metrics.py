@@ -14,6 +14,21 @@ EVENTS_PROCESSED_TOTAL = Counter(
     "Общее количество успешно обработанных пользовательских событий.",
 )
 
+EVENTS_REJECTED_TOTAL = Counter(
+    "events_etl_rejected_total",
+    "Общее количество отклонённых пользовательских событий.",
+)
+
+DLQ_EVENTS_PUBLISHED_TOTAL = Counter(
+    "events_etl_dlq_published_total",
+    "Количество сообщений, успешно опубликованных в DLQ.",
+)
+
+DLQ_PUBLISH_ERRORS_TOTAL = Counter(
+    "events_etl_dlq_publish_errors_total",
+    "Количество ошибок публикации сообщений в DLQ.",
+)
+
 BATCHES_PROCESSED_TOTAL = Counter(
     "events_etl_batches_processed_total",
     "Общее количество успешно обработанных пакетов событий.",

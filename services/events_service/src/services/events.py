@@ -1,6 +1,7 @@
 """Сервис обработки и публикации пользовательских событий."""
 import logging
 from datetime import datetime, timezone
+from uuid import UUID
 
 import orjson
 
@@ -28,6 +29,7 @@ class EventService:
         self,
         *,
         event: EventRequest,
+        trusted_user_id: UUID,
         request_id: str,
     ) -> DeliveryMetadata:
         """Подготовить событие и опубликовать его в Kafka."""
@@ -38,6 +40,11 @@ class EventService:
         message = event.model_dump(
             mode="json",
         )
+
+        message["user_id"] = str(
+            trusted_user_id
+        )
+
         message["received_at"] = (
             received_at
             .isoformat()

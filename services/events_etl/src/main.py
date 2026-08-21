@@ -11,6 +11,7 @@ from clickhouse_connect.driver.exceptions import ClickHouseError
 from core.config import Settings, get_settings
 from core.logger import LOGGING_CONFIG
 from kafka.consumer import KafkaBatchConsumer
+from kafka.dlq import KafkaDeadLetterPublisher
 from monitoring.metrics import start_metrics_server
 from services.etl import ETLService
 from services.exceptions import ETLProcessingError
@@ -129,7 +130,16 @@ def main() -> None:
         settings.metrics_port,
     )
 
+    logger.info(
+        "Kafka offset policy: group_id=%s auto_offset_reset=%s",
+        settings.kafka_group_id,
+        settings.kafka_auto_offset_reset,
+    )
+
     consumer = KafkaBatchConsumer(
+        settings=settings,
+    )
+    dead_letter_publisher = KafkaDeadLetterPublisher(
         settings=settings,
     )
     storage = None
@@ -150,6 +160,9 @@ def main() -> None:
             consumer=consumer,
             storage=storage,
             mapper=mapper,
+            dead_letter_publisher=(
+                dead_letter_publisher
+            ),
         )
 
         etl_service.run(
@@ -173,6 +186,7 @@ def main() -> None:
         )
 
         consumer.close()
+        dead_letter_publisher.close()
 
         if storage is not None:
             storage.close()

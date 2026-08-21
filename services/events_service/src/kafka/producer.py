@@ -216,9 +216,10 @@ class KafkaEventPublisher:
         while not self._stop_event.is_set():
             try:
                 self._producer.poll(0)
-            except Exception:
+            except KafkaException as exc:
                 logger.exception(
-                    "Ошибка во время Kafka Producer poll"
+                    "Ошибка во время Kafka Producer poll: %s",
+                    exc,
                 )
 
             self._stop_event.wait(

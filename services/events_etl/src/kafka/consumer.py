@@ -83,9 +83,10 @@ class KafkaBatchConsumer:
                     self._settings.kafka_poll_timeout_seconds
                 ),
             )
-        except Exception as exc:
+        except (KafkaException, RuntimeError) as exc:
             raise KafkaConsumeError(
-                "Не удалось получить сообщения из Kafka"
+                "Не удалось получить сообщения из Kafka: "
+                f"{exc}"
             ) from exc
 
         if not messages:

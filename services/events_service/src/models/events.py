@@ -1,5 +1,5 @@
 """Доменные модели и правила валидации пользовательских событий."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Annotated, Literal
 from uuid import UUID
@@ -11,6 +11,11 @@ from pydantic import (
     TypeAdapter,
     field_validator,
     model_validator,
+)
+
+
+MAX_FUTURE_EVENT_CLOCK_SKEW = timedelta(
+    minutes=5,
 )
 
 
@@ -70,14 +75,28 @@ class BaseEvent(BaseModel):
         cls,
         value: datetime,
     ) -> datetime:
-        """Проверить наличие часового пояса и привести время к UTC."""
+        """Проверить timezone и запретить сильно будущие события."""
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError(
                 "occurred_at должен содержать информацию "
                 "о часовом поясе"
             )
 
-        return value.astimezone(timezone.utc)
+        value = value.astimezone(
+            timezone.utc,
+        )
+
+        now = datetime.now(
+            timezone.utc,
+        )
+
+        if value > now + MAX_FUTURE_EVENT_CLOCK_SKEW:
+            raise ValueError(
+                "occurred_at не может находиться "
+                "в будущем более чем на 5 минут"
+            )
+
+        return value
 
 
 class ClickPayload(BaseModel):

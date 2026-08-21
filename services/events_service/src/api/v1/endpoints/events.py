@@ -4,8 +4,19 @@ from http import HTTPStatus
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
-from api.dependencies import get_event_service
+from api.dependencies import (
+    get_auth_client,
+    get_event_rate_limiter,
+    get_event_service,
+)
 from api.v1.schemas.events import EventAcceptedResponse
+from auth.exceptions import (
+    AuthServiceContractError,
+    AuthServiceUnavailableError,
+    AuthUserForbiddenError,
+    InvalidAccessTokenError,
+)
+from core.event_rate_limit import RateLimiterUnavailableError
 from core.request_id import get_request_id
 from models.events import EVENT_REQUEST_ADAPTER
 from services.exceptions import EventIngestionUnavailable
@@ -35,10 +46,89 @@ def _serialize_validation_errors(
     ]
 
 
+def _extract_bearer_authorization() -> str | None:
+    """Вернуть корректный Authorization header или None."""
+    authorization = request.headers.get(
+        "Authorization",
+    )
+
+    if authorization is None:
+        return None
+
+    scheme, separator, token = authorization.partition(" ")
+
+    if (
+        not separator
+        or scheme.lower() != "bearer"
+        or not token.strip()
+    ):
+        return None
+
+    return authorization
+
+
 @router.post("/events")
 def create_event():
     """Принять и опубликовать пользовательское событие."""
     request_id = get_request_id()
+
+    authorization = _extract_bearer_authorization()
+
+    if authorization is None:
+        return (
+            jsonify(
+                {
+                    "detail": "access_token_required",
+                    "request_id": request_id,
+                }
+            ),
+            HTTPStatus.UNAUTHORIZED,
+            {
+                "WWW-Authenticate": "Bearer",
+            },
+        )
+
+    try:
+        current_user = get_auth_client().get_current_user(
+            authorization=authorization,
+            request_id=request_id,
+        )
+    except InvalidAccessTokenError:
+        return (
+            jsonify(
+                {
+                    "detail": "invalid_access_token",
+                    "request_id": request_id,
+                }
+            ),
+            HTTPStatus.UNAUTHORIZED,
+            {
+                "WWW-Authenticate": "Bearer",
+            },
+        )
+    except AuthUserForbiddenError:
+        return (
+            jsonify(
+                {
+                    "detail": "user_forbidden",
+                    "request_id": request_id,
+                }
+            ),
+            HTTPStatus.FORBIDDEN,
+        )
+    except (
+        AuthServiceUnavailableError,
+        AuthServiceContractError,
+    ):
+        return (
+            jsonify(
+                {
+                    "detail": "auth_service_unavailable",
+                    "request_id": request_id,
+                }
+            ),
+            HTTPStatus.SERVICE_UNAVAILABLE,
+        )
 
     raw_event = request.get_json(
         silent=True,
@@ -73,9 +163,55 @@ def create_event():
             HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
+    if (
+        event.user_id is not None
+        and event.user_id != current_user.id
+    ):
+        return (
+            jsonify(
+                {
+                    "detail": "event_user_mismatch",
+                    "request_id": request_id,
+                }
+            ),
+            HTTPStatus.FORBIDDEN,
+        )
+
+    try:
+        rate_limit = get_event_rate_limiter().check(
+            current_user.id,
+        )
+    except RateLimiterUnavailableError:
+        return (
+            jsonify(
+                {
+                    "detail": "rate_limiter_unavailable",
+                    "request_id": request_id,
+                }
+            ),
+            HTTPStatus.SERVICE_UNAVAILABLE,
+        )
+
+    if not rate_limit.allowed:
+        response = jsonify(
+            {
+                "detail": "event_rate_limit_exceeded",
+                "request_id": request_id,
+            }
+        )
+        response.headers["Retry-After"] = str(
+            rate_limit.retry_after_seconds
+        )
+
+        return (
+            response,
+            HTTPStatus.TOO_MANY_REQUESTS,
+        )
+
     try:
         get_event_service().ingest(
             event=event,
+            trusted_user_id=current_user.id,
             request_id=request_id,
         )
     except EventIngestionUnavailable:
@@ -99,5 +235,5 @@ def create_event():
                 mode="json",
             )
         ),
-        HTTPStatus.ACCEPTED
+        HTTPStatus.ACCEPTED,
     )

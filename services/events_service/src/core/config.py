@@ -17,6 +17,25 @@ class Settings(BaseSettings):
     project_name: str = "events-service"
     max_event_request_bytes: int = 65_536
 
+    # Auth Service
+    auth_service_host: str = "auth-service"
+    auth_service_port: int = 8000
+    auth_service_api_prefix: str = "/api/v1"
+    auth_service_connect_timeout_seconds: float = 1.0
+    auth_service_read_timeout_seconds: float = 2.0
+
+    # Redis / event rate limiting
+    redis_host: str = "redis"
+    redis_port: int = 6379
+    redis_db: int = 3
+    redis_connect_timeout_seconds: float = 1.0
+    redis_socket_timeout_seconds: float = 1.0
+
+    event_rate_limit_enabled: bool = True
+    event_rate_limit_key_prefix: str = "events:rate-limit"
+    event_rate_limit_requests: int = 120
+    event_rate_limit_window_seconds: int = 60
+
     # Kafka
     kafka_bootstrap_servers: str = (
         "kafka-0:9092,"
@@ -44,6 +63,16 @@ class Settings(BaseSettings):
 
     otel_exporter_otlp_endpoint: str = "http://jaeger:4317"
     otel_exporter_otlp_insecure: bool = True
+
+    @property
+    def auth_service_base_url(self) -> str:
+        """Получить base URL Auth Service."""
+        prefix = self.auth_service_api_prefix.strip("/")
+        return (
+            f"http://{self.auth_service_host}:"
+            f"{self.auth_service_port}/"
+            f"{prefix}/"
+        )
 
     @property
     def kafka_producer_config(self) -> dict[str, Any]:

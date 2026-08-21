@@ -28,6 +28,22 @@ class Settings(BaseSettings):
     kafka_group_id: str = "events-clickhouse-etl"
     kafka_client_id: str = "events-etl"
 
+    kafka_dlq_topic: str = "user-events-dlq"
+    kafka_dlq_client_id: str = "events-etl-dlq"
+    kafka_dlq_delivery_timeout_ms: int = Field(
+        default=5_000,
+        gt=0,
+    )
+    kafka_dlq_flush_timeout_seconds: float = Field(
+        default=5.0,
+        gt=0,
+    )
+
+    # Намеренно используем earliest. При обычном рестарте Consumer
+    # продолжает с committed offsets; reset применяется только если
+    # валидного offset у группы нет. Kafka служит источником восстановления
+    # ClickHouse, а повторная обработка безопасна благодаря дедупликации
+    # пользовательских событий по event_id.
     kafka_auto_offset_reset: Literal[
         "earliest",
         "latest",
@@ -136,6 +152,21 @@ class Settings(BaseSettings):
             "auto.offset.reset": self.kafka_auto_offset_reset,
             "enable.auto.commit": self.kafka_enable_auto_commit,
             "enable.auto.offset.store": self.kafka_enable_auto_offset_store,
+        }
+
+    @property
+    def kafka_dlq_producer_config(
+        self,
+    ) -> dict[str, Any]:
+        """Сформировать конфигурацию Kafka DLQ Producer."""
+        return {
+            "bootstrap.servers": self.kafka_bootstrap_servers,
+            "client.id": self.kafka_dlq_client_id,
+            "acks": "all",
+            "enable.idempotence": True,
+            "delivery.timeout.ms": (
+                self.kafka_dlq_delivery_timeout_ms
+            ),
         }
 
     @property

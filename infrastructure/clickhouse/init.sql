@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS analytics.user_events
 )
 ENGINE = ReplacingMergeTree(received_at)
 PARTITION BY toYYYYMM(occurred_at)
-ORDER BY (
-    event_type,
-    occurred_at,
-    event_id
-);
+ORDER BY event_id;
+
+CREATE VIEW IF NOT EXISTS analytics.user_events_final AS
+SELECT *
+FROM analytics.user_events FINAL;
