@@ -142,17 +142,37 @@ jobs:
       - ruff
       - compatibility
       - tests
-    if: ${{ success() && github.event_name == 'push' }}
+    if: ${{ always() && github.event_name == 'push' }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Send notification
+        continue-on-error: true
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUFF_RESULT: ${{ needs.ruff.result }}
+          COMPATIBILITY_RESULT: ${{ needs.compatibility.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
         run: |
-          curl --fail --request POST \
+          if [ "${RUFF_RESULT}" = "success" ] \
+            && [ "${COMPATIBILITY_RESULT}" = "success" ] \
+            && [ "${TESTS_RESULT}" = "success" ]; then
+            STATUS="✅ CI успешно пройден"
+          else
+            STATUS="❌ CI завершён с ошибкой"
+          fi
+
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          MESSAGE="${STATUS}: ${GITHUB_REPOSITORY}
+
+          Ruff: ${RUFF_RESULT}
+          Compatibility: ${COMPATIBILITY_RESULT}
+          Tests: ${TESTS_RESULT}
+          Commit: ${GITHUB_SHA::7}
+          ${RUN_URL}"
+
+          curl --fail --show-error --silent --request POST \
             "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${CHAT_ID}" \
-            --data-urlencode \
-            "text=✅ CI успешно пройден: ${{ github.repository }}"
+            --data-urlencode "text=${MESSAGE}"
