@@ -53,6 +53,9 @@ class TestSettings(BaseSettings):
 
     http_request_timeout: float = 10.0
 
+    jwt_secret_key: str = "functional_test_jwt_secret_key"
+    jwt_algorithm: str = "HS256"
+
     model_config = SettingsConfigDict(
         env_file=FUNCTIONAL_DIR / ".env",
         env_file_encoding="utf-8",

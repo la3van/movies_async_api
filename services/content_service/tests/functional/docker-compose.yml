@@ -20,6 +20,7 @@ services:
       - "8000"
     environment:
       COVERAGE_FILE: /coverage/.coverage
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-functional_test_jwt_secret_key}
     volumes:
       - ./coverage:/coverage
     depends_on:
