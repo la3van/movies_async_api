@@ -1,18 +1,17 @@
 """Запись пользовательских событий в ClickHouse."""
+
 import logging
 from typing import Final
 
 import clickhouse_connect
-from clickhouse_connect.driver.client import Client
-from clickhouse_connect.driver.exceptions import ClickHouseError
-
 from clickhouse.exceptions import (
     ClickHouseInsertError,
     ClickHouseStorageClosed,
 )
+from clickhouse_connect.driver.client import Client
+from clickhouse_connect.driver.exceptions import ClickHouseError
 from core.config import Settings
 from models.rows import ClickHouseEventRow
-
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +50,7 @@ CLICKHOUSE_COLUMNS: Final[tuple[str, ...]] = (
 
 class ClickHouseEventStorage:
     """Хранилище пользовательских событий в ClickHouse."""
+
     def __init__(
         self,
         settings: Settings,
@@ -60,23 +60,16 @@ class ClickHouseEventStorage:
         self._settings = settings
         self._closed = False
 
-        self._client = (
-            client
-            or clickhouse_connect.get_client(
-                host=settings.clickhouse_host,
-                port=settings.clickhouse_port,
-                username=settings.clickhouse_username,
-                password=(
-                    settings.clickhouse_password_value
-                ),
-                database=settings.clickhouse_database,
-                connect_timeout=int(
-                    settings.clickhouse_connect_timeout_seconds
-                ),
-                send_receive_timeout=int(
-                    settings.clickhouse_send_receive_timeout_seconds
-                ),
-            )
+        self._client = client or clickhouse_connect.get_client(
+            host=settings.clickhouse_host,
+            port=settings.clickhouse_port,
+            username=settings.clickhouse_username,
+            password=(settings.clickhouse_password_value),
+            database=settings.clickhouse_database,
+            connect_timeout=int(settings.clickhouse_connect_timeout_seconds),
+            send_receive_timeout=int(
+                settings.clickhouse_send_receive_timeout_seconds
+            ),
         )
 
     def insert_batch(
@@ -89,10 +82,7 @@ class ClickHouseEventStorage:
         if not rows:
             return
 
-        data = [
-            self._row_to_values(row)
-            for row in rows
-        ]
+        data = [self._row_to_values(row) for row in rows]
 
         try:
             self._client.insert(
@@ -102,13 +92,11 @@ class ClickHouseEventStorage:
             )
         except ClickHouseError as exc:
             raise ClickHouseInsertError(
-                "Не удалось записать пакет событий "
-                "в ClickHouse"
+                "Не удалось записать пакет событий в ClickHouse"
             ) from exc
 
         logger.info(
-            "Пакет событий записан в ClickHouse: "
-            "table=%s rows=%s",
+            "Пакет событий записан в ClickHouse: table=%s rows=%s",
             self._settings.clickhouse_table_name,
             len(rows),
         )
@@ -119,13 +107,10 @@ class ClickHouseEventStorage:
             return False
 
         try:
-            result = self._client.query(
-                "SELECT 1"
-            )
+            result = self._client.query("SELECT 1")
         except ClickHouseError:
             logger.exception(
-                "Не удалось выполнить проверочный "
-                "запрос ClickHouse"
+                "Не удалось выполнить проверочный запрос ClickHouse"
             )
             return False
 
@@ -142,13 +127,9 @@ class ClickHouseEventStorage:
         try:
             self._client.close()
         except Exception:
-            logger.exception(
-                "Ошибка при закрытии клиента ClickHouse"
-            )
+            logger.exception("Ошибка при закрытии клиента ClickHouse")
         else:
-            logger.info(
-                "Клиент ClickHouse успешно закрыт"
-            )
+            logger.info("Клиент ClickHouse успешно закрыт")
 
     def _ensure_open(self) -> None:
         """Проверить, что клиент ClickHouse не закрыт."""
@@ -162,7 +143,4 @@ class ClickHouseEventStorage:
         row: ClickHouseEventRow,
     ) -> list:
         """Преобразовать модель строки в порядок колонок ClickHouse."""
-        return [
-            getattr(row, column)
-            for column in CLICKHOUSE_COLUMNS
-        ]
+        return [getattr(row, column) for column in CLICKHOUSE_COLUMNS]

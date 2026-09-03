@@ -1,13 +1,14 @@
 """Модуль бизнес-логики для работы с персонами."""
-from core.tracing import trace_method
+
 from cache.base import Cache
-from models.person import Person
+from core.tracing import trace_method
 from models.film import ShortFilm
+from models.person import Person
 from repositories.interfaces.person import PersonRepository
 from services.cache_keys.persons import (
     get_person_cache_key,
-    get_persons_cache_key,
     get_person_films_cache_key,
+    get_persons_cache_key,
 )
 
 
@@ -19,6 +20,7 @@ class PersonService:
     проверяет кеш, обращается к основному хранилищу через репозиторий
     и сохраняет полученные результаты в кеш.
     """
+
     def __init__(
         self,
         repository: PersonRepository,
@@ -31,10 +33,7 @@ class PersonService:
         self._cache_ttl = cache_ttl
 
     @trace_method("content.persons.get_by_id")
-    async def get_person_by_id(
-        self,
-        person_id: str
-    ) -> Person | None:
+    async def get_person_by_id(self, person_id: str) -> Person | None:
         """Возвращает персону по id или None, если персона не найдена."""
         person_cache_key = get_person_cache_key(person_id)
 
@@ -72,7 +71,7 @@ class PersonService:
 
         effective_sort = sort
         if effective_sort is None and normalized_query is None:
-            effective_sort = 'full_name'
+            effective_sort = "full_name"
 
         persons_cache_key = get_persons_cache_key(
             query=normalized_query,

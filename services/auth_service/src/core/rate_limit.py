@@ -1,10 +1,14 @@
 """Точечное ограничение количества запросов через Redis."""
+
 import logging
 from collections.abc import Awaitable, Callable
 from hashlib import sha256
 from time import time
-from typing import Annotated
+from typing import Annotated, Any, cast
 
+from core.client_ip import get_client_ip
+from core.config import get_settings
+from db.redis import get_redis
 from fastapi import (
     Depends,
     HTTPException,
@@ -15,11 +19,6 @@ from fastapi import (
 from opentelemetry import trace
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-
-from core.config import get_settings
-from core.client_ip import get_client_ip
-from db.redis import get_redis
-
 
 logger = logging.getLogger(__name__)
 
@@ -53,16 +52,16 @@ def rate_limit(
 ) -> RateLimitDependency:
     """Создаёт dependency с лимитом для конкретного endpoint."""
     if not scope:
-        raise ValueError('Rate limit scope must not be empty')
+        raise ValueError("Rate limit scope must not be empty")
 
     if requests < 1:
         raise ValueError(
-            'Rate limit requests must be greater than zero',
+            "Rate limit requests must be greater than zero",
         )
 
     if window_seconds < 1:
         raise ValueError(
-            'Rate limit window must be greater than zero',
+            "Rate limit window must be greater than zero",
         )
 
     async def dependency(
@@ -78,34 +77,34 @@ def rate_limit(
         if not settings.rate_limit_enabled:
             return
 
-        client_ip = get_client_ip(request) or 'unknown'
+        client_ip = get_client_ip(request) or "unknown"
         client_hash = sha256(
-            client_ip.encode('utf-8'),
+            client_ip.encode("utf-8"),
         ).hexdigest()
 
-        redis_key = (
-            f'{settings.rate_limit_key_prefix}:'
-            f'{scope}:{client_hash}'
-        )
+        redis_key = f"{settings.rate_limit_key_prefix}:{scope}:{client_hash}"
 
         span = trace.get_current_span()
 
         try:
-            result = await redis.eval(
-                RATE_LIMIT_SCRIPT,
-                1,
-                redis_key,
-                window_seconds,
+            result = await cast(
+                Awaitable[Any],
+                redis.eval(
+                    RATE_LIMIT_SCRIPT,
+                    1,
+                    redis_key,
+                    window_seconds,
+                ),
             )
 
             if not isinstance(result, (list, tuple)):
                 raise ValueError(
-                    'Unexpected Redis rate limit response',
+                    "Unexpected Redis rate limit response",
                 )
 
             if len(result) != 2:
                 raise ValueError(
-                    'Unexpected Redis rate limit response length',
+                    "Unexpected Redis rate limit response length",
                 )
 
             current_requests = int(result[0])
@@ -117,19 +116,16 @@ def rate_limit(
             ValueError,
         ):
             logger.warning(
-                (
-                    'Rate limiter is unavailable. '
-                    'The request is allowed.'
-                ),
+                ("Rate limiter is unavailable. The request is allowed."),
                 exc_info=True,
             )
 
             span.set_attribute(
-                'rate_limit.available',
+                "rate_limit.available",
                 False,
             )
             span.set_attribute(
-                'rate_limit.scope',
+                "rate_limit.scope",
                 scope,
             )
 
@@ -144,42 +140,42 @@ def rate_limit(
         allowed = current_requests <= requests
 
         headers = {
-            'X-RateLimit-Limit': str(requests),
-            'X-RateLimit-Remaining': str(remaining),
-            'X-RateLimit-Reset': str(reset_at),
+            "X-RateLimit-Limit": str(requests),
+            "X-RateLimit-Remaining": str(remaining),
+            "X-RateLimit-Reset": str(reset_at),
         }
 
         span.set_attribute(
-            'rate_limit.available',
+            "rate_limit.available",
             True,
         )
         span.set_attribute(
-            'rate_limit.scope',
+            "rate_limit.scope",
             scope,
         )
         span.set_attribute(
-            'rate_limit.limit',
+            "rate_limit.limit",
             requests,
         )
         span.set_attribute(
-            'rate_limit.current',
+            "rate_limit.current",
             current_requests,
         )
         span.set_attribute(
-            'rate_limit.remaining',
+            "rate_limit.remaining",
             remaining,
         )
         span.set_attribute(
-            'rate_limit.allowed',
+            "rate_limit.allowed",
             allowed,
         )
 
         if not allowed:
-            headers['Retry-After'] = str(ttl)
+            headers["Retry-After"] = str(ttl)
 
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail='rate_limit_exceeded',
+                detail="rate_limit_exceeded",
                 headers=headers,
             )
 

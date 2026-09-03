@@ -1,16 +1,17 @@
 """Тестовые данные для permissions эндпоинтов."""
+
 from tests.functional.test_data.common import UNSET, UnsetType
 
-PERMISSION_CODE = 'movies:watch_premium'
-PERMISSION_DESCRIPTION = 'Разрешает смотреть премиум-фильмы'
+PERMISSION_CODE = "movies:watch_premium"
+PERMISSION_DESCRIPTION = "Разрешает смотреть премиум-фильмы"
 
-SECOND_PERMISSION_CODE = 'movies:watch_fresh'
-SECOND_PERMISSION_DESCRIPTION = 'Разрешает смотреть новые фильмы'
+SECOND_PERMISSION_CODE = "movies:watch_fresh"
+SECOND_PERMISSION_DESCRIPTION = "Разрешает смотреть новые фильмы"
 
-UPDATED_PERMISSION_CODE = 'movies:watch_subscription'
-UPDATED_PERMISSION_DESCRIPTION = 'Разрешает смотреть фильмы по подписке'
+UPDATED_PERMISSION_CODE = "movies:watch_subscription"
+UPDATED_PERMISSION_DESCRIPTION = "Разрешает смотреть фильмы по подписке"
 
-MISSING_PERMISSION_ID = '00000000-0000-0000-0000-000000000001'
+MISSING_PERMISSION_ID = "00000000-0000-0000-0000-000000000001"
 
 
 def get_permission_create_data(
@@ -20,8 +21,8 @@ def get_permission_create_data(
 ) -> dict[str, str | None]:
     """Возвращает payload создания permission."""
     return {
-        'code': code,
-        'description': description,
+        "code": code,
+        "description": description,
     }
 
 
@@ -42,9 +43,9 @@ def get_permission_update_data(
     data: dict[str, str | None] = {}
 
     if not isinstance(code, UnsetType):
-        data['code'] = code
+        data["code"] = code
     if not isinstance(description, UnsetType):
-        data['description'] = description
+        data["description"] = description
 
     return data
 

@@ -11,7 +11,7 @@ Nginx
     ├── назначает или сохраняет X-Request-ID
     └── передаёт запрос backend-сервису
             ↓
-    Content / Auth / Admin Service
+    Content / Auth / Admin / Events / UGC Service
     ├── framework server span
     ├── ручной business span
     ├── Redis / SQL / Elasticsearch / HTTPX child spans
@@ -94,7 +94,19 @@ admin.authenticate
 admin.get_user
 ```
 
-`content-etl` пока не экспортирует OpenTelemetry traces.
+### Events Service
+
+Инструментированы Flask, HTTPX и Kafka producer. Контекст запроса и
+`X-Request-ID` сохраняются при проверке пользователя через Auth Service и
+публикации события.
+
+### UGC Service
+
+Инструментированы FastAPI, HTTPX, Redis и PyMongo. Это позволяет связать
+входящий UGC-запрос с проверками Auth/Content Services и обращениями к
+MongoDB.
+
+`content-etl` и `events-etl` пока не экспортируют OpenTelemetry traces.
 
 ## Настройка provider
 
@@ -173,7 +185,8 @@ http.request.header.x_request_id = ["request-id-value"]
 
 ## Переменные окружения
 
-Одинаковый набор используется в `.env` и `.env.example` трёх HTTP-сервисов:
+Одинаковый набор используется в `.env` и `.env.example` инструментированных
+HTTP-сервисов:
 
 ```env
 OTEL_ENABLED=true
@@ -210,7 +223,13 @@ docker compose up -d jaeger
 Проверить состояние:
 
 ```bash
-docker compose ps jaeger content-service auth-service admin-service
+docker compose ps \
+  jaeger \
+  content-service \
+  auth-service \
+  admin-service \
+  events-service \
+  ugc-service
 ```
 
 Логи:

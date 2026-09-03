@@ -1,16 +1,15 @@
 """Authentication backend для работы через auth-service."""
+
 import logging
 from typing import Any
 
 import httpx
+from admin_panel.tracing import trace_method
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import BaseBackend
-from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.models import User
 from django.http import HttpRequest
-
-from admin_panel.tracing import trace_method
-
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class AuthServiceBackend(BaseBackend):
         username: str | None = None,
         password: str | None = None,
         **kwargs: Any,
-    ) -> AbstractBaseUser | None:
+    ) -> User | None:
         """
         Аутентифицирует администратора через auth-service.
 
@@ -106,9 +105,7 @@ class AuthServiceBackend(BaseBackend):
                         "users/me",
                         headers={
                             **request_headers,
-                            "Authorization": (
-                                f"Bearer {access_token}"
-                            ),
+                            "Authorization": (f"Bearer {access_token}"),
                         },
                     )
 
@@ -135,10 +132,7 @@ class AuthServiceBackend(BaseBackend):
 
         except httpx.HTTPStatusError as error:
             logger.warning(
-                (
-                    "Auth-service returned HTTP status %s "
-                    "for request %s."
-                ),
+                ("Auth-service returned HTTP status %s for request %s."),
                 error.response.status_code,
                 error.request.url,
                 exc_info=True,
@@ -168,7 +162,7 @@ class AuthServiceBackend(BaseBackend):
     def get_user(
         self,
         user_id: int,
-    ) -> AbstractBaseUser | None:
+    ) -> User | None:
         """Возвращает локального shadow-пользователя по ID."""
         user_model = get_user_model()
 
@@ -245,8 +239,8 @@ class AuthServiceBackend(BaseBackend):
         if not isinstance(value, str) or not value.strip():
             raise ValueError(
                 (
-                    f"Auth-service {response_name} response "
-                    f"has no valid {field_name}."
+                    f"Auth-service {response_name} response has no valid "
+                    f"{field_name}."
                 ),
             )
 
@@ -283,7 +277,7 @@ class AuthServiceBackend(BaseBackend):
     @staticmethod
     def _get_or_update_shadow_user(
         profile: dict[str, Any],
-    ) -> AbstractBaseUser | None:
+    ) -> User | None:
         """
         Создаёт или обновляет технического пользователя Django.
 
@@ -365,18 +359,16 @@ class AuthServiceBackend(BaseBackend):
             )
             return None
 
-        user, _created = (
-            user_model._default_manager.update_or_create(
-                username=login,
-                defaults={
-                    "email": email,
-                    "first_name": first_name or "",
-                    "last_name": last_name or "",
-                    "is_active": True,
-                    "is_staff": True,
-                    "is_superuser": True,
-                },
-            )
+        user, _created = user_model._default_manager.update_or_create(
+            username=login,
+            defaults={
+                "email": email,
+                "first_name": first_name or "",
+                "last_name": last_name or "",
+                "is_active": True,
+                "is_staff": True,
+                "is_superuser": True,
+            },
         )
 
         if user.has_usable_password():

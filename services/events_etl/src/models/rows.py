@@ -1,4 +1,5 @@
 """Модель строки пользовательского события для ClickHouse."""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -7,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 class ClickHouseEventRow(BaseModel):
     """Строка таблицы analytics.user_events."""
+
     model_config = ConfigDict(extra="forbid")
 
     schema_version: int

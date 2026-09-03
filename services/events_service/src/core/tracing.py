@@ -1,11 +1,13 @@
 """Настройка распределённой трассировки OpenTelemetry."""
+
+from core.config import Settings
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter,
 )
 from opentelemetry.sdk.resources import (
-    Resource,
     SERVICE_NAME,
+    Resource,
 )
 from opentelemetry.sdk.trace import (
     TracerProvider,
@@ -13,8 +15,6 @@ from opentelemetry.sdk.trace import (
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,
 )
-
-from core.config import Settings
 
 _tracer_provider: TracerProvider | None = None
 
@@ -33,9 +33,7 @@ def configure_tracing(
 
     resource = Resource.create(
         {
-            SERVICE_NAME: (
-                settings.otel_service_name
-            ),
+            SERVICE_NAME: (settings.otel_service_name),
         },
     )
 
@@ -44,14 +42,8 @@ def configure_tracing(
     )
 
     exporter = OTLPSpanExporter(
-        endpoint=(
-            settings
-            .otel_exporter_otlp_endpoint
-        ),
-        insecure=(
-            settings
-            .otel_exporter_otlp_insecure
-        ),
+        endpoint=(settings.otel_exporter_otlp_endpoint),
+        insecure=(settings.otel_exporter_otlp_insecure),
     )
 
     processor = BatchSpanProcessor(

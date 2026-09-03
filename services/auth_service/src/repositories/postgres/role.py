@@ -1,17 +1,18 @@
 """PostgreSQL-репозиторий ролей."""
-from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from uuid import UUID
 
 from models.permission import Permission
 from models.role import Role
 from repositories.interfaces.role import RoleRepository
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 
 class PostgresRoleRepository(RoleRepository):
     """Реализует операции с ролями в PostgreSQL."""
+
     def __init__(self, session: AsyncSession) -> None:
         """Сохраняет сессию PostgreSQL."""
         self.session = session

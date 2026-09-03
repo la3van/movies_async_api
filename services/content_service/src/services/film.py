@@ -1,6 +1,7 @@
 """Модуль бизнес-логики для работы с фильмами."""
-from core.tracing import trace_method
+
 from cache.base import Cache
+from core.tracing import trace_method
 from models.film import Film, ShortFilm
 from repositories.interfaces.film import FilmRepository
 from services.cache_keys.films import (
@@ -18,6 +19,7 @@ class FilmService:
     проверяет кеш, обращается к основному хранилищу через репозиторий
     и сохраняет полученные результаты в кеш.
     """
+
     def __init__(
         self,
         repository: FilmRepository,
@@ -30,10 +32,7 @@ class FilmService:
         self._cache_ttl = cache_ttl
 
     @trace_method("content.films.get_by_id")
-    async def get_film_by_id(
-        self,
-        film_id: str
-    ) -> Film | None:
+    async def get_film_by_id(self, film_id: str) -> Film | None:
         """Возвращает фильм по id или None, если фильм не найден."""
         film_cache_key = get_film_cache_key(film_id)
 
@@ -59,7 +58,7 @@ class FilmService:
     @trace_method("content.films.get_sorted")
     async def get_sorted_films(
         self,
-        sort: str = '-imdb_rating',
+        sort: str = "-imdb_rating",
         genre_filter: str | None = None,
         page_number: int = 1,
         page_size: int = 50,
@@ -155,10 +154,7 @@ class FilmService:
         if film is None:
             return None
 
-        genre_uuids = [
-            genre.uuid
-            for genre in film.genre
-        ]
+        genre_uuids = [genre.uuid for genre in film.genre]
         if not genre_uuids:
             return []
 

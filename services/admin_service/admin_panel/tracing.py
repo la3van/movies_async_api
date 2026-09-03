@@ -1,8 +1,10 @@
 """Настройка распределённой трассировки OpenTelemetry."""
+
 import inspect
 import os
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
@@ -15,7 +17,6 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ALWAYS_ON
-
 
 CallableT = TypeVar(
     "CallableT",
@@ -68,7 +69,8 @@ def configure_tracing(
                 insecure=os.getenv(
                     "OTEL_EXPORTER_OTLP_INSECURE",
                     "true",
-                ).lower() in {
+                ).lower()
+                in {
                     "1",
                     "true",
                     "yes",
@@ -96,10 +98,12 @@ def configure_tracing(
 
 def trace_method(span_name: str) -> Callable[[CallableT], CallableT]:
     """Оборачивает синхронный или асинхронный метод в дочерний span."""
+
     def decorator(func: CallableT) -> CallableT:
         tracer = trace.get_tracer(func.__module__)
 
         if inspect.iscoroutinefunction(func):
+
             @wraps(func)
             async def async_wrapper(
                 *args: Any,

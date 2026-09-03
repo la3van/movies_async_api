@@ -1,8 +1,6 @@
 """HTTP-эндпоинт приёма пользовательских событий."""
-from http import HTTPStatus
 
-from flask import Blueprint, jsonify, request
-from pydantic import ValidationError
+from http import HTTPStatus
 
 from api.dependencies import (
     get_auth_client,
@@ -18,7 +16,9 @@ from auth.exceptions import (
 )
 from core.event_rate_limit import RateLimiterUnavailableError
 from core.request_id import get_request_id
+from flask import Blueprint, jsonify, request
 from models.events import EVENT_REQUEST_ADAPTER
+from pydantic import ValidationError
 from services.exceptions import EventIngestionUnavailable
 
 router = Blueprint(
@@ -33,10 +33,7 @@ def _serialize_validation_errors(
     """Подготовить ошибки Pydantic для безопасного JSON-ответа."""
     return [
         {
-            "loc": [
-                str(part)
-                for part in item["loc"]
-            ],
+            "loc": [str(part) for part in item["loc"]],
             "msg": item["msg"],
             "type": item["type"],
         }
@@ -57,11 +54,7 @@ def _extract_bearer_authorization() -> str | None:
 
     scheme, separator, token = authorization.partition(" ")
 
-    if (
-        not separator
-        or scheme.lower() != "bearer"
-        or not token.strip()
-    ):
+    if not separator or scheme.lower() != "bearer" or not token.strip():
         return None
 
     return authorization
@@ -163,10 +156,7 @@ def create_event():
             HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
-    if (
-        event.user_id is not None
-        and event.user_id != current_user.id
-    ):
+    if event.user_id is not None and event.user_id != current_user.id:
         return (
             jsonify(
                 {
@@ -199,9 +189,7 @@ def create_event():
                 "request_id": request_id,
             }
         )
-        response.headers["Retry-After"] = str(
-            rate_limit.retry_after_seconds
-        )
+        response.headers["Retry-After"] = str(rate_limit.retry_after_seconds)
 
         return (
             response,
@@ -225,13 +213,13 @@ def create_event():
             HTTPStatus.SERVICE_UNAVAILABLE,
         )
 
-    response = EventAcceptedResponse(
+    accepted_response = EventAcceptedResponse(
         event_id=event.event_id,
     )
 
     return (
         jsonify(
-            response.model_dump(
+            accepted_response.model_dump(
                 mode="json",
             )
         ),

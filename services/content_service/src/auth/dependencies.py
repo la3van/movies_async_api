@@ -1,13 +1,7 @@
 """FastAPI dependencies авторизации."""
-from collections.abc import Callable
-from typing import Annotated
 
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import (
-    HTTPAuthorizationCredentials,
-    HTTPBearer,
-)
-from redis.asyncio import Redis
+from collections.abc import Awaitable, Callable
+from typing import Annotated
 
 from auth.client import AuthServiceClient, get_auth_client
 from auth.exceptions import (
@@ -19,6 +13,12 @@ from auth.service import AuthorizationService
 from cache.redis import RedisCache
 from core.config import Settings, get_settings
 from db.redis import get_redis
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
+from redis.asyncio import Redis
 
 bearer_scheme = HTTPBearer(
     auto_error=False,
@@ -49,8 +49,9 @@ def get_authorization_service(
 
 def require_permission(
     permission_code: str,
-) -> Callable[..., None]:
+) -> Callable[..., Awaitable[None]]:
     """Создаёт dependency проверки permission."""
+
     async def dependency(
         request: Request,
         credentials: Annotated[
@@ -62,24 +63,21 @@ def require_permission(
             Depends(get_authorization_service),
         ],
     ) -> None:
-        if (
-            credentials is None
-            or credentials.scheme.lower() != 'bearer'
-        ):
+        if credentials is None or credentials.scheme.lower() != "bearer":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail='access_token_required',
+                detail="access_token_required",
                 headers={
-                    'WWW-Authenticate': 'Bearer',
+                    "WWW-Authenticate": "Bearer",
                 },
             )
 
         forwarded_headers = {}
 
         for header_name in (
-            'User-Agent',
-            'X-Request-ID',
-            'X-Real-IP',
+            "User-Agent",
+            "X-Request-ID",
+            "X-Real-IP",
         ):
             header_value = request.headers.get(header_name)
 
@@ -87,36 +85,34 @@ def require_permission(
                 forwarded_headers[header_name] = header_value
 
         try:
-            has_permission = (
-                await authorization_service.has_permission(
-                    token=credentials.credentials,
-                    permission_code=permission_code,
-                    forwarded_headers=forwarded_headers,
-                )
+            has_permission = await authorization_service.has_permission(
+                token=credentials.credentials,
+                permission_code=permission_code,
+                forwarded_headers=forwarded_headers,
             )
         except InvalidAccessTokenError as error:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail='invalid_access_token',
+                detail="invalid_access_token",
                 headers={
-                    'WWW-Authenticate': 'Bearer',
+                    "WWW-Authenticate": "Bearer",
                 },
             ) from error
         except AuthUserForbiddenError as error:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail='user_forbidden',
+                detail="user_forbidden",
             ) from error
         except AuthServiceContractError as error:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail='auth_service_unavailable',
+                detail="auth_service_unavailable",
             ) from error
 
         if not has_permission:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail='permission_denied',
+                detail="permission_denied",
             )
 
     return dependency

@@ -1,4 +1,5 @@
 """Функциональные тесты проверки permissions пользователя."""
+
 from http import HTTPStatus
 from typing import Any
 
@@ -7,9 +8,7 @@ import pytest
 from tests.functional.settings import test_settings
 from tests.functional.test_data.permissions import PERMISSION_CODE
 
-CHECK_PERMISSION_URL = (
-    f'{test_settings.api_prefix}/permissions/check'
-)
+CHECK_PERMISSION_URL = f"{test_settings.api_prefix}/permissions/check"
 
 
 def _assert_validation_error(
@@ -17,10 +16,9 @@ def _assert_validation_error(
     field: str,
 ) -> None:
     """Проверяет наличие ошибки валидации указанного поля."""
-    assert isinstance(body.get('detail'), list)
+    assert isinstance(body.get("detail"), list)
     assert any(
-        error.get('loc', [])[-1:] == [field]
-        for error in body['detail']
+        error.get("loc", [])[-1:] == [field] for error in body["detail"]
     )
 
 
@@ -33,7 +31,7 @@ async def test_check_permission_without_permission(
     response = await make_post_request(
         url=CHECK_PERMISSION_URL,
         json_data={
-            'permission_code': PERMISSION_CODE,
+            "permission_code": PERMISSION_CODE,
         },
         headers=auth_headers,
     )
@@ -42,7 +40,7 @@ async def test_check_permission_without_permission(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body == {'has_permission': False}
+        assert body == {"has_permission": False}
 
 
 @pytest.mark.asyncio
@@ -56,7 +54,7 @@ async def test_check_permission_with_role_permission(
     response = await make_post_request(
         url=CHECK_PERMISSION_URL,
         json_data={
-            'permission_code': created_permission['code'],
+            "permission_code": created_permission["code"],
         },
         headers=auth_headers,
     )
@@ -64,9 +62,9 @@ async def test_check_permission_with_role_permission(
     async with response:
         body = await response.json()
 
-        assert user_with_role['roles']
+        assert user_with_role["roles"]
         assert response.status == HTTPStatus.OK
-        assert body == {'has_permission': True}
+        assert body == {"has_permission": True}
 
 
 @pytest.mark.asyncio
@@ -78,7 +76,7 @@ async def test_check_permission_for_superuser(
     response = await make_post_request(
         url=CHECK_PERMISSION_URL,
         json_data={
-            'permission_code': 'unknown:permission',
+            "permission_code": "unknown:permission",
         },
         headers=superuser_headers,
     )
@@ -87,7 +85,7 @@ async def test_check_permission_for_superuser(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body == {'has_permission': True}
+        assert body == {"has_permission": True}
 
 
 @pytest.mark.asyncio
@@ -98,7 +96,7 @@ async def test_check_permission_without_token(
     response = await make_post_request(
         url=CHECK_PERMISSION_URL,
         json_data={
-            'permission_code': PERMISSION_CODE,
+            "permission_code": PERMISSION_CODE,
         },
     )
 
@@ -106,7 +104,7 @@ async def test_check_permission_without_token(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"
 
 
 @pytest.mark.asyncio
@@ -124,18 +122,18 @@ async def test_check_permission_without_body(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'payload',
+    "payload",
     [
         {},
-        {'permission_code': None},
-        {'permission_code': ''},
-        {'permission_code': 'x' * 101},
-        {'permission_code': 123},
+        {"permission_code": None},
+        {"permission_code": ""},
+        {"permission_code": "x" * 101},
+        {"permission_code": 123},
     ],
 )
 async def test_check_permission_with_invalid_payload(
@@ -154,4 +152,4 @@ async def test_check_permission_with_invalid_payload(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        _assert_validation_error(body, 'permission_code')
+        _assert_validation_error(body, "permission_code")

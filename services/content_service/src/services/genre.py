@@ -1,6 +1,7 @@
 """Модуль бизнес-логики для работы с жанрами."""
-from core.tracing import trace_method
+
 from cache.base import Cache
+from core.tracing import trace_method
 from models.genre import Genre
 from repositories.interfaces.genre import GenreRepository
 from services.cache_keys.genres import (
@@ -16,6 +17,7 @@ class GenreService:
     проверяет кеш, обращается к основному хранилищу через репозиторий
     и сохраняет полученные результаты в кеш.
     """
+
     def __init__(
         self,
         repository: GenreRepository,
@@ -28,10 +30,7 @@ class GenreService:
         self._cache_ttl = cache_ttl
 
     @trace_method("content.genres.get_by_id")
-    async def get_genre_by_id(
-        self,
-        genre_id: str
-    ) -> Genre | None:
+    async def get_genre_by_id(self, genre_id: str) -> Genre | None:
         """Возвращает жанр по id
         или None, если жанр не найден."""
         genre_cache_key = get_genre_cache_key(genre_id)
@@ -70,7 +69,7 @@ class GenreService:
 
         effective_sort = sort
         if effective_sort is None and normalized_query is None:
-            effective_sort = 'name'
+            effective_sort = "name"
 
         genres_cache_key = get_genres_cache_key(
             query=normalized_query,

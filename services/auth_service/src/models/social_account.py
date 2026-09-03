@@ -1,15 +1,15 @@
 """SQLAlchemy-модель социального аккаунта."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+from db.postgres import Base
+from models.entity import TimestampMixin, UUIDMixin
 from sqlalchemy import ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from db.postgres import Base
-from models.entity import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from models.user import User
@@ -17,13 +17,14 @@ if TYPE_CHECKING:
 
 class SocialAccount(UUIDMixin, TimestampMixin, Base):
     """Связь локального пользователя с OAuth-провайдером."""
-    __tablename__ = 'social_accounts'
+
+    __tablename__ = "social_accounts"
 
     user_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True),
         ForeignKey(
-            'users.id',
-            ondelete='CASCADE',
+            "users.id",
+            ondelete="CASCADE",
         ),
         index=True,
         nullable=False,
@@ -44,16 +45,13 @@ class SocialAccount(UUIDMixin, TimestampMixin, Base):
     )
 
     user: Mapped[User] = relationship(
-        back_populates='social_accounts',
+        back_populates="social_accounts",
     )
 
     __table_args__ = (
         UniqueConstraint(
-            'provider',
-            'provider_user_id',
-            name=(
-                'uq_social_accounts_'
-                'provider_provider_user_id'
-            ),
+            "provider",
+            "provider_user_id",
+            name=("uq_social_accounts_provider_provider_user_id"),
         ),
     )

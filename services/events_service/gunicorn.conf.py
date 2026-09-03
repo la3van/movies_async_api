@@ -1,4 +1,5 @@
 """Конфигурация Gunicorn."""
+
 import os
 
 bind = os.getenv(

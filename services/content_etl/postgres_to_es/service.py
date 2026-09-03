@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class ETLService:
     """Оркестрирует выполнение ETL-пайплайнов."""
+
     def __init__(
         self,
         connection_provider: ConnectionProvider,
@@ -29,7 +30,7 @@ class ETLService:
         """Сохраняет зависимости ETL-сервиса."""
         if sleep_time < 0:
             raise ValueError(
-                'Время ожидания ETL не может быть отрицательным.',
+                "Время ожидания ETL не может быть отрицательным.",
             )
 
         self._connection_provider = connection_provider
@@ -47,7 +48,7 @@ class ETLService:
 
             if not has_changes:
                 logger.info(
-                    'Изменения не найдены. Ожидание следующей итерации.',
+                    "Изменения не найдены. Ожидание следующей итерации.",
                 )
                 self._sleeper(self._sleep_time)
 

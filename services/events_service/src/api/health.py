@@ -1,9 +1,9 @@
 """Эндпоинты проверки состояния сервиса."""
+
 from http import HTTPStatus
 
-from flask import Blueprint, jsonify
-
 from api.dependencies import get_event_service
+from flask import Blueprint, jsonify
 
 router = Blueprint(
     "health",

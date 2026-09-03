@@ -1,10 +1,10 @@
 """Настройки Django-проекта admin-service."""
+
 import os
 from pathlib import Path
 from typing import Any
 
 from django.core.exceptions import ImproperlyConfigured
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -58,11 +58,7 @@ def get_list_env(
     """Преобразует строку с запятыми в список значений."""
     value = os.getenv(name, default)
 
-    return [
-        item.strip()
-        for item in value.split(",")
-        if item.strip()
-    ]
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 PROJECT_NAME = os.getenv(
@@ -79,12 +75,9 @@ DEBUG = get_bool_env(
     False,
 )
 
-ENABLE_DEBUG_TOOLBAR = (
-    DEBUG
-    and get_bool_env(
-        "ENABLE_DEBUG_TOOLBAR",
-        False,
-    )
+ENABLE_DEBUG_TOOLBAR = DEBUG and get_bool_env(
+    "ENABLE_DEBUG_TOOLBAR",
+    False,
 )
 
 ALLOWED_HOSTS = get_list_env(
@@ -129,34 +122,21 @@ if ENABLE_DEBUG_TOOLBAR:
     )
 
     DEBUG_TOOLBAR_CONFIG = {
-        "SHOW_TOOLBAR_CALLBACK": (
-            "admin_panel.debug_toolbar.show_toolbar"
-        ),
+        "SHOW_TOOLBAR_CALLBACK": ("admin_panel.debug_toolbar.show_toolbar"),
     }
 
 ROOT_URLCONF = "admin_panel.urls"
 
 TEMPLATES = [
     {
-        "BACKEND": (
-            "django.template.backends.django.DjangoTemplates"
-        ),
+        "BACKEND": ("django.template.backends.django.DjangoTemplates"),
         "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
-                (
-                    "django.template.context_processors."
-                    "request"
-                ),
-                (
-                    "django.contrib.auth.context_processors."
-                    "auth"
-                ),
-                (
-                    "django.contrib.messages.context_processors."
-                    "messages"
-                ),
+                ("django.template.context_processors.request"),
+                ("django.contrib.auth.context_processors.auth"),
+                ("django.contrib.messages.context_processors.messages"),
             ],
         },
     },
@@ -192,16 +172,11 @@ postgres_connection_options: dict[str, Any] = {
 
 postgres_options_parts = [
     POSTGRES_OPTIONS,
-    (
-        "-c statement_timeout="
-        f"{POSTGRES_STATEMENT_TIMEOUT_MS}"
-    ),
+    (f"-c statement_timeout={POSTGRES_STATEMENT_TIMEOUT_MS}"),
 ]
 
 postgres_connection_options["options"] = " ".join(
-    option
-    for option in postgres_options_parts
-    if option
+    option for option in postgres_options_parts if option
 )
 
 DATABASES = {
@@ -269,15 +244,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STORAGES = {
     "default": {
-        "BACKEND": (
-            "django.core.files.storage.FileSystemStorage"
-        ),
+        "BACKEND": ("django.core.files.storage.FileSystemStorage"),
     },
     "staticfiles": {
-        "BACKEND": (
-            "whitenoise.storage."
-            "CompressedManifestStaticFilesStorage"
-        ),
+        "BACKEND": ("whitenoise.storage.CompressedManifestStaticFilesStorage"),
     },
 }
 
@@ -305,10 +275,7 @@ AUTH_SERVICE_API_PREFIX = os.getenv(
     "/api/v1",
 ).strip("/")
 
-AUTH_SERVICE_BASE_URL = (
-    f"http://{AUTH_SERVICE_HOST}:{AUTH_SERVICE_PORT}/"
-    f"{AUTH_SERVICE_API_PREFIX}/"
-)
+AUTH_SERVICE_BASE_URL = f"http://{AUTH_SERVICE_HOST}:{AUTH_SERVICE_PORT}/{AUTH_SERVICE_API_PREFIX}/"
 
 AUTH_SERVICE_CONNECT_TIMEOUT = get_int_env(
     "AUTH_SERVICE_CONNECT_TIMEOUT",

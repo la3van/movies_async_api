@@ -1,4 +1,5 @@
 """Функциональные тесты обновления профиля пользователя."""
+
 from http import HTTPStatus
 
 import pytest
@@ -25,7 +26,7 @@ async def test_update_current_user(
 ) -> None:
     """Проверяет полное обновление профиля и инвалидацию кеша."""
     cached_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
 
@@ -35,7 +36,7 @@ async def test_update_current_user(
         assert cached_response.status == HTTPStatus.OK
 
     update_response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         json_data=get_full_update_profile_data(),
         headers=auth_headers,
     )
@@ -45,18 +46,18 @@ async def test_update_current_user(
 
         assert update_response.status == HTTPStatus.OK
         assert_has_fields(updated_body, USER_RESPONSE_FIELDS)
-        assert updated_body['first_name'] == UPDATED_FIRST_NAME
-        assert updated_body['last_name'] == UPDATED_LAST_NAME
+        assert updated_body["first_name"] == UPDATED_FIRST_NAME
+        assert updated_body["last_name"] == UPDATED_LAST_NAME
         assert updated_body != cached_body
 
     user = await get_user_by_login(VALID_USER_LOGIN)
 
     assert user is not None
-    assert user['first_name'] == UPDATED_FIRST_NAME
-    assert user['last_name'] == UPDATED_LAST_NAME
+    assert user["first_name"] == UPDATED_FIRST_NAME
+    assert user["last_name"] == UPDATED_LAST_NAME
 
     fresh_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
 
@@ -75,8 +76,8 @@ async def test_update_only_first_name(
 ) -> None:
     """Проверяет PATCH только одного поля профиля."""
     response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me',
-        json_data=get_update_profile_data(first_name='OnlyFirstName'),
+        url=f"{test_settings.api_prefix}/users/me",
+        json_data=get_update_profile_data(first_name="OnlyFirstName"),
         headers=auth_headers,
     )
 
@@ -84,8 +85,8 @@ async def test_update_only_first_name(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['first_name'] == 'OnlyFirstName'
-        assert body['last_name'] == registered_user['last_name']
+        assert body["first_name"] == "OnlyFirstName"
+        assert body["last_name"] == registered_user["last_name"]
 
 
 @pytest.mark.asyncio
@@ -95,7 +96,7 @@ async def test_update_user_clears_last_name(
 ) -> None:
     """Проверяет явную очистку nullable-поля через null."""
     response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         json_data=get_update_profile_data(last_name=None),
         headers=auth_headers,
     )
@@ -104,7 +105,7 @@ async def test_update_user_clears_last_name(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['last_name'] is None
+        assert body["last_name"] is None
 
 
 @pytest.mark.asyncio
@@ -115,7 +116,7 @@ async def test_update_user_with_empty_payload(
 ) -> None:
     """Проверяет допустимый пустой PATCH без изменения профиля."""
     response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         json_data=get_update_profile_data(),
         headers=auth_headers,
     )
@@ -124,18 +125,18 @@ async def test_update_user_with_empty_payload(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['first_name'] == registered_user['first_name']
-        assert body['last_name'] == registered_user['last_name']
+        assert body["first_name"] == registered_user["first_name"]
+        assert body["last_name"] == registered_user["last_name"]
 
 
 @pytest.mark.parametrize(
-    'payload',
+    "payload",
     [
         None,
-        {'first_name': 'x' * 256},
-        {'last_name': 'x' * 256},
-        {'first_name': 123},
-        {'last_name': []},
+        {"first_name": "x" * 256},
+        {"last_name": "x" * 256},
+        {"first_name": 123},
+        {"last_name": []},
     ],
 )
 @pytest.mark.asyncio
@@ -146,7 +147,7 @@ async def test_update_user_with_invalid_payload(
 ) -> None:
     """Проверяет валидацию PATCH-параметров профиля."""
     response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         json_data=payload,
         headers=auth_headers,
     )
@@ -155,14 +156,14 @@ async def test_update_user_with_invalid_payload(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.asyncio
 async def test_update_user_without_token(make_patch_request) -> None:
     """Проверяет запрет обновления профиля без токена."""
     response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         json_data=get_full_update_profile_data(),
     )
 
@@ -170,4 +171,4 @@ async def test_update_user_without_token(make_patch_request) -> None:
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"

@@ -1,8 +1,7 @@
 """Эндпоинты пользователей."""
-from uuid import UUID
-from datetime import datetime
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from datetime import datetime
+from uuid import UUID
 
 from api.dependencies import (
     get_current_active_user,
@@ -15,20 +14,20 @@ from api.v1.schemas.users import (
     UserResponse,
     UserUpdate,
 )
+from fastapi import APIRouter, Depends, Path, Query, status
 from services.user import UserService
 
-
-router = APIRouter(prefix='/users', tags=['users'])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get(
-    '/me',
+    "/me",
     response_model=UserResponse,
-    summary='Текущий пользователь',
+    summary="Текущий пользователь",
     description=(
-        'Возвращает данные текущего аутентифицированного пользователя.'
+        "Возвращает данные текущего аутентифицированного пользователя."
     ),
-    response_description='Профиль текущего пользователя',
+    response_description="Профиль текущего пользователя",
 )
 async def get_me(
     current_user: UserResponse = (
@@ -41,14 +40,14 @@ async def get_me(
 
 
 @router.patch(
-    '/me',
+    "/me",
     response_model=UserResponse,
-    summary='Обновление профиля',
+    summary="Обновление профиля",
     description=(
-        'Обновляет логин, email, имя или фамилию '
-        'текущего аутентифицированного пользователя.'
+        "Обновляет логин, email, имя или фамилию "
+        "текущего аутентифицированного пользователя."
     ),
-    response_description='Обновлённый профиль пользователя',
+    response_description="Обновлённый профиль пользователя",
 )
 async def update_me(
     user_data: UserUpdate,
@@ -66,14 +65,14 @@ async def update_me(
 
 
 @router.patch(
-    '/me/password',
+    "/me/password",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary='Смена пароля',
+    summary="Смена пароля",
     description=(
-        'Меняет пароль текущего пользователя. '
-        'Проверяет старый пароль перед установкой нового.'
+        "Меняет пароль текущего пользователя. "
+        "Проверяет старый пароль перед установкой нового."
     ),
-    response_description='Пароль пользователя успешно изменён',
+    response_description="Пароль пользователя успешно изменён",
 )
 async def change_my_password(
     password_data: UserPasswordUpdate,
@@ -91,36 +90,35 @@ async def change_my_password(
 
 
 @router.get(
-    '/me/login-history',
+    "/me/login-history",
     response_model=list[LoginHistoryResponse],
-    summary='История входов',
+    summary="История входов",
     description=(
-        'Возвращает историю входов текущего пользователя '
-        'с пагинацией.'
+        "Возвращает историю входов текущего пользователя с пагинацией."
     ),
-    response_description='Список записей истории входов пользователя',
+    response_description="Список записей истории входов пользователя",
 )
 async def get_my_login_history(
-    limit: int = Query(  # noqa: B008
+    limit: int = Query(
         50,
         ge=1,
         le=200,
-        description='Максимальное количество записей в ответе',
+        description="Максимальное количество записей в ответе",
         examples=[50],
     ),
-    offset: int = Query(  # noqa: B008
+    offset: int = Query(
         0,
         ge=0,
-        description='Смещение от начала списка',
+        description="Смещение от начала списка",
         examples=[0],
     ),
     created_from: datetime | None = Query(  # noqa: B008
-        description='Нижняя граница времени входа включительно.',
-        examples=['2026-07-01T00:00:00Z'],
+        description="Нижняя граница времени входа включительно.",
+        examples=["2026-07-01T00:00:00Z"],
     ),
     created_to: datetime | None = Query(  # noqa: B008
-        description='Верхняя граница времени входа не включительно.',
-        examples=['2026-08-01T00:00:00Z'],
+        description="Верхняя граница времени входа не включительно.",
+        examples=["2026-08-01T00:00:00Z"],
     ),
     current_user: UserResponse = (
         Depends(get_current_active_user)  # noqa: B008
@@ -139,25 +137,25 @@ async def get_my_login_history(
 
 
 @router.post(
-    '/{user_id}/roles/{role_id}',
+    "/{user_id}/roles/{role_id}",
     response_model=UserResponse,
-    summary='Назначение роли пользователю',
+    summary="Назначение роли пользователю",
     description=(
-        'Назначает пользователю указанную роль. '
-        'Доступно только суперпользователю.'
+        "Назначает пользователю указанную роль. "
+        "Доступно только суперпользователю."
     ),
-    response_description='Пользователь с обновлённым набором ролей',
+    response_description="Пользователь с обновлённым набором ролей",
 )
 async def assign_role_to_user(
     user_id: UUID = Path(  # noqa: B008
         ...,
-        description='UUID пользователя',
-        examples=['6f822a92-7b51-4753-8d00-ecfedf98a937'],
+        description="UUID пользователя",
+        examples=["6f822a92-7b51-4753-8d00-ecfedf98a937"],
     ),
     role_id: UUID = Path(  # noqa: B008
         ...,
-        description='UUID назначаемой роли',
-        examples=['7d822a92-7b51-4753-8d00-ecfedf98a938'],
+        description="UUID назначаемой роли",
+        examples=["7d822a92-7b51-4753-8d00-ecfedf98a938"],
     ),
     _current_user: UserResponse = Depends(require_superuser),  # noqa: B008
     user_service: UserService = Depends(get_user_service),  # noqa: B008
@@ -171,25 +169,25 @@ async def assign_role_to_user(
 
 
 @router.delete(
-    '/{user_id}/roles/{role_id}',
+    "/{user_id}/roles/{role_id}",
     response_model=UserResponse,
-    summary='Удаление роли у пользователя',
+    summary="Удаление роли у пользователя",
     description=(
-        'Удаляет у пользователя указанную роль. '
-        'Доступно только суперпользователю.'
+        "Удаляет у пользователя указанную роль. "
+        "Доступно только суперпользователю."
     ),
-    response_description='Пользователь с обновлённым набором ролей',
+    response_description="Пользователь с обновлённым набором ролей",
 )
 async def remove_role_from_user(
     user_id: UUID = Path(  # noqa: B008
         ...,
-        description='UUID пользователя',
-        examples=['6f822a92-7b51-4753-8d00-ecfedf98a937'],
+        description="UUID пользователя",
+        examples=["6f822a92-7b51-4753-8d00-ecfedf98a937"],
     ),
     role_id: UUID = Path(  # noqa: B008
         ...,
-        description='UUID удаляемой роли',
-        examples=['7d822a92-7b51-4753-8d00-ecfedf98a938'],
+        description="UUID удаляемой роли",
+        examples=["7d822a92-7b51-4753-8d00-ecfedf98a938"],
     ),
     _current_user: UserResponse = Depends(require_superuser),  # noqa: B008
     user_service: UserService = Depends(get_user_service),  # noqa: B008

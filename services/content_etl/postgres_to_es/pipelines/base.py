@@ -1,4 +1,5 @@
 """Базовый класс ETL-пайплайна."""
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 
@@ -8,12 +9,13 @@ from postgres_to_es.interfaces import DocumentLoader
 from postgres_to_es.models import ChangedRecord
 from postgres_to_es.state import State, StateData
 
-DEFAULT_MODIFIED = '0001-01-01T00:00:00+00:00'
-DEFAULT_ID = '00000000-0000-0000-0000-000000000000'
+DEFAULT_MODIFIED = "0001-01-01T00:00:00+00:00"
+DEFAULT_ID = "00000000-0000-0000-0000-000000000000"
 
 
 class BasePipeline(ABC):
     """Содержит общую логику ETL-пайплайнов."""
+
     def __init__(
         self,
         loader: DocumentLoader,
@@ -25,7 +27,7 @@ class BasePipeline(ABC):
         """Инициализирует общие зависимости пайплайна."""
         if batch_size <= 0:
             raise ValueError(
-                'Размер пакета ETL должен быть положительным.',
+                "Размер пакета ETL должен быть положительным.",
             )
 
         self._loader = loader
@@ -47,7 +49,7 @@ class BasePipeline(ABC):
         connection: PgConnection,
     ) -> bool:
         """Выполняет одну итерацию пайплайна."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     def _get_cursor(
         self,
@@ -55,11 +57,11 @@ class BasePipeline(ABC):
     ) -> tuple[str, str]:
         """Получает курсор таблицы из состояния ETL."""
         modified = self._get_state_string(
-            key=f'{prefix}_modified',
+            key=f"{prefix}_modified",
             default=DEFAULT_MODIFIED,
         )
         record_id = self._get_state_string(
-            key=f'{prefix}_id',
+            key=f"{prefix}_id",
             default=DEFAULT_ID,
         )
 
@@ -77,10 +79,10 @@ class BasePipeline(ABC):
         last_record = records[-1]
 
         return {
-            f'{prefix}_modified': self._serialize_modified(
+            f"{prefix}_modified": self._serialize_modified(
                 last_record.modified,
             ),
-            f'{prefix}_id': last_record.id,
+            f"{prefix}_id": last_record.id,
         }
 
     def _get_state_string(
@@ -96,7 +98,7 @@ class BasePipeline(ABC):
 
         if not isinstance(value, str):
             raise ValueError(
-                f'Значение состояния {key!r} должно быть строкой.',
+                f"Значение состояния {key!r} должно быть строкой.",
             )
 
         return value

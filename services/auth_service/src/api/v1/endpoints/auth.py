@@ -1,5 +1,4 @@
 """Эндпоинты аутентификации."""
-from fastapi import APIRouter, Depends, Request, status
 
 from api.dependencies import (
     get_auth_service,
@@ -14,34 +13,33 @@ from api.v1.schemas.auth import (
     RegisterRequest,
     TokenPairResponse,
 )
-from services.auth import AuthService
 from core.rate_limit import rate_limit
+from fastapi import APIRouter, Depends, Request, status
+from services.auth import AuthService
 
-router = APIRouter(prefix='/auth', tags=['auth'])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post(
-    '/register',
+    "/register",
     response_model=TokenPairResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[
         Depends(
             rate_limit(
-                scope='auth:register',
+                scope="auth:register",
                 requests=3,
                 window_seconds=60,
             ),
         ),
     ],
-    summary='Регистрация пользователя',
+    summary="Регистрация пользователя",
     description=(
-        'Создаёт нового пользователя в auth-сервисе, '
-        'сохраняет первую login-сессию и возвращает '
-        'пару JWT-токенов: access и refresh.'
+        "Создаёт нового пользователя в auth-сервисе, "
+        "сохраняет первую login-сессию и возвращает "
+        "пару JWT-токенов: access и refresh."
     ),
-    response_description=(
-        'Пара access и refresh токенов нового пользователя'
-    ),
+    response_description=("Пара access и refresh токенов нового пользователя"),
 )
 async def register(
     register_data: RegisterRequest,
@@ -58,23 +56,23 @@ async def register(
 
 
 @router.post(
-    '/login',
+    "/login",
     response_model=TokenPairResponse,
     dependencies=[
         Depends(
             rate_limit(
-                scope='auth:login',
+                scope="auth:login",
                 requests=5,
                 window_seconds=60,
             ),
         ),
     ],
-    summary='Вход пользователя',
+    summary="Вход пользователя",
     description=(
-        'Аутентифицирует пользователя по логину и паролю, '
-        'создаёт refresh-сессию и возвращает пару JWT-токенов.'
+        "Аутентифицирует пользователя по логину и паролю, "
+        "создаёт refresh-сессию и возвращает пару JWT-токенов."
     ),
-    response_description='Пара access и refresh токенов',
+    response_description="Пара access и refresh токенов",
 )
 async def login(
     login_data: LoginRequest,
@@ -91,24 +89,24 @@ async def login(
 
 
 @router.post(
-    '/refresh',
+    "/refresh",
     response_model=TokenPairResponse,
     dependencies=[
         Depends(
             rate_limit(
-                scope='auth:refresh',
+                scope="auth:refresh",
                 requests=10,
                 window_seconds=60,
             ),
         ),
     ],
-    summary='Обновление токенов',
+    summary="Обновление токенов",
     description=(
-        'Принимает refresh-токен, проверяет его валидность, '
-        'отзывает старую refresh-сессию, создаёт новую '
-        'и возвращает новую пару JWT-токенов.'
+        "Принимает refresh-токен, проверяет его валидность, "
+        "отзывает старую refresh-сессию, создаёт новую "
+        "и возвращает новую пару JWT-токенов."
     ),
-    response_description='Новая пара access и refresh токенов',
+    response_description="Новая пара access и refresh токенов",
 )
 async def refresh_tokens(
     refresh_data: RefreshTokenRequest,
@@ -125,15 +123,15 @@ async def refresh_tokens(
 
 
 @router.post(
-    '/logout',
+    "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary='Выход из аккаунта',
+    summary="Выход из аккаунта",
     description=(
-        'Отзывает текущую refresh-сессию пользователя. '
-        'После этого соответствующий refresh-токен '
-        'больше нельзя использовать для обновления токенов.'
+        "Отзывает текущую refresh-сессию пользователя. "
+        "После этого соответствующий refresh-токен "
+        "больше нельзя использовать для обновления токенов."
     ),
-    response_description='Пользователь успешно вышел из аккаунта',
+    response_description="Пользователь успешно вышел из аккаунта",
 )
 async def logout(
     logout_data: LogoutRequest,
@@ -144,15 +142,15 @@ async def logout(
 
 
 @router.post(
-    '/logout-others',
+    "/logout-others",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary='Выход из остальных аккаунтов',
+    summary="Выход из остальных аккаунтов",
     description=(
-        'Отзывает все refresh-сессии пользователя, кроме текущей. '
-        'Используется для реализации сценария '
+        "Отзывает все refresh-сессии пользователя, кроме текущей. "
+        "Используется для реализации сценария "
         '"Выйти из остальных аккаунтов".'
     ),
-    response_description='Все остальные refresh-сессии пользователя отозваны',
+    response_description="Все остальные refresh-сессии пользователя отозваны",
 )
 async def logout_others(
     logout_data: LogoutRequest,

@@ -1,4 +1,5 @@
 """Middleware для обработки X-Request-ID."""
+
 from uuid import uuid4
 
 from starlette.datastructures import MutableHeaders
@@ -13,6 +14,7 @@ from starlette.types import (
 
 class RequestIdMiddleware:
     """Сохраняет или создает X-Request-ID для HTTP-запроса."""
+
     def __init__(self, app: ASGIApp) -> None:
         self._app = app
 
@@ -28,9 +30,7 @@ class RequestIdMiddleware:
 
         request_headers = MutableHeaders(scope=scope)
 
-        request_id = (
-            request_headers.get("x-request-id", "").strip()
-        )
+        request_id = request_headers.get("x-request-id", "").strip()
 
         if not request_id or len(request_id) > 128:
             request_id = uuid4().hex

@@ -1,11 +1,9 @@
 """Модуль зависимостей относительно Elasticsearch'а."""
-from typing import Optional
-
-from elasticsearch import AsyncElasticsearch
 
 from core.config import get_settings
+from elasticsearch import AsyncElasticsearch
 
-elastic: Optional[AsyncElasticsearch] = None
+elastic: AsyncElasticsearch | None = None
 
 
 async def init_elastic() -> None:
@@ -37,6 +35,6 @@ async def close_elastic() -> None:
 async def get_elastic() -> AsyncElasticsearch:
     """Возвращает клиент Elasticsearch для dependency injection."""
     if elastic is None:
-        raise RuntimeError('Elasticsearch client is not initialized')
+        raise RuntimeError("Elasticsearch client is not initialized")
 
     return elastic

@@ -1,15 +1,17 @@
 """Абстракция кеша приложения."""
+
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import TypeVar
 
 from pydantic import BaseModel
 
-ModelType = TypeVar('ModelType', bound=BaseModel)
+ModelType = TypeVar("ModelType", bound=BaseModel)
 
 
 class Cache(ABC):
     """Определяет контракт кеширования Pydantic-моделей."""
+
     @abstractmethod
     async def get_model(
         self,
@@ -18,7 +20,7 @@ class Cache(ABC):
     ) -> ModelType | None:
         """Возвращает одну модель из кеша или None, если значение
         отсутствует."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def get_models(
@@ -28,7 +30,7 @@ class Cache(ABC):
     ) -> list[ModelType] | None:
         """Возвращает список моделей из кеша или None, если значение
         отсутствует."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def set_model(
@@ -38,7 +40,7 @@ class Cache(ABC):
         ttl: int,
     ) -> None:
         """Сохраняет одну модель в кеше на заданное время."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def set_models(
@@ -48,4 +50,4 @@ class Cache(ABC):
         ttl: int,
     ) -> None:
         """Сохраняет последовательность моделей в кеше на заданное время."""
-        pass  # pragma: no cover
+        # pragma: no cover

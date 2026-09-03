@@ -1,10 +1,10 @@
 """Получение зависимостей HTTP API."""
-from typing import cast
 
-from flask import current_app
+from typing import cast
 
 from auth.client import AuthServiceClient
 from core.event_rate_limit import EventRateLimiter
+from flask import current_app
 from services.events import EventService
 
 

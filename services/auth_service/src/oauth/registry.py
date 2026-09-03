@@ -1,4 +1,5 @@
 """Реестр доступных OAuth-провайдеров."""
+
 from collections.abc import Iterable
 
 from oauth.base import OAuthProvider
@@ -10,6 +11,7 @@ from services.exceptions import (
 
 class OAuthProviderRegistry:
     """Хранит настроение OAuth-провайдера."""
+
     def __init__(
         self,
         providers: Iterable[OAuthProvider],
@@ -23,8 +25,8 @@ class OAuthProviderRegistry:
         for provider in providers:
             if provider.name in self._providers:
                 raise ValueError(
-                    'OAuth provider is registered more than once: '
-                    f'{provider.name.value}',
+                    "OAuth provider is registered more than once: "
+                    f"{provider.name.value}",
                 )
 
             self._providers[provider.name] = provider
@@ -38,8 +40,7 @@ class OAuthProviderRegistry:
 
         if provider is None:
             raise OAuthProviderNotConfiguredError(
-                'OAuth provider is not configured: '
-                f'{provider_name.value}'
+                f"OAuth provider is not configured: {provider_name.value}"
             )
 
         return provider

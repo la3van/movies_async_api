@@ -1,20 +1,21 @@
 """Утилиты для работы с JWT access-токенами."""
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
 import jwt
+from core.config import get_settings
 from jwt import InvalidTokenError
 
-from core.config import get_settings
-
-ACCESS_TOKEN_TYPE = 'access'
+ACCESS_TOKEN_TYPE = "access"
 
 
 @dataclass(frozen=True, slots=True)
 class AccessTokenClaims:
     """Проверенные claims access-токена."""
+
     user_id: UUID
     token_id: UUID
     session_id: UUID
@@ -38,8 +39,8 @@ def create_access_token(
         token_type=ACCESS_TOKEN_TYPE,
         expires_delta=expires_delta,
         additional_claims={
-            'jti': str(uuid4()),
-            'sid': str(session_id),
+            "jti": str(uuid4()),
+            "sid": str(session_id),
         },
     )
 
@@ -55,10 +56,10 @@ def create_jwt_token(
     now = datetime.now(timezone.utc)
 
     payload: dict[str, Any] = {
-        'sub': subject,
-        'type': token_type,
-        'iat': now,
-        'exp': now + expires_delta,
+        "sub": subject,
+        "type": token_type,
+        "iat": now,
+        "exp": now + expires_delta,
     }
 
     if additional_claims:
@@ -80,13 +81,13 @@ def decode_jwt_token(token: str) -> dict[str, Any]:
         settings.jwt_secret_key.get_secret_value(),
         algorithms=[settings.jwt_algorithm],
         options={
-            'require': [
-                'sub',
-                'type',
-                'iat',
-                'exp',
-                'jti',
-                'sid',
+            "require": [
+                "sub",
+                "type",
+                "iat",
+                "exp",
+                "jti",
+                "sid",
             ],
         },
     )
@@ -98,21 +99,21 @@ def decode_access_token(
     """Декодирует acces-токен в типизированные claims."""
     payload = decode_jwt_token(token)
 
-    if payload.get('type') != ACCESS_TOKEN_TYPE:
+    if payload.get("type") != ACCESS_TOKEN_TYPE:
         raise InvalidTokenError(
-            'Invalid access token type',
+            "Invalid access token type",
         )
 
     try:
         return AccessTokenClaims(
-            user_id=UUID(str(payload['sub'])),
-            token_id=UUID(str(payload['jti'])),
-            session_id=UUID(str(payload['sid'])),
+            user_id=UUID(str(payload["sub"])),
+            token_id=UUID(str(payload["jti"])),
+            session_id=UUID(str(payload["sid"])),
             issued_at=_decode_numeric_date(
-                payload['iat'],
+                payload["iat"],
             ),
             expires_at=_decode_numeric_date(
-                payload['exp'],
+                payload["exp"],
             ),
         )
     except (
@@ -122,7 +123,7 @@ def decode_access_token(
         OverflowError,
     ) as error:
         raise InvalidTokenError(
-            'Invalid access token claims',
+            "Invalid access token claims",
         ) from error
 
 
@@ -130,9 +131,9 @@ def _decode_numeric_date(
     value: object,
 ) -> datetime:
     """Преобразует JWT NumericDate в UTC datetime."""
-    if isinstance(value, bool):
+    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
         raise ValueError(
-            'Boolean is not a valid NumericDate',
+            "Boolean is not a valid NumericDate",
         )
 
     return datetime.fromtimestamp(

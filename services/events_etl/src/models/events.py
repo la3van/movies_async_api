@@ -1,4 +1,5 @@
 """Модели пользовательских событий, получаемых из Kafka."""
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
@@ -9,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class EntityType(str, Enum):
     """Тип сущности онлайн-кинотеатра."""
+
     MOVIE = "movie"
     GENRE = "genre"
     PERSON = "person"
@@ -16,6 +18,7 @@ class EntityType(str, Enum):
 
 class EventContext(BaseModel):
     """Контекст пользовательского события."""
+
     model_config = ConfigDict(extra="forbid")
 
     page: str
@@ -25,6 +28,7 @@ class EventContext(BaseModel):
 
 class KafkaUserEvent(BaseModel):
     """Пользовательское событие, полученное из Kafka."""
+
     model_config = ConfigDict(extra="forbid")
 
     schema_version: Literal[1]

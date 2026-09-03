@@ -1,14 +1,14 @@
 """Глобальные обработчики HTTP-ошибок."""
+
 import logging
 from http import HTTPStatus
 
+from core.request_id import get_request_id
 from flask import Flask, jsonify
 from werkzeug.exceptions import (
     HTTPException,
     RequestEntityTooLarge,
 )
-
-from core.request_id import get_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ def register_exception_handlers(
     app: Flask,
 ) -> None:
     """Зарегестрировать глобальные обработчики HTTP-ошибок."""
+
     @app.errorhandler(RequestEntityTooLarge)
     def handle_request_entity_too_large(
         error: RequestEntityTooLarge,
@@ -26,7 +27,7 @@ def register_exception_handlers(
             jsonify(
                 {
                     "detail": "request_entity_too_large",
-                    "request_id": get_request_id()
+                    "request_id": get_request_id(),
                 }
             ),
             HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
@@ -37,17 +38,12 @@ def register_exception_handlers(
         error: HTTPException,
     ):
         """Преобразовать стандартную HTTP-ошибку Flask в JSON."""
-        status_code = (
-            error.code
-            or HTTPStatus.INTERNAL_SERVER_ERROR
-        )
+        status_code = error.code or HTTPStatus.INTERNAL_SERVER_ERROR
 
         return (
             jsonify(
                 {
-                    "detail": (
-                        error.name.lower().replace(" ", "-")
-                    ),
+                    "detail": (error.name.lower().replace(" ", "-")),
                     "request_id": get_request_id(),
                 }
             ),

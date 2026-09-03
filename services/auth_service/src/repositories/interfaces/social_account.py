@@ -1,4 +1,5 @@
 """Интерфейс репозитория социальных аккаунтов."""
+
 from abc import ABC, abstractmethod
 from uuid import UUID
 
@@ -7,6 +8,7 @@ from models.social_account import SocialAccount
 
 class SocialAccountRepository(ABC):
     """Определяет операции с социальным аккаунтом."""
+
     @abstractmethod
     async def get_by_provider_identity(
         self,
@@ -15,7 +17,7 @@ class SocialAccountRepository(ABC):
         provider_user_id: str,
     ) -> SocialAccount | None:
         """Возвращает социальный аккаунт по данным провайдера."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def create(
@@ -27,4 +29,4 @@ class SocialAccountRepository(ABC):
         email: str | None = None,
     ) -> SocialAccount:
         """Создаёт связь пользователя с OAuth-провайдером."""
-        pass  # pragma: no cover
+        # pragma: no cover

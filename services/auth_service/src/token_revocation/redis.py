@@ -1,4 +1,5 @@
 """Redis-хранилище отозванных access-токенов."""
+
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from math import ceil
@@ -6,7 +7,6 @@ from uuid import UUID
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-
 from services.exceptions import (
     AccessTokenRevocationStorageError,
 )
@@ -19,6 +19,7 @@ class RedisAccessTokenRevocationStore(
     AccessTokenRevocationStore,
 ):
     """Хранит признаки отзыва access-токенов в Redis."""
+
     def __init__(
         self,
         *,
@@ -30,15 +31,15 @@ class RedisAccessTokenRevocationStore(
         """Инициализирует Redis-хранилище."""
         if not key_prefix:
             raise ValueError(
-                'Access token revocation key prefix is empty',
+                "Access token revocation key prefix is empty",
             )
         if session_ttl_seconds < 1:
             raise ValueError(
-                'Session revocation TTL must be positive',
+                "Session revocation TTL must be positive",
             )
         if clock_skew_seconds < 0:
             raise ValueError(
-                'Clock skew must not be negative',
+                "Clock skew must not be negative",
             )
 
         self._redis = redis
@@ -65,19 +66,17 @@ class RedisAccessTokenRevocationStore(
         if remaining_seconds <= 0:
             return
 
-        ttl_seconds = (
-            remaining_seconds + self._clock_skew_seconds
-        )
+        ttl_seconds = remaining_seconds + self._clock_skew_seconds
 
         try:
             await self._redis.set(
                 name=self._build_token_key(token_id),
-                value='1',
+                value="1",
                 ex=ttl_seconds,
             )
         except RedisError as error:
             raise AccessTokenRevocationStorageError(
-                'Could not revoke access token',
+                "Could not revoke access token",
             ) from error
 
     async def revoke_sessions(
@@ -98,7 +97,7 @@ class RedisAccessTokenRevocationStore(
                         name=self._build_session_key(
                             session_id,
                         ),
-                        value='1',
+                        value="1",
                         ex=(
                             self._session_ttl_seconds
                             + self._clock_skew_seconds
@@ -108,7 +107,7 @@ class RedisAccessTokenRevocationStore(
                 await pipeline.execute()
         except RedisError as error:
             raise AccessTokenRevocationStorageError(
-                'Could not revoke access token sessions',
+                "Could not revoke access token sessions",
             ) from error
 
     async def is_revoked(
@@ -126,30 +125,21 @@ class RedisAccessTokenRevocationStore(
             )
         except RedisError as error:
             raise AccessTokenRevocationStorageError(
-                'Could not check access token revocation',
+                "Could not check access token revocation",
             ) from error
 
-        return any(
-            value is not None
-            for value in values
-        )
+        return any(value is not None for value in values)
 
     def _build_token_key(
         self,
         token_id: UUID,
     ) -> str:
         """Формирует ключ конкретного токена."""
-        return (
-            f'{self._key_prefix}:'
-            f'jti:{token_id}'
-        )
+        return f"{self._key_prefix}:jti:{token_id}"
 
     def _build_session_key(
         self,
         session_id: UUID,
     ) -> str:
         """Формирует ключ сессии."""
-        return (
-            f'{self._key_prefix}:'
-            f'sid:{session_id}'
-        )
+        return f"{self._key_prefix}:sid:{session_id}"

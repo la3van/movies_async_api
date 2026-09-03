@@ -1,18 +1,18 @@
 """OAuth-адаптер VK ID."""
+
 from urllib.parse import urlencode
 
 import httpx
-from pydantic import BaseModel, Field, ValidationError
-
 from oauth.base import OAuthProvider
 from oauth.enums import OAuthProviderName
-from oauth.providers.http import request_oauth_json
 from oauth.models import OAuthToken, OAuthUserInfo
+from oauth.providers.http import request_oauth_json
+from pydantic import BaseModel, Field, ValidationError
 from services.exceptions import OAuthProviderResponseError
 
-_AUTHORIZATION_URL = 'https://id.vk.ru/authorize'
-_TOKEN_URL = 'https://id.vk.ru/oauth2/auth'
-_USER_INFO_URL = 'https://id.vk.ru/oauth2/user_info'
+_AUTHORIZATION_URL = "https://id.vk.ru/authorize"
+_TOKEN_URL = "https://id.vk.ru/oauth2/auth"
+_USER_INFO_URL = "https://id.vk.ru/oauth2/user_info"
 
 
 class _VkTokenResponse(BaseModel):
@@ -22,7 +22,7 @@ class _VkTokenResponse(BaseModel):
     expires_in: int | None = None
     refresh_token: str | None = None
     state: str = Field(min_length=1)
-    token_type: str = 'Bearer'
+    token_type: str = "Bearer"
     user_id: str | int | None = None
     scope: str | None = None
     id_token: str | None = None
@@ -45,6 +45,7 @@ class _VkUserInfoResponse(BaseModel):
 
 class VkOAuthProvider(OAuthProvider):
     """Реализует OAuth 2.1-вход через VK ID."""
+
     def __init__(
         self,
         *,
@@ -56,12 +57,12 @@ class VkOAuthProvider(OAuthProvider):
         """Сохраняет настройки VK ID."""
         if not client_id:
             raise ValueError(
-                'VK ID client ID must not be empty',
+                "VK ID client ID must not be empty",
             )
 
         if not redirect_uri:
             raise ValueError(
-                'VK ID redirect URI must not be empty',
+                "VK ID redirect URI must not be empty",
             )
 
         self._client_id = client_id
@@ -87,23 +88,20 @@ class VkOAuthProvider(OAuthProvider):
     ) -> str:
         """Формирует VK ID authorization URL."""
         query_params = {
-            'response_type': 'code',
-            'client_id': self._client_id,
-            'app_id': self._client_id,
-            'redirect_uri': self._redirect_uri,
-            'state': state,
-            'code_challenge': code_challenge,
-            'code_challenge_method': 's256',
-            'prompt': '',
+            "response_type": "code",
+            "client_id": self._client_id,
+            "app_id": self._client_id,
+            "redirect_uri": self._redirect_uri,
+            "state": state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "s256",
+            "prompt": "",
         }
 
         if self._scopes:
-            query_params['scope'] = self._scopes
+            query_params["scope"] = self._scopes
 
-        return (
-            f'{_AUTHORIZATION_URL}'
-            f'?{urlencode(query_params)}'
-        )
+        return f"{_AUTHORIZATION_URL}?{urlencode(query_params)}"
 
     async def exchange_code(
         self,
@@ -117,29 +115,29 @@ class VkOAuthProvider(OAuthProvider):
         """Обменивает authorization code на VK ID token."""
         if redirect_uri != self._redirect_uri:
             raise OAuthProviderResponseError(
-                'VK ID redirect URI does not match',
+                "VK ID redirect URI does not match",
             )
 
         if not device_id:
             raise OAuthProviderResponseError(
-                'VK ID callback does not contain device_id',
+                "VK ID callback does not contain device_id",
             )
 
         payload = await request_oauth_json(
             client=self._http_client,
-            method='POST',
+            method="POST",
             url=_TOKEN_URL,
-            service_name='VK ID OAuth',
+            service_name="VK ID OAuth",
             params={
-                'grant_type': 'authorization_code',
-                'redirect_uri': redirect_uri,
-                'client_id': self._client_id,
-                'code_verifier': code_verifier,
-                'state': state,
-                'device_id': device_id,
+                "grant_type": "authorization_code",
+                "redirect_uri": redirect_uri,
+                "client_id": self._client_id,
+                "code_verifier": code_verifier,
+                "state": state,
+                "device_id": device_id,
             },
             data={
-                'code': code,
+                "code": code,
             },
         )
 
@@ -149,12 +147,12 @@ class VkOAuthProvider(OAuthProvider):
             )
         except ValidationError as error:
             raise OAuthProviderResponseError(
-                'VK ID returned an invalid token response',
+                "VK ID returned an invalid token response",
             ) from error
 
         if token_response.state != state:
             raise OAuthProviderResponseError(
-                'VK ID token response contains invalid state',
+                "VK ID token response contains invalid state",
             )
 
         return OAuthToken(
@@ -173,26 +171,24 @@ class VkOAuthProvider(OAuthProvider):
         """Получает нормализованный профиль VK ID."""
         payload = await request_oauth_json(
             client=self._http_client,
-            method='POST',
+            method="POST",
             url=_USER_INFO_URL,
-            service_name='VK ID UserInfo',
+            service_name="VK ID UserInfo",
             params={
-                'client_id': self._client_id,
+                "client_id": self._client_id,
             },
             data={
-                'access_token': token.access_token,
+                "access_token": token.access_token,
             },
         )
 
         try:
-            user_response = (
-                _VkUserInfoResponse.model_validate(
-                    payload,
-                )
+            user_response = _VkUserInfoResponse.model_validate(
+                payload,
             )
         except ValidationError as error:
             raise OAuthProviderResponseError(
-                'VK ID returned an invalid user response',
+                "VK ID returned an invalid user response",
             ) from error
 
         user = user_response.user

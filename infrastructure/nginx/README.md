@@ -8,7 +8,9 @@ Nginx является единой внешней точкой входа дл�
 http://127.0.0.1:8000
 ```
 
-`content-service`, `auth-service` и `admin-service` используют `expose: 8000` и доступны только внутри Docker-сети.
+Все прикладные сервисы доступны через внутреннюю Docker-сеть и не публикуют
+собственные HTTP-порты на хост. Nginx разводит пересекающиеся служебные пути
+по отдельным внешним адресам.
 
 ## Назначение
 
@@ -20,7 +22,9 @@ HTTP client
 Nginx
     ├── Content Service
     ├── Auth Service
-    └── Admin Service
+    ├── Admin Service
+    ├── Events Service
+    └── UGC Service
 ```
 
 Он:
@@ -59,6 +63,15 @@ infrastructure/nginx/
 | `/openapi.json` | `auth-service:8000` | без изменения |
 | `/redoc` | `auth-service:8000` | без изменения |
 | `/health` | `auth-service:8000` | без изменения |
+| `/api/v1/events` | `events-service:8000` | без изменения |
+| `/api/v1/bookmarks/*` | `ugc-service:8000` | без изменения |
+| `/api/v1/ratings/*` | `ugc-service:8000` | без изменения |
+| `/api/v1/reviews/*` | `ugc-service:8000` | без изменения |
+| `/ugc/docs` | `ugc-service:8000` | без изменения |
+| `/ugc/openapi.json` | `ugc-service:8000` | без изменения |
+| `/ugc/redoc` | `ugc-service:8000` | без изменения |
+| `/ugc/health` | `ugc-service:8000` | `/health` |
+| `/ugc/ready` | `ugc-service:8000` | `/ready` |
 | `/admin/*` | `admin-service:8000` | без изменения |
 | `/static/*` | `admin-service:8000` | без изменения |
 | `/__debug__/*` | `admin-service:8000` | без изменения |
@@ -81,9 +94,17 @@ upstream auth_service {
 upstream admin_service {
     server admin-service:8000;
 }
+
+upstream events_service {
+    server events-service:8000;
+}
+
+upstream ugc_service {
+    server ugc-service:8000;
+}
 ```
 
-Имена `content-service`, `auth-service` и `admin-service` разрешает внутренний DNS Docker Compose.
+Имена upstream-сервисов разрешает внутренний DNS Docker Compose.
 
 ## Proxy-заголовки
 
@@ -188,6 +209,8 @@ docker compose up -d --force-recreate nginx
 curl -I http://127.0.0.1:8000/
 curl -i http://127.0.0.1:8000/health
 curl -i http://127.0.0.1:8000/api/openapi.json
+curl -i http://127.0.0.1:8000/ugc/health
+curl -i http://127.0.0.1:8000/ugc/ready
 curl -I http://127.0.0.1:8000/admin/
 ```
 
@@ -196,6 +219,7 @@ curl -I http://127.0.0.1:8000/admin/
 ```text
 Content Swagger: http://127.0.0.1:8000/api/openapi
 Auth Swagger:    http://127.0.0.1:8000/docs
+UGC Swagger:     http://127.0.0.1:8000/ugc/docs
 Django Admin:    http://127.0.0.1:8000/admin/
 ```
 
@@ -225,7 +249,13 @@ Nginx не может подключиться к backend или backend ещё 
 
 ```bash
 docker compose ps -a
-docker compose logs --tail=200 nginx content-service auth-service admin-service
+docker compose logs --tail=200 \
+  nginx \
+  content-service \
+  auth-service \
+  admin-service \
+  events-service \
+  ugc-service
 ```
 
 ### Django возвращает `403 CSRF verification failed`
@@ -238,11 +268,5 @@ CSRF_TRUSTED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
 
 ### Прямые адреса сервисов не открываются
 
-Это ожидаемое поведение. Порты HTTP-сервисов не публикуются на хост:
-
-```text
-localhost:8001
-localhost:8008
-```
-
-Используйте маршруты Nginx на `127.0.0.1:8000`.
+Это ожидаемое поведение для всех прикладных сервисов. Используйте их маршруты
+через Nginx на `127.0.0.1:8000`.

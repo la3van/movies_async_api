@@ -1,9 +1,7 @@
 """Сервис авторизации Content Service."""
+
 import hashlib
 import logging
-
-from pydantic import ValidationError
-from redis.exceptions import RedisError
 
 from auth.client import AuthServiceClient
 from auth.exceptions import AuthServiceUnavailableError
@@ -11,12 +9,15 @@ from auth.jwt import decode_access_token
 from auth.models import PermissionDecision
 from cache.base import Cache
 from core.config import Settings
+from pydantic import ValidationError
+from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
 
 
 class AuthorizationService:
     """Проверяет права пользователя с graceful degradation."""
+
     def __init__(
         self,
         auth_client: AuthServiceClient,
@@ -56,30 +57,24 @@ class AuthorizationService:
             return cached_decision.has_permission
 
         try:
-            has_permission = (
-                await self._auth_client.check_permission(
-                    token=token,
-                    permission_code=permission_code,
-                    forwarded_headers=forwarded_headers,
-                )
+            has_permission = await self._auth_client.check_permission(
+                token=token,
+                permission_code=permission_code,
+                forwarded_headers=forwarded_headers,
             )
         except AuthServiceUnavailableError:
             logger.warning(
                 (
-                    'Auth Service is unavailable. '
-                    'Using access token claims as fallback.'
+                    "Auth Service is unavailable. "
+                    "Using access token claims as fallback."
                 ),
                 exc_info=True,
             )
 
-            return (
-                claims.is_superuser
-                or permission_code in claims.permissions
-            )
+            return claims.is_superuser or permission_code in claims.permissions
 
         await self._cache_decision(
-            key=cache_key,
-            has_permission=has_permission
+            key=cache_key, has_permission=has_permission
         )
 
         return has_permission
@@ -100,7 +95,7 @@ class AuthorizationService:
             ValueError,
         ):
             logger.warning(
-                'Unable to read permission decision from Redis.',
+                "Unable to read permission decision from Redis.",
                 exc_info=True,
             )
             return None
@@ -121,7 +116,7 @@ class AuthorizationService:
             )
         except RedisError:
             logger.warning(
-                'Unable to cache permission decision.',
+                "Unable to cache permission decision.",
                 exc_info=True,
             )
 
@@ -132,10 +127,7 @@ class AuthorizationService:
     ) -> str:
         """Создаёт кеш-ключ без сохранения JWT в открытом виде."""
         token_hash = hashlib.sha256(
-            token.encode('utf-8'),
+            token.encode("utf-8"),
         ).hexdigest()
 
-        return (
-            f'auth:permission:{token_hash}:'
-            f'{permission_code}'
-        )
+        return f"auth:permission:{token_hash}:{permission_code}"

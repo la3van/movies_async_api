@@ -1,4 +1,5 @@
 """Фикстуры HTTP-клиента функциональных тестов."""
+
 from typing import Any
 
 import aiohttp
@@ -8,7 +9,7 @@ import pytest_asyncio
 from tests.functional.settings import test_settings
 
 
-@pytest_asyncio.fixture(name='http_session', scope='session')
+@pytest_asyncio.fixture(name="http_session", scope="session")
 async def http_session():
     """Создаёт HTTP-сессию на время тестовой сессии."""
     timeout = aiohttp.ClientTimeout(
@@ -20,9 +21,10 @@ async def http_session():
     await session.close()
 
 
-@pytest.fixture(name='make_get_request')
+@pytest.fixture(name="make_get_request")
 def make_get_request(http_session: aiohttp.ClientSession):
     """Возвращает функцию выполнения GET-запросов к auth-service."""
+
     async def inner(
         url: str,
         query_data: dict[str, Any] | None = None,
@@ -38,9 +40,10 @@ def make_get_request(http_session: aiohttp.ClientSession):
     return inner
 
 
-@pytest.fixture(name='make_post_request')
+@pytest.fixture(name="make_post_request")
 def make_post_request(http_session: aiohttp.ClientSession):
     """Возвращает функцию выполнения POST-запросов к auth-service."""
+
     async def inner(
         url: str,
         json_data: dict[str, Any] | None = None,
@@ -58,9 +61,10 @@ def make_post_request(http_session: aiohttp.ClientSession):
     return inner
 
 
-@pytest.fixture(name='make_patch_request')
+@pytest.fixture(name="make_patch_request")
 def make_patch_request(http_session: aiohttp.ClientSession):
     """Возвращает функцию выполнения PATCH-запросов к auth-service."""
+
     async def inner(
         url: str,
         json_data: dict[str, Any] | None = None,
@@ -78,9 +82,10 @@ def make_patch_request(http_session: aiohttp.ClientSession):
     return inner
 
 
-@pytest.fixture(name='make_delete_request')
+@pytest.fixture(name="make_delete_request")
 def make_delete_request(http_session: aiohttp.ClientSession):
     """Возвращает функцию выполнения DELETE-запросов к auth-service."""
+
     async def inner(
         url: str,
         json_data: dict[str, Any] | None = None,
@@ -100,4 +105,4 @@ def make_delete_request(http_session: aiohttp.ClientSession):
 
 def build_url(url: str) -> str:
     """Собирает полный URL до auth-service."""
-    return f'{test_settings.service_url.rstrip("/")}/{url.lstrip("/")}'
+    return f"{test_settings.service_url.rstrip('/')}/{url.lstrip('/')}"

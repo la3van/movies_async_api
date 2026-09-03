@@ -1,30 +1,32 @@
 """OAuth-адаптер Яндекс ID."""
+
 from urllib.parse import urlencode
 
 import httpx
-from pydantic import BaseModel, Field, ValidationError
-
 from oauth.base import OAuthProvider
 from oauth.enums import OAuthProviderName
 from oauth.models import OAuthToken, OAuthUserInfo
-from services.exceptions import OAuthProviderResponseError
 from oauth.providers.http import request_oauth_json
+from pydantic import BaseModel, Field, ValidationError
+from services.exceptions import OAuthProviderResponseError
 
-_AUTHORIZATION_URL = 'https://oauth.yandex.ru/authorize'
-_TOKEN_URL = 'https://oauth.yandex.ru/token'
-_USER_INFO_URL = 'https://login.yandex.ru/info'
+_AUTHORIZATION_URL = "https://oauth.yandex.ru/authorize"
+_TOKEN_URL = "https://oauth.yandex.ru/token"
+_USER_INFO_URL = "https://login.yandex.ru/info"
 
 
 class _YandexTokenResponse(BaseModel):
     """Внутренняя схема ответа Yandex token endpoint."""
+
     access_token: str = Field(min_length=1)
-    token_type: str = 'bearer'
+    token_type: str = "bearer"
     expires_in: int | None = None
     refresh_token: str | None = None
 
 
 class _YandexUserResponse(BaseModel):
     """Внутренняя схема профиля пользователя Яндекса."""
+
     id: str | int
     client_id: str | None = None
     login: str | None = None
@@ -38,6 +40,7 @@ class _YandexUserResponse(BaseModel):
 
 class YandexOAuthProvider(OAuthProvider):
     """Реализует OAuth Authorization Code Flow для Яндекса ID."""
+
     def __init__(
         self,
         *,
@@ -50,17 +53,17 @@ class YandexOAuthProvider(OAuthProvider):
         """Сохраняет конфигурацию OAuth-приложения."""
         if not client_id:
             raise ValueError(
-                'Yandex OAuth client ID must not be empty',
+                "Yandex OAuth client ID must not be empty",
             )
 
         if not client_secret:
             raise ValueError(
-                'Yandex OAuth client secret must not be empty',
+                "Yandex OAuth client secret must not be empty",
             )
 
         if not redirect_uri:
             raise ValueError(
-                'Yandex OAuth redirect URI must not be empty',
+                "Yandex OAuth redirect URI must not be empty",
             )
 
         self._client_id = client_id
@@ -87,21 +90,18 @@ class YandexOAuthProvider(OAuthProvider):
     ) -> str:
         """Формирует URL страницы авторизации Яндекса."""
         query_params = {
-            'response_type': 'code',
-            'client_id': self._client_id,
-            'redirect_uri': self._redirect_uri,
-            'state': state,
-            'code_challenge': code_challenge,
-            'code_challenge_method': 'S256',
+            "response_type": "code",
+            "client_id": self._client_id,
+            "redirect_uri": self._redirect_uri,
+            "state": state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
         }
 
         if self._scopes:
-            query_params['scope'] = self._scopes
+            query_params["scope"] = self._scopes
 
-        return (
-            f'{_AUTHORIZATION_URL}'
-            f'?{urlencode(query_params)}'
-        )
+        return f"{_AUTHORIZATION_URL}?{urlencode(query_params)}"
 
     async def exchange_code(
         self,
@@ -117,23 +117,23 @@ class YandexOAuthProvider(OAuthProvider):
 
         if redirect_uri != self._redirect_uri:
             raise OAuthProviderResponseError(
-                'Yandex OAuth redirect URI does not match',
+                "Yandex OAuth redirect URI does not match",
             )
 
         request_data = {
-            'grant_type': 'authorization_code',
-            'code': code,
-            'code_verifier': code_verifier,
+            "grant_type": "authorization_code",
+            "code": code,
+            "code_verifier": code_verifier,
         }
 
         if device_id is not None:
-            request_data['device_id'] = device_id
+            request_data["device_id"] = device_id
 
         payload = await request_oauth_json(
             client=self._http_client,
-            method='POST',
+            method="POST",
             url=_TOKEN_URL,
-            service_name='Yandex OAuth',
+            service_name="Yandex OAuth",
             data=request_data,
             auth=httpx.BasicAuth(
                 username=self._client_id,
@@ -147,7 +147,7 @@ class YandexOAuthProvider(OAuthProvider):
             )
         except ValidationError as error:
             raise OAuthProviderResponseError(
-                'Yandex OAuth returned an invalid token response',
+                "Yandex OAuth returned an invalid token response",
             ) from error
 
         return OAuthToken(
@@ -165,16 +165,14 @@ class YandexOAuthProvider(OAuthProvider):
         """Получает и нормализует профиль пользователя Яндекса."""
         payload = await request_oauth_json(
             client=self._http_client,
-            method='GET',
+            method="GET",
             url=_USER_INFO_URL,
-            service_name='Yandex ID API',
+            service_name="Yandex ID API",
             params={
-                'format': 'json',
+                "format": "json",
             },
             headers={
-                'Authorization': (
-                    f'OAuth {token.access_token}'
-                ),
+                "Authorization": (f"OAuth {token.access_token}"),
             },
         )
 
@@ -184,7 +182,7 @@ class YandexOAuthProvider(OAuthProvider):
             )
         except ValidationError as error:
             raise OAuthProviderResponseError(
-                'Yandex ID API returned an invalid user response',
+                "Yandex ID API returned an invalid user response",
             ) from error
 
         if (
@@ -192,7 +190,7 @@ class YandexOAuthProvider(OAuthProvider):
             and user_response.client_id != self._client_id
         ):
             raise OAuthProviderResponseError(
-                'Yandex token belongs to another OAuth client',
+                "Yandex token belongs to another OAuth client",
             )
 
         email = user_response.default_email

@@ -1,15 +1,14 @@
 """Преобразование моделей персон в схемы API."""
+
 from uuid import UUID
 
-from models.person import Person, PersonFilm
-from models.film import ShortFilm
-
 from api.v1.schemas.films import ShortFilmResponse
-
 from api.v1.schemas.persons import (
     PersonFilmResponse,
     PersonResponse,
 )
+from models.film import ShortFilm
+from models.person import Person, PersonFilm
 
 
 def build_person_film_response(film: PersonFilm) -> PersonFilmResponse:
@@ -25,10 +24,7 @@ def build_person_response(person: Person) -> PersonResponse:
     return PersonResponse(
         uuid=UUID(person.uuid),
         full_name=person.full_name,
-        films=[
-            build_person_film_response(film)
-            for film in person.films
-        ],
+        films=[build_person_film_response(film) for film in person.films],
     )
 
 

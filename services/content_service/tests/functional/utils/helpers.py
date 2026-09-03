@@ -1,16 +1,15 @@
 """Вспомогательные функции функциональных тестов."""
+
 from collections.abc import Callable, Iterable
-from typing import Any
+from typing import Any, Literal
 
 from elasticsearch import AsyncElasticsearch
 
-from typing import Literal
-
 ExpectedSearchCase = Literal[
-    'title',
-    'description',
-    'person',
-    'not_found',
+    "title",
+    "description",
+    "person",
+    "not_found",
 ]
 
 
@@ -21,9 +20,9 @@ def build_bulk_actions(
     """Формирует bulk-операции для загрузки документов в Elasticsearch."""
     return [
         {
-            '_index': index,
-            '_id': document['uuid'],
-            '_source': document,
+            "_index": index,
+            "_id": document["uuid"],
+            "_source": document,
         }
         for document in documents
     ]
@@ -35,12 +34,8 @@ async def recreate_index(
     index_schema: dict[str, Any],
 ) -> None:
     """Пересоздаёт Elasticsearch-индекс по переданной схеме."""
-    if await es_client.indices.exists(
-        index=index
-    ):
-        await es_client.indices.delete(
-            index=index
-        )
+    if await es_client.indices.exists(index=index):
+        await es_client.indices.delete(index=index)
 
     await es_client.indices.create(
         index=index,
@@ -59,13 +54,11 @@ def build_expected_page(
     response_builder: Callable[
         [dict[str, Any]],
         dict[str, Any],
-    ] | None = None,
+    ]
+    | None = None,
 ) -> list[dict[str, Any]]:
     """Формирует ожидаемую страницу документов для проверки ответа."""
-    expected_documents = [
-        documents[index]
-        for index in expected_indexes
-    ]
+    expected_documents = [documents[index] for index in expected_indexes]
 
     if sort_field:
         expected_documents = sorted(
@@ -81,10 +74,7 @@ def build_expected_page(
     if response_builder is None:
         return page
 
-    return [
-        response_builder(document)
-        for document in page
-    ]
+    return [response_builder(document) for document in page]
 
 
 def build_expected_searched_movies(
@@ -92,38 +82,32 @@ def build_expected_searched_movies(
     expected_case: ExpectedSearchCase,
 ) -> list[dict[str, Any]]:
     """Формирует ожидаемый результат поиска фильмов."""
-    if expected_case == 'title':
+    if expected_case == "title":
+        return [movie for movie in movies if "Space" in movie["title"]]
+
+    if expected_case == "description":
         return [
-            movie
-            for movie in movies
-            if 'Space' in movie['title']
+            movie for movie in movies if "Detective" in movie["description"]
         ]
 
-    if expected_case == 'description':
-        return [
-            movie
-            for movie in movies
-            if 'Detective' in movie['description']
-        ]
-
-    if expected_case == 'person':
+    if expected_case == "person":
         return [
             movie
             for movie in movies
             if any(
-                'Jason' in person['full_name']
+                "Jason" in person["full_name"]
                 for role in (
-                    'actors',
-                    'writers',
-                    'directors',
+                    "actors",
+                    "writers",
+                    "directors",
                 )
                 for person in movie[role]
             )
         ]
 
-    if expected_case == 'not_found':
+    if expected_case == "not_found":
         return []
 
     raise ValueError(
-        f'Unknown expected search case: {expected_case}',
+        f"Unknown expected search case: {expected_case}",
     )

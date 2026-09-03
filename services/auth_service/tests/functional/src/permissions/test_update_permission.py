@@ -1,4 +1,5 @@
 """Функциональные тесты обновления permissions."""
+
 from http import HTTPStatus
 from typing import Any
 
@@ -13,7 +14,7 @@ from tests.functional.test_data.permissions import (
     get_permission_update_data,
 )
 
-PERMISSIONS_URL = f'{test_settings.api_prefix}/permissions/'
+PERMISSIONS_URL = f"{test_settings.api_prefix}/permissions/"
 
 
 def _assert_validation_error(
@@ -21,16 +22,15 @@ def _assert_validation_error(
     field: str,
 ) -> None:
     """Проверяет наличие ошибки валидации указанного поля."""
-    assert isinstance(body.get('detail'), list)
+    assert isinstance(body.get("detail"), list)
     assert any(
-        error.get('loc', [])[-1:] == [field]
-        for error in body['detail']
+        error.get("loc", [])[-1:] == [field] for error in body["detail"]
     )
 
 
 def _get_permission_url(permission_id: str) -> str:
     """Возвращает URL одной permission."""
-    return f'{test_settings.api_prefix}/permissions/{permission_id}'
+    return f"{test_settings.api_prefix}/permissions/{permission_id}"
 
 
 @pytest.mark.asyncio
@@ -41,7 +41,7 @@ async def test_update_permission(
 ) -> None:
     """Проверяет обновление всех полей permission."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=get_full_permission_update_data(),
         headers=superuser_headers,
     )
@@ -50,9 +50,9 @@ async def test_update_permission(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['id'] == created_permission['id']
-        assert body['code'] == UPDATED_PERMISSION_CODE
-        assert body['description'] == UPDATED_PERMISSION_DESCRIPTION
+        assert body["id"] == created_permission["id"]
+        assert body["code"] == UPDATED_PERMISSION_CODE
+        assert body["description"] == UPDATED_PERMISSION_DESCRIPTION
 
 
 @pytest.mark.asyncio
@@ -63,7 +63,7 @@ async def test_update_permission_code_only(
 ) -> None:
     """Проверяет частичное обновление только code."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=get_permission_update_data(
             code=UPDATED_PERMISSION_CODE,
         ),
@@ -74,8 +74,8 @@ async def test_update_permission_code_only(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['code'] == UPDATED_PERMISSION_CODE
-        assert body['description'] == created_permission['description']
+        assert body["code"] == UPDATED_PERMISSION_CODE
+        assert body["description"] == created_permission["description"]
 
 
 @pytest.mark.asyncio
@@ -86,7 +86,7 @@ async def test_update_permission_description_only(
 ) -> None:
     """Проверяет частичное обновление только description."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=get_permission_update_data(
             description=UPDATED_PERMISSION_DESCRIPTION,
         ),
@@ -97,8 +97,8 @@ async def test_update_permission_description_only(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['code'] == created_permission['code']
-        assert body['description'] == UPDATED_PERMISSION_DESCRIPTION
+        assert body["code"] == created_permission["code"]
+        assert body["description"] == UPDATED_PERMISSION_DESCRIPTION
 
 
 @pytest.mark.asyncio
@@ -109,7 +109,7 @@ async def test_update_permission_clear_description(
 ) -> None:
     """Проверяет явную очистку description через null."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=get_permission_update_data(description=None),
         headers=superuser_headers,
     )
@@ -118,8 +118,8 @@ async def test_update_permission_clear_description(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['code'] == created_permission['code']
-        assert body['description'] is None
+        assert body["code"] == created_permission["code"]
+        assert body["description"] is None
 
 
 @pytest.mark.asyncio
@@ -130,7 +130,7 @@ async def test_update_permission_with_empty_payload(
 ) -> None:
     """Проверяет пустой PATCH без изменения permission."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=get_permission_update_data(),
         headers=superuser_headers,
     )
@@ -150,9 +150,9 @@ async def test_update_permission_with_same_code(
 ) -> None:
     """Проверяет обновление с прежним code без ложного конфликта."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=get_permission_update_data(
-            code=created_permission['code'],
+            code=created_permission["code"],
             description=UPDATED_PERMISSION_DESCRIPTION,
         ),
         headers=superuser_headers,
@@ -162,8 +162,8 @@ async def test_update_permission_with_same_code(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['code'] == created_permission['code']
-        assert body['description'] == UPDATED_PERMISSION_DESCRIPTION
+        assert body["code"] == created_permission["code"]
+        assert body["description"] == UPDATED_PERMISSION_DESCRIPTION
 
 
 @pytest.mark.asyncio
@@ -175,9 +175,9 @@ async def test_update_permission_to_duplicate_code(
 ) -> None:
     """Проверяет ошибку обновления на существующий code."""
     response = await make_patch_request(
-        url=_get_permission_url(created_second_permission['id']),
+        url=_get_permission_url(created_second_permission["id"]),
         json_data=get_permission_update_data(
-            code=created_permission['code'],
+            code=created_permission["code"],
         ),
         headers=superuser_headers,
     )
@@ -186,7 +186,7 @@ async def test_update_permission_to_duplicate_code(
         body = await response.json()
 
         assert response.status == HTTPStatus.CONFLICT
-        assert body['detail'] == 'Permission already exists'
+        assert body["detail"] == "Permission already exists"
 
 
 @pytest.mark.asyncio
@@ -205,7 +205,7 @@ async def test_update_missing_permission(
         body = await response.json()
 
         assert response.status == HTTPStatus.NOT_FOUND
-        assert body['detail'] == 'Permission not found'
+        assert body["detail"] == "Permission not found"
 
 
 @pytest.mark.asyncio
@@ -215,7 +215,7 @@ async def test_update_permission_with_invalid_uuid(
 ) -> None:
     """Проверяет валидацию UUID при обновлении permission."""
     response = await make_patch_request(
-        url=_get_permission_url('invalid-uuid'),
+        url=_get_permission_url("invalid-uuid"),
         json_data=get_full_permission_update_data(),
         headers=superuser_headers,
     )
@@ -224,7 +224,7 @@ async def test_update_permission_with_invalid_uuid(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        _assert_validation_error(body, 'permission_id')
+        _assert_validation_error(body, "permission_id")
 
 
 @pytest.mark.asyncio
@@ -235,7 +235,7 @@ async def test_update_permission_without_body(
 ) -> None:
     """Проверяет ошибку обновления без request body."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         headers=superuser_headers,
     )
 
@@ -243,17 +243,17 @@ async def test_update_permission_without_body(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ('payload', 'error_field'),
+    ("payload", "error_field"),
     [
-        ({'code': ''}, 'code'),
-        ({'code': 'x' * 101}, 'code'),
-        ({'code': 123}, 'code'),
-        ({'description': 123}, 'description'),
+        ({"code": ""}, "code"),
+        ({"code": "x" * 101}, "code"),
+        ({"code": 123}, "code"),
+        ({"description": 123}, "description"),
     ],
 )
 async def test_update_permission_with_invalid_payload(
@@ -265,7 +265,7 @@ async def test_update_permission_with_invalid_payload(
 ) -> None:
     """Проверяет валидацию тела PATCH permission."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=payload,
         headers=superuser_headers,
     )
@@ -285,7 +285,7 @@ async def test_update_permission_by_regular_user(
 ) -> None:
     """Проверяет запрет обновления обычным пользователем."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=get_full_permission_update_data(),
         headers=auth_headers,
     )
@@ -294,7 +294,7 @@ async def test_update_permission_by_regular_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.FORBIDDEN
-        assert body['detail'] == 'Not enough permissions'
+        assert body["detail"] == "Not enough permissions"
 
 
 @pytest.mark.asyncio
@@ -304,7 +304,7 @@ async def test_update_permission_without_token(
 ) -> None:
     """Проверяет запрет обновления без access-токена."""
     response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=get_full_permission_update_data(),
     )
 
@@ -312,7 +312,7 @@ async def test_update_permission_without_token(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"
 
 
 @pytest.mark.asyncio
@@ -323,10 +323,10 @@ async def test_update_permission_invalidates_item_and_list_cache(
     make_patch_request,
 ) -> None:
     """Проверяет инвалидацию кешей permission и списка после PATCH."""
-    permission_url = _get_permission_url(created_permission['id'])
+    permission_url = _get_permission_url(created_permission["id"])
     query_data = {
-        'limit': 10,
-        'offset': 0,
+        "limit": 10,
+        "offset": 0,
     }
 
     item_response = await make_get_request(
@@ -388,12 +388,9 @@ async def test_update_permission_invalidates_role_and_user_cache(
     make_patch_request,
 ) -> None:
     """Проверяет каскадную инвалидацию role и user cache."""
-    role_url = (
-        f'{test_settings.api_prefix}'
-        f'/roles/{created_role["id"]}'
-    )
-    roles_url = f'{test_settings.api_prefix}/roles/'
-    user_url = f'{test_settings.api_prefix}/users/me'
+    role_url = f"{test_settings.api_prefix}/roles/{created_role['id']}"
+    roles_url = f"{test_settings.api_prefix}/roles/"
+    user_url = f"{test_settings.api_prefix}/users/me"
 
     cached_role_response = await make_get_request(
         url=role_url,
@@ -403,23 +400,23 @@ async def test_update_permission_invalidates_role_and_user_cache(
         cached_role = await cached_role_response.json()
         assert cached_role_response.status == HTTPStatus.OK
         assert (
-            cached_role['permissions'][0]['code'] ==
-            created_permission['code']
+            cached_role["permissions"][0]["code"] == created_permission["code"]
         )
 
     cached_roles_response = await make_get_request(
         url=roles_url,
         headers=superuser_headers,
         query_data={
-            'limit': 10,
-            'offset': 0,
+            "limit": 10,
+            "offset": 0,
         },
     )
     async with cached_roles_response:
         cached_roles = await cached_roles_response.json()
         assert cached_roles_response.status == HTTPStatus.OK
-        assert cached_roles[0]['permissions'][0]['code'] == (
-            created_permission['code']
+        assert (
+            cached_roles[0]["permissions"][0]["code"]
+            == (created_permission["code"])
         )
 
     cached_user_response = await make_get_request(
@@ -429,13 +426,14 @@ async def test_update_permission_invalidates_role_and_user_cache(
     async with cached_user_response:
         cached_user = await cached_user_response.json()
         assert cached_user_response.status == HTTPStatus.OK
-        assert cached_user['id'] == user_with_role['id']
-        assert cached_user['roles'][0]['permissions'][0]['code'] == (
-            created_permission['code']
+        assert cached_user["id"] == user_with_role["id"]
+        assert (
+            cached_user["roles"][0]["permissions"][0]["code"]
+            == (created_permission["code"])
         )
 
     update_response = await make_patch_request(
-        url=_get_permission_url(created_permission['id']),
+        url=_get_permission_url(created_permission["id"]),
         json_data=get_full_permission_update_data(),
         headers=superuser_headers,
     )
@@ -450,20 +448,20 @@ async def test_update_permission_invalidates_role_and_user_cache(
     async with refreshed_role_response:
         refreshed_role = await refreshed_role_response.json()
         assert refreshed_role_response.status == HTTPStatus.OK
-        assert refreshed_role['permissions'][0] == updated_permission
+        assert refreshed_role["permissions"][0] == updated_permission
 
     refreshed_roles_response = await make_get_request(
         url=roles_url,
         headers=superuser_headers,
         query_data={
-            'limit': 10,
-            'offset': 0,
+            "limit": 10,
+            "offset": 0,
         },
     )
     async with refreshed_roles_response:
         refreshed_roles = await refreshed_roles_response.json()
         assert refreshed_roles_response.status == HTTPStatus.OK
-        assert refreshed_roles[0]['permissions'][0] == updated_permission
+        assert refreshed_roles[0]["permissions"][0] == updated_permission
 
     refreshed_user_response = await make_get_request(
         url=user_url,
@@ -472,6 +470,6 @@ async def test_update_permission_invalidates_role_and_user_cache(
     async with refreshed_user_response:
         refreshed_user = await refreshed_user_response.json()
         assert refreshed_user_response.status == HTTPStatus.OK
-        assert refreshed_user['roles'][0]['permissions'][0] == (
+        assert refreshed_user["roles"][0]["permissions"][0] == (
             updated_permission
         )

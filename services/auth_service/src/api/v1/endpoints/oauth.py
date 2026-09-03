@@ -1,12 +1,4 @@
 """Эндпоинты социальной OAuth-аутентификации."""
-from fastapi import (
-    APIRouter,
-    Depends,
-    Query,
-    Request,
-    status,
-)
-from fastapi.responses import RedirectResponse
 
 from api.dependencies import (
     get_oauth_service,
@@ -16,6 +8,14 @@ from api.dependencies import (
 from api.v1.mappers.auth import build_token_pair_response
 from api.v1.schemas.auth import TokenPairResponse
 from core.rate_limit import rate_limit
+from fastapi import (
+    APIRouter,
+    Depends,
+    Query,
+    Request,
+    status,
+)
+from fastapi.responses import RedirectResponse
 from oauth.enums import OAuthProviderName
 from services.exceptions import (
     InvalidOAuthStateError,
@@ -24,29 +24,29 @@ from services.exceptions import (
 from services.oauth import OAuthService
 
 router = APIRouter(
-    prefix='/auth/oauth',
-    tags=['oauth'],
+    prefix="/auth/oauth",
+    tags=["oauth"],
 )
 
 
 @router.get(
-    '/{provider}/login',
+    "/{provider}/login",
     response_class=RedirectResponse,
     status_code=status.HTTP_302_FOUND,
     dependencies=[
         Depends(
             rate_limit(
-                scope='auth:oauth:login',
+                scope="auth:oauth:login",
                 requests=10,
                 window_seconds=60,
             ),
         ),
     ],
-    summary='Начало входа через OAuth-провайдера',
+    summary="Начало входа через OAuth-провайдера",
     description=(
-        'Создаёт одноразовое OAuth-состояние с PKCE '
-        'и перенаправляет пользователя на страницу '
-        'авторизации выбранного провайдера.'
+        "Создаёт одноразовое OAuth-состояние с PKCE "
+        "и перенаправляет пользователя на страницу "
+        "авторизации выбранного провайдера."
     ),
 )
 async def oauth_login(
@@ -56,10 +56,8 @@ async def oauth_login(
     ),
 ) -> RedirectResponse:
     """Перенаправляет пользователя к OAuth-провайдеру."""
-    authorization_url = (
-        await oauth_service.start_authorization(
-            provider_name=provider,
-        )
+    authorization_url = await oauth_service.start_authorization(
+        provider_name=provider,
     )
 
     return RedirectResponse(
@@ -69,23 +67,23 @@ async def oauth_login(
 
 
 @router.get(
-    '/{provider}/callback',
+    "/{provider}/callback",
     response_model=TokenPairResponse,
     dependencies=[
         Depends(
             rate_limit(
-                scope='auth:oauth:callback',
+                scope="auth:oauth:callback",
                 requests=30,
                 window_seconds=60,
             ),
         ),
     ],
-    summary='Завершение входа через OAuth-провайдера',
+    summary="Завершение входа через OAuth-провайдера",
     description=(
-        'Проверяет одноразовый state, обменивает '
-        'authorization code на токен провайдера, '
-        'находит или создаёт пользователя и возвращает '
-        'локальные access и refresh токены.'
+        "Проверяет одноразовый state, обменивает "
+        "authorization code на токен провайдера, "
+        "находит или создаёт пользователя и возвращает "
+        "локальные access и refresh токены."
     ),
 )
 async def oauth_callback(
@@ -104,23 +102,20 @@ async def oauth_callback(
 ) -> TokenPairResponse:
     """Заврешает OAuth-вход."""
     if error is not None:
-        message = f'OAuth authorization failed: {error}'
+        message = f"OAuth authorization failed: {error}"
         if error_description:
-            message = (
-                f'{message}. '
-                f'{error_description}'
-            )
+            message = f"{message}. {error_description}"
 
         raise OAuthAuthorizationError(message)
 
     if code is None:
         raise OAuthAuthorizationError(
-            'OAuth callback does not contain authorization code',
+            "OAuth callback does not contain authorization code",
         )
 
     if state is None:
         raise InvalidOAuthStateError(
-            'OAuth callback does not contain state',
+            "OAuth callback does not contain state",
         )
 
     token_pair = await oauth_service.authenticate(

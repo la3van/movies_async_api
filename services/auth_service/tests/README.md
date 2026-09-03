@@ -102,7 +102,7 @@ get_update_data()
 get_update_data(description=None)
 # поле явно передано как null
 
-get_update_data(description='new value')
+get_update_data(description="new value")
 # передано новое значение
 ```
 
@@ -135,6 +135,17 @@ cp .env.example .env
 Тестовый Redis-клиент должен использовать ту же Redis DB, что и Auth Service в тестовом Compose.
 
 ## Полный запуск
+
+По умолчанию оба контейнера Python собираются на версии 3.10. Другую
+поддерживаемую версию можно передать через `PYTHON_VERSION`, как это делает
+CI:
+
+```bash
+PYTHON_VERSION=3.12 docker compose up --build \
+  --abort-on-container-exit \
+  --exit-code-from tests \
+  tests
+```
 
 ```bash
 docker compose up --build \

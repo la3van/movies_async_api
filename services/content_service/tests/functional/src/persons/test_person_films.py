@@ -1,4 +1,5 @@
 """Функциональные тесты получения фильмов персоны."""
+
 from http import HTTPStatus
 
 import pytest
@@ -20,21 +21,18 @@ async def test_get_person_films(
 ) -> None:
     person = persons_in_es[0]
 
-    person_film_ids = {
-        film['uuid']
-        for film in person['films']
-    }
+    person_film_ids = {film["uuid"] for film in person["films"]}
 
     expected_indices = [
         index
         for index, movie in enumerate(movies_in_es)
-        if movie['uuid'] in person_film_ids
+        if movie["uuid"] in person_film_ids
     ]
 
     expected_body = build_expected_page(
         documents=movies_in_es,
         expected_indexes=expected_indices,
-        sort_field='imdb_rating',
+        sort_field="imdb_rating",
         reverse=True,
         page_number=1,
         page_size=50,
@@ -42,10 +40,7 @@ async def test_get_person_films(
     )
 
     response = await make_get_request(
-        url=(
-            f'{test_settings.api_prefix}'
-            f'/persons/{person["uuid"]}/films'
-        ),
+        url=(f"{test_settings.api_prefix}/persons/{person['uuid']}/films"),
     )
 
     async with response:
@@ -56,17 +51,17 @@ async def test_get_person_films(
 
 
 @pytest.mark.parametrize(
-    'page_number, page_size',
+    "page_number, page_size",
     [
         pytest.param(
             2,
             1,
-            id='minimum-page-size-and-second-page',
+            id="minimum-page-size-and-second-page",
         ),
         pytest.param(
             1,
             100,
-            id='maximum-page-size',
+            id="maximum-page-size",
         ),
     ],
 )
@@ -79,17 +74,16 @@ async def test_get_person_films_with_pagination(
     make_get_request,
 ) -> None:
     movies_by_uuid = {
-        movie['uuid']: index
-        for index, movie in enumerate(movies_in_es)
+        movie["uuid"]: index for index, movie in enumerate(movies_in_es)
     }
 
     persons_with_movies = []
 
     for person in persons_in_es:
         expected_indices = [
-            movies_by_uuid[film['uuid']]
-            for film in person['films']
-            if film['uuid'] in movies_by_uuid
+            movies_by_uuid[film["uuid"]]
+            for film in person["films"]
+            if film["uuid"] in movies_by_uuid
         ]
 
         if len(expected_indices) >= 2:
@@ -98,7 +92,7 @@ async def test_get_person_films_with_pagination(
             )
 
     assert persons_with_movies, (
-        'Test data must contain a person with at least two existing films'
+        "Test data must contain a person with at least two existing films"
     )
 
     person, expected_indices = persons_with_movies[0]
@@ -106,7 +100,7 @@ async def test_get_person_films_with_pagination(
     expected_body = build_expected_page(
         documents=movies_in_es,
         expected_indexes=expected_indices,
-        sort_field='imdb_rating',
+        sort_field="imdb_rating",
         reverse=True,
         page_number=page_number,
         page_size=page_size,
@@ -114,13 +108,10 @@ async def test_get_person_films_with_pagination(
     )
 
     response = await make_get_request(
-        url=(
-            f'{test_settings.api_prefix}'
-            f'/persons/{person["uuid"]}/films'
-        ),
+        url=(f"{test_settings.api_prefix}/persons/{person['uuid']}/films"),
         query_data={
-            'page_number': page_number,
-            'page_size': page_size,
+            "page_number": page_number,
+            "page_size": page_size,
         },
     )
 
@@ -137,36 +128,26 @@ async def test_get_person_films_when_page_out_of_range(
     movies_in_es,
     make_get_request,
 ) -> None:
-    movie_ids = {
-        movie['uuid']
-        for movie in movies_in_es
-    }
+    movie_ids = {movie["uuid"] for movie in movies_in_es}
 
     person = next(
         person
         for person in persons_in_es
-        if any(
-            film['uuid'] in movie_ids
-            for film in person['films']
-        )
+        if any(film["uuid"] in movie_ids for film in person["films"])
     )
 
     existing_film_count = sum(
-        film['uuid'] in movie_ids
-        for film in person['films']
+        film["uuid"] in movie_ids for film in person["films"]
     )
 
     page_size = 1
     page_number = existing_film_count + 1
 
     response = await make_get_request(
-        url=(
-            f'{test_settings.api_prefix}'
-            f'/persons/{person["uuid"]}/films'
-        ),
+        url=(f"{test_settings.api_prefix}/persons/{person['uuid']}/films"),
         query_data={
-            'page_number': page_number,
-            'page_size': page_size,
+            "page_number": page_number,
+            "page_size": page_size,
         },
     )
 
@@ -184,24 +165,18 @@ async def test_get_person_films_when_person_has_no_existing_films(
     es_delete_document,
     make_get_request,
 ) -> None:
-    movies_by_uuid = {
-        movie['uuid']: movie
-        for movie in movies_in_es
-    }
+    movies_by_uuid = {movie["uuid"]: movie for movie in movies_in_es}
 
     person = next(
         person
         for person in persons_in_es
-        if any(
-            film['uuid'] in movies_by_uuid
-            for film in person['films']
-        )
+        if any(film["uuid"] in movies_by_uuid for film in person["films"])
     )
 
     existing_person_film_ids = {
-        film['uuid']
-        for film in person['films']
-        if film['uuid'] in movies_by_uuid
+        film["uuid"]
+        for film in person["films"]
+        if film["uuid"] in movies_by_uuid
     }
 
     assert existing_person_film_ids
@@ -213,10 +188,7 @@ async def test_get_person_films_when_person_has_no_existing_films(
         )
 
     response = await make_get_request(
-        url=(
-            f'{test_settings.api_prefix}'
-            f'/persons/{person["uuid"]}/films'
-        ),
+        url=(f"{test_settings.api_prefix}/persons/{person['uuid']}/films"),
     )
 
     async with response:
@@ -235,21 +207,18 @@ async def test_get_person_films_from_redis(
 ) -> None:
     person = persons_in_es[0]
 
-    person_film_ids = {
-        film['uuid']
-        for film in person['films']
-    }
+    person_film_ids = {film["uuid"] for film in person["films"]}
 
     expected_indices = [
         index
         for index, movie in enumerate(movies_in_es)
-        if movie['uuid'] in person_film_ids
+        if movie["uuid"] in person_film_ids
     ]
 
     expected_body = build_expected_page(
         documents=movies_in_es,
         expected_indexes=expected_indices,
-        sort_field='imdb_rating',
+        sort_field="imdb_rating",
         reverse=True,
         page_number=1,
         page_size=50,
@@ -259,10 +228,7 @@ async def test_get_person_films_from_redis(
     assert expected_indices
     assert expected_body
 
-    url = (
-        f'{test_settings.api_prefix}'
-        f'/persons/{person["uuid"]}/films'
-    )
+    url = f"{test_settings.api_prefix}/persons/{person['uuid']}/films"
 
     first_response = await make_get_request(url=url)
 
@@ -276,7 +242,7 @@ async def test_get_person_films_from_redis(
 
     await es_delete_document(
         index=test_settings.es_movies_index,
-        document_id=movie_to_delete['uuid'],
+        document_id=movie_to_delete["uuid"],
     )
 
     second_response = await make_get_request(url=url)
@@ -294,72 +260,69 @@ async def test_get_person_films_when_person_id_not_found(
     persons_in_es,
     make_get_request,
 ) -> None:
-    missing_person_id = '99999999-9999-9999-9999-999999999999'
+    missing_person_id = "99999999-9999-9999-9999-999999999999"
 
     response = await make_get_request(
-        url=(
-            f'{test_settings.api_prefix}'
-            f'/persons/{missing_person_id}/films'
-        ),
+        url=(f"{test_settings.api_prefix}/persons/{missing_person_id}/films"),
     )
 
     async with response:
         body = await response.json()
 
         assert response.status == HTTPStatus.NOT_FOUND
-        assert body == {'detail': 'person_not_found'}
+        assert body == {"detail": "person_not_found"}
 
 
 @pytest.mark.asyncio
 async def test_get_person_films_by_invalid_id(
     make_get_request,
 ) -> None:
-    invalid_person_id = 'not-a-uuid'
+    invalid_person_id = "not-a-uuid"
 
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/persons/{invalid_person_id}/films'
+        url=f"{test_settings.api_prefix}/persons/{invalid_person_id}/films"
     )
 
     async with response:
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail'][0]['loc'] == ['path', 'person_id']
-        assert body['detail'][0]['type'] == 'uuid_parsing'
+        assert body["detail"][0]["loc"] == ["path", "person_id"]
+        assert body["detail"][0]["type"] == "uuid_parsing"
 
 
 @pytest.mark.parametrize(
-    'query_data, parameter_name, expected_error_type',
+    "query_data, parameter_name, expected_error_type",
     [
         pytest.param(
-            {'page_number': 0},
-            'page_number',
-            'greater_than_equal',
-            id='page-number-below-minimum',
+            {"page_number": 0},
+            "page_number",
+            "greater_than_equal",
+            id="page-number-below-minimum",
         ),
         pytest.param(
-            {'page_number': 'invalid'},
-            'page_number',
-            'int_parsing',
-            id='page-number-invalid-type',
+            {"page_number": "invalid"},
+            "page_number",
+            "int_parsing",
+            id="page-number-invalid-type",
         ),
         pytest.param(
-            {'page_size': 0},
-            'page_size',
-            'greater_than_equal',
-            id='page-size-below-minimum',
+            {"page_size": 0},
+            "page_size",
+            "greater_than_equal",
+            id="page-size-below-minimum",
         ),
         pytest.param(
-            {'page_size': 101},
-            'page_size',
-            'less_than_equal',
-            id='page-size-above-maximum',
+            {"page_size": 101},
+            "page_size",
+            "less_than_equal",
+            id="page-size-above-maximum",
         ),
         pytest.param(
-            {'page_size': 'invalid'},
-            'page_size',
-            'int_parsing',
-            id='page-size-invalid-type',
+            {"page_size": "invalid"},
+            "page_size",
+            "int_parsing",
+            id="page-size-invalid-type",
         ),
     ],
 )
@@ -370,13 +333,10 @@ async def test_get_person_films_with_invalid_query_parameters(
     expected_error_type,
     make_get_request,
 ) -> None:
-    valid_person_id = '99999999-9999-9999-9999-999999999999'
+    valid_person_id = "99999999-9999-9999-9999-999999999999"
 
     response = await make_get_request(
-        url=(
-            f'{test_settings.api_prefix}'
-            f'/persons/{valid_person_id}/films'
-        ),
+        url=(f"{test_settings.api_prefix}/persons/{valid_person_id}/films"),
         query_data=query_data,
     )
 
@@ -384,9 +344,9 @@ async def test_get_person_films_with_invalid_query_parameters(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert len(body['detail']) == 1
+        assert len(body["detail"]) == 1
 
-        error = body['detail'][0]
+        error = body["detail"][0]
 
-        assert error['loc'] == ['query', parameter_name]
-        assert error['type'] == expected_error_type
+        assert error["loc"] == ["query", parameter_name]
+        assert error["type"] == expected_error_type

@@ -102,6 +102,16 @@ infrastructure/elasticsearch/mappings
 
 ## Запуск всех тестов
 
+По умолчанию сервис и pytest-контейнер используют Python 3.10. Версию можно
+переопределить, как в CI:
+
+```bash
+PYTHON_VERSION=3.12 docker compose up --build \
+  --abort-on-container-exit \
+  --exit-code-from tests \
+  tests
+```
+
 Из каталога `services/content_service/tests/functional`:
 
 ```bash

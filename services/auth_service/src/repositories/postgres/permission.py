@@ -1,15 +1,16 @@
 """PostgreSQL-репозиторий прав доступа."""
-from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
 
 from models.permission import Permission
 from repositories.interfaces.permission import PermissionRepository
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class PostgresPermissionRepository(PermissionRepository):
     """Реализует операции с правами доступа в PostgreSQL."""
+
     def __init__(self, session: AsyncSession) -> None:
         """Сохраняет сессию PostgreSQL."""
         self.session = session

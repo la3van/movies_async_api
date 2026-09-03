@@ -1,16 +1,17 @@
 """PostgreSQL-репозиторий истории входов."""
-from uuid import UUID
-from datetime import datetime
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
+from uuid import UUID
 
 from models.login_history import LoginHistory
 from repositories.interfaces.login_history import LoginHistoryRepository
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class PostgresLoginHistoryRepository(LoginHistoryRepository):
     """Реализует операции с login-history в PostgreSQL."""
+
     def __init__(self, session: AsyncSession) -> None:
         """Сохраняет сессию PostgreSQL."""
         self.session = session
@@ -39,8 +40,7 @@ class PostgresLoginHistoryRepository(LoginHistoryRepository):
             )
 
         statement = (
-            statement
-            .order_by(
+            statement.order_by(
                 LoginHistory.created_at.desc(),
                 LoginHistory.id.desc(),
             )
@@ -49,7 +49,7 @@ class PostgresLoginHistoryRepository(LoginHistoryRepository):
         )
 
         result = await self.session.execute(statement)
-        return list(result.scalaras().all())
+        return list(result.scalars().all())
 
     async def create(
         self,

@@ -1,4 +1,5 @@
 """Трансформация жанров из PostgreSQL в документы индекса genres."""
+
 from postgres_to_es.models import GenreDocument, PostgresGenre
 
 

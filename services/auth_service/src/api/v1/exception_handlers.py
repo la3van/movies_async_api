@@ -1,12 +1,18 @@
 """Обработчики исключений API v1."""
+
 from fastapi import Request, status
 from fastapi.responses import ORJSONResponse
-
 from services.exceptions import (
+    AccessTokenRevocationStorageError,
+    AuthServiceError,
     InactiveUserError,
     InvalidCredentialsError,
+    InvalidLoginHistoryDateRangeError,
     InvalidOAuthStateError,
     InvalidRefreshTokenError,
+    OAuthAccountLinkRequiredError,
+    OAuthAuthorizationError,
+    OAuthEmailRequiredError,
     OAuthProviderNotConfiguredError,
     OAuthProviderResponseError,
     OAuthProviderUnavailableError,
@@ -18,14 +24,7 @@ from services.exceptions import (
     RoleNotFoundError,
     UserAlreadyExistsError,
     UserNotFoundError,
-    OAuthAccountLinkRequiredError,
-    OAuthAuthorizationError,
-    OAuthEmailRequiredError,
-    InvalidLoginHistoryDateRangeError,
-    AuthServiceError,
-    AccessTokenRevocationStorageError,
 )
-
 
 EXCEPTION_STATUS_CODES: dict[type[Exception], int] = {
     UserAlreadyExistsError: status.HTTP_409_CONFLICT,
@@ -61,15 +60,14 @@ async def service_exception_handler(
 
     detail = (
         str(exc)
-        if status_code
-        < status.HTTP_500_INTERNAL_SERVER_ERROR
-        else 'Internal auth service error'
+        if status_code < status.HTTP_500_INTERNAL_SERVER_ERROR
+        else "Internal auth service error"
     )
 
     return ORJSONResponse(
         status_code=status_code,
         content={
-            'detail': detail,
+            "detail": detail,
         },
     )
 

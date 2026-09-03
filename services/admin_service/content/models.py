@@ -1,4 +1,5 @@
 """Неуправляемые Django-модели существующей контентной базы."""
+
 from __future__ import annotations
 
 import uuid
@@ -13,6 +14,7 @@ from django.utils.translation import gettext_lazy as _
 
 class UUIDMixin(models.Model):
     """Добавляет UUID-первичный ключ модели."""
+
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
@@ -21,11 +23,13 @@ class UUIDMixin(models.Model):
 
     class Meta:
         """Метаданные абстрактного UUID-миксина."""
+
         abstract = True
 
 
 class TimeStampedMixin(models.Model):
     """Добавляет даты создания и изменения записи."""
+
     created = models.DateTimeField(
         auto_now_add=True,
         null=True,
@@ -37,6 +41,7 @@ class TimeStampedMixin(models.Model):
 
     class Meta:
         """Метаданные абстрактного временного миксина."""
+
         abstract = True
 
 
@@ -45,6 +50,7 @@ class Genre(
     TimeStampedMixin,
 ):
     """Жанр фильма или сериала."""
+
     name = models.CharField(
         _("name"),
         max_length=255,
@@ -61,6 +67,7 @@ class Genre(
 
     class Meta:
         """Метаданные модели жанра."""
+
         managed = False
         db_table = 'content"."genre'
         verbose_name = _("genre")
@@ -73,6 +80,7 @@ class Person(
     TimeStampedMixin,
 ):
     """Персона, участвовавшая в создании фильма."""
+
     full_name = models.CharField(
         _("full name"),
         max_length=255,
@@ -84,6 +92,7 @@ class Person(
 
     class Meta:
         """Метаданные модели персоны."""
+
         managed = False
         db_table = 'content"."person'
         verbose_name = _("person")
@@ -103,6 +112,7 @@ class FilmWork(
     TimeStampedMixin,
 ):
     """Фильм или сериал."""
+
     title = models.CharField(
         _("title"),
         max_length=255,
@@ -152,6 +162,7 @@ class FilmWork(
 
     class Meta:
         """Метаданные модели кинопроизведения."""
+
         managed = False
         db_table = 'content"."film_work'
         verbose_name = _("film")
@@ -164,6 +175,7 @@ class FilmWork(
 
 class GenreFilmWork(UUIDMixin):
     """Связь кинопроизведения с жанром."""
+
     genre = models.ForeignKey(
         Genre,
         on_delete=models.CASCADE,
@@ -187,6 +199,7 @@ class GenreFilmWork(UUIDMixin):
 
     class Meta:
         """Метаданные связи фильма и жанра."""
+
         managed = False
         db_table = 'content"."genre_film_work'
         verbose_name = _("film genre")
@@ -201,6 +214,7 @@ class GenreFilmWork(UUIDMixin):
 
 class Roles(models.TextChoices):
     """Роли персоны в создании кинопроизведения."""
+
     ACTOR = "actor", _("actor")
     DIRECTOR = "director", _("director")
     WRITER = "writer", _("writer")
@@ -208,6 +222,7 @@ class Roles(models.TextChoices):
 
 class PersonFilmWork(UUIDMixin):
     """Связь кинопроизведения с персоной и её ролью."""
+
     person = models.ForeignKey(
         Person,
         on_delete=models.CASCADE,
@@ -233,13 +248,11 @@ class PersonFilmWork(UUIDMixin):
 
     def __str__(self) -> str:
         """Возвращает текстовое представление связи."""
-        return (
-            f"{self.film_work} — "
-            f"{self.person} ({self.get_role_display()})"
-        )
+        return f"{self.film_work} — {self.person} ({self.get_role_display()})"
 
     class Meta:
         """Метаданные связи фильма и персоны."""
+
         managed = False
         db_table = 'content"."person_film_work'
         verbose_name = _("film person")

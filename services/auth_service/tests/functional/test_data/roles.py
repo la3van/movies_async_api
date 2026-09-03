@@ -1,20 +1,22 @@
 """Тестовые данные для roles эндпоинтов."""
+
 from uuid import UUID
 
-from .permissions import MISSING_PERMISSION_ID
 from tests.functional.test_data.common import UNSET, UnsetType
 
-ROLE_NAME = 'subscriber'
-ROLE_DESCRIPTION = 'Пользователь с активной подпиской'
+from .permissions import MISSING_PERMISSION_ID
+
+ROLE_NAME = "subscriber"
+ROLE_DESCRIPTION = "Пользователь с активной подпиской"
 ROLE_IS_DEFAULT = False
 
-SECOND_ROLE_NAME = 'admin'
-SECOND_ROLE_DESCRIPTION = 'Администратор auth-сервиса'
+SECOND_ROLE_NAME = "admin"
+SECOND_ROLE_DESCRIPTION = "Администратор auth-сервиса"
 
-UPDATED_ROLE_NAME = 'premium_subscriber'
-UPDATED_ROLE_DESCRIPTION = 'Пользователь с премиум-подпиской'
+UPDATED_ROLE_NAME = "premium_subscriber"
+UPDATED_ROLE_DESCRIPTION = "Пользователь с премиум-подпиской"
 
-MISSING_ROLE_ID = '00000000-0000-0000-0000-000000000002'
+MISSING_ROLE_ID = "00000000-0000-0000-0000-000000000002"
 
 
 def get_role_create_data(
@@ -26,10 +28,10 @@ def get_role_create_data(
 ) -> dict[str, str | bool | list[str] | None]:
     """Возвращает payload создания роли."""
     return {
-        'name': name,
-        'description': description,
-        'is_default': is_default,
-        'permission_ids': [
+        "name": name,
+        "description": description,
+        "is_default": is_default,
+        "permission_ids": [
             str(permission_id) for permission_id in permission_ids or []
         ],
     }
@@ -58,13 +60,13 @@ def get_role_update_data(
     data: dict[str, str | bool | list[str] | None] = {}
 
     if not isinstance(name, UnsetType):
-        data['name'] = name
+        data["name"] = name
     if not isinstance(description, UnsetType):
-        data['description'] = description
+        data["description"] = description
     if not isinstance(is_default, UnsetType):
-        data['is_default'] = is_default
+        data["is_default"] = is_default
     if not isinstance(permission_ids, UnsetType):
-        data['permission_ids'] = (
+        data["permission_ids"] = (
             None
             if permission_ids is None
             else [str(permission_id) for permission_id in permission_ids]
@@ -86,13 +88,15 @@ def get_full_role_update_data(
     )
 
 
-def get_duplicate_role_create_data(
-) -> dict[str, str | bool | list[str] | None]:
+def get_duplicate_role_create_data() -> dict[
+    str, str | bool | list[str] | None
+]:
     """Возвращает payload создания роли с уже существующим name."""
     return get_role_create_data(name=ROLE_NAME)
 
 
-def get_role_with_missing_permission_data(
-) -> dict[str, str | bool | list[str] | None]:
+def get_role_with_missing_permission_data() -> dict[
+    str, str | bool | list[str] | None
+]:
     """Возвращает payload создания роли с несуществующим permission_id."""
     return get_role_create_data(permission_ids=[MISSING_PERMISSION_ID])

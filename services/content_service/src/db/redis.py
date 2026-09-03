@@ -1,14 +1,12 @@
 """Модуль зависимостей относительно redis'а."""
-from typing import Optional
 
+from core.config import get_settings
 from redis.asyncio import Redis
 from redis.asyncio.retry import Retry
 from redis.backoff import ExponentialWithJitterBackoff
 from redis.exceptions import ConnectionError, TimeoutError
 
-from core.config import get_settings
-
-redis: Optional[Redis] = None
+redis: Redis | None = None
 
 
 async def init_redis() -> None:
@@ -50,6 +48,6 @@ async def close_redis() -> None:
 async def get_redis() -> Redis:
     """Возвращает клиент Redis для dependency injection."""
     if redis is None:
-        raise RuntimeError('Redis client is not initialized')
+        raise RuntimeError("Redis client is not initialized")
 
     return redis

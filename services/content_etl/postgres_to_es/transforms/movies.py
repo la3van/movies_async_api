@@ -1,4 +1,5 @@
 """Трансформация фильмов из PostgreSQL в документы индекса movies."""
+
 from postgres_to_es.models import (
     MovieDocument,
     MovieGenre,

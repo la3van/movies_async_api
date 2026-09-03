@@ -1,12 +1,9 @@
 """Создание и конфигурация Flask-приложения сбора событий."""
+
 import atexit
 from logging.config import dictConfig
 
 import httpx
-from flask import Flask
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from redis import Redis
-
 from api.exception_handlers import register_exception_handlers
 from api.health import router as health_router
 from api.v1.router import api_router
@@ -19,8 +16,11 @@ from core.event_rate_limit import (
 from core.logger import LOGGING_CONFIG
 from core.request_id import register_request_id
 from core.tracing import configure_tracing, shutdown_tracing
+from flask import Flask
 from kafka.base import EventPublisher
 from kafka.producer import KafkaEventPublisher
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from redis import Redis
 from services.events import EventService
 
 dictConfig(LOGGING_CONFIG)
@@ -36,9 +36,7 @@ def create_app(
     settings = settings or get_settings()
 
     app = Flask(__name__)
-    app.config["MAX_CONTENT_LENGTH"] = (
-        settings.max_event_request_bytes
-    )
+    app.config["MAX_CONTENT_LENGTH"] = settings.max_event_request_bytes
 
     tracer_provider = configure_tracing(
         settings,
@@ -56,22 +54,10 @@ def create_app(
         auth_http_client = httpx.Client(
             base_url=settings.auth_service_base_url,
             timeout=httpx.Timeout(
-                connect=(
-                    settings
-                    .auth_service_connect_timeout_seconds
-                ),
-                read=(
-                    settings
-                    .auth_service_read_timeout_seconds
-                ),
-                write=(
-                    settings
-                    .auth_service_read_timeout_seconds
-                ),
-                pool=(
-                    settings
-                    .auth_service_connect_timeout_seconds
-                ),
+                connect=(settings.auth_service_connect_timeout_seconds),
+                read=(settings.auth_service_read_timeout_seconds),
+                write=(settings.auth_service_read_timeout_seconds),
+                pool=(settings.auth_service_connect_timeout_seconds),
             ),
             follow_redirects=False,
         )
@@ -85,21 +71,15 @@ def create_app(
             host=settings.redis_host,
             port=settings.redis_port,
             db=settings.redis_db,
-            socket_connect_timeout=(
-                settings.redis_connect_timeout_seconds
-            ),
-            socket_timeout=(
-                settings.redis_socket_timeout_seconds
-            ),
+            socket_connect_timeout=(settings.redis_connect_timeout_seconds),
+            socket_timeout=(settings.redis_socket_timeout_seconds),
         )
         rate_limiter = RedisEventRateLimiter(
             redis=redis_client,
             enabled=settings.event_rate_limit_enabled,
             key_prefix=settings.event_rate_limit_key_prefix,
             requests=settings.event_rate_limit_requests,
-            window_seconds=(
-                settings.event_rate_limit_window_seconds
-            ),
+            window_seconds=(settings.event_rate_limit_window_seconds),
         )
 
     event_service = EventService(

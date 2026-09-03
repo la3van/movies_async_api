@@ -1,6 +1,6 @@
 """Преобразование моделей фильмов в схемы API."""
+
 from uuid import UUID
-from models.film import Film, ShortFilm
 
 from api.v1.schemas.films import (
     FilmDetailResponse,
@@ -8,6 +8,7 @@ from api.v1.schemas.films import (
     PersonInFilmResponse,
     ShortFilmResponse,
 )
+from models.film import Film, ShortFilm
 
 
 def build_short_film_response(film: ShortFilm) -> ShortFilmResponse:

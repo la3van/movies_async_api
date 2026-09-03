@@ -1,4 +1,7 @@
 """Публикация пользовательских событий в Kafka."""
+
+from __future__ import annotations
+
 import logging
 from typing import Any
 
@@ -9,28 +12,28 @@ from confluent_kafka import (
     Message,
     Producer,
 )
+from core.config import Settings
 from gevent import get_hub
 from gevent.event import AsyncResult, Event
 from gevent.timeout import Timeout
+from kafka.base import DeliveryMetadata
+from kafka.exceptions import (
+    KafkaPublisherClosed,
+    KafkaPublishError,
+    KafkaPublishTimeout,
+    KafkaQueueFull,
+)
 from opentelemetry.instrumentation.confluent_kafka import (
     ConfluentKafkaInstrumentor,
 )
 from opentelemetry.sdk.trace import TracerProvider
-
-from core.config import Settings
-from kafka.base import DeliveryMetadata
-from kafka.exceptions import (
-    KafkaPublishError,
-    KafkaPublishTimeout,
-    KafkaPublisherClosed,
-    KafkaQueueFull,
-)
 
 logger = logging.getLogger(__name__)
 
 
 class KafkaEventPublisher:
     """Публикует пользовательские события в Kafka."""
+
     def __init__(
         self,
         settings: Settings,
@@ -72,11 +75,9 @@ class KafkaEventPublisher:
     ) -> DeliveryMetadata:
         """Опубликовать сообщение и дождаться результата доставки."""
         if self._closed:
-            raise KafkaPublisherClosed(
-                "Kafka Publisher уже завершил работу"
-            )
+            raise KafkaPublisherClosed("Kafka Publisher уже завершил работу")
 
-        delivery_result: AsyncResult = AsyncResult()
+        delivery_result: AsyncResult[DeliveryMetadata] = AsyncResult()
 
         def on_delivery(
             error: KafkaError | None,
@@ -94,11 +95,23 @@ class KafkaEventPublisher:
                 )
                 return
 
+            topic = message.topic()
+            partition = message.partition()
+            offset = message.offset()
+
+            if topic is None or partition is None or offset is None:
+                delivery_result.set_exception(
+                    KafkaPublishError(
+                        "Kafka returned incomplete delivery metadata"
+                    )
+                )
+                return
+
             delivery_result.set(
                 DeliveryMetadata(
-                    topic=message.topic(),
-                    partition=message.partition(),
-                    offset=message.offset(),
+                    topic=topic,
+                    partition=partition,
+                    offset=offset,
                 )
             )
 
@@ -144,9 +157,13 @@ class KafkaEventPublisher:
             )
         except Timeout as exc:
             raise KafkaPublishTimeout(
-                "Не получено подтверждение доставки Kafka "
-                "за отведённое время"
+                "Не получено подтверждение доставки Kafka за отведённое время"
             ) from exc
+
+        if metadata is None:
+            raise KafkaPublishError(
+                "Kafka delivery callback returned no metadata"
+            )
 
         return metadata
 
@@ -158,8 +175,7 @@ class KafkaEventPublisher:
         try:
             metadata = (
                 get_hub()
-                .threadpool
-                .spawn(
+                .threadpool.spawn(
                     self._raw_producer.list_topics,
                     self._topic,
                     self._settings.kafka_metadata_timeout_seconds,
@@ -167,9 +183,11 @@ class KafkaEventPublisher:
                 .get()
             )
         except KafkaException:
-            logger.exception(
-                "Не удалось получить метаданные Kafka"
-            )
+            logger.exception("Не удалось получить метаданные Kafka")
+            return False
+
+        if metadata is None:
+            logger.warning("Kafka вернула пустые метаданные кластера")
             return False
 
         topic_metadata = metadata.topics.get(

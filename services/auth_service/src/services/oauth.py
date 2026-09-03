@@ -1,9 +1,11 @@
 """Сервис социальной OAuth-аутентификации."""
+
 import hashlib
 
 from cache.base import Cache
 from core.security import generate_secure_token, hash_password
 from core.tracing import trace_method
+from models.user import User
 from oauth.enums import OAuthProviderName
 from oauth.models import OAuthUserInfo
 from oauth.registry import OAuthProviderRegistry
@@ -23,11 +25,11 @@ from unit_of_work.base import (
     AbstractUnitOfWork,
     UnitOfWorkFactory,
 )
-from models.user import User
 
 
 class OAuthService:
     """Управляет OAuth-авторизацией через внешних провайдеров."""
+
     def __init__(
         self,
         *,
@@ -44,7 +46,7 @@ class OAuthService:
         self._token_service = token_service
         self._cache = cache
 
-    @trace_method('oauth.start_authorization')
+    @trace_method("oauth.start_authorization")
     async def start_authorization(
         self,
         provider_name: OAuthProviderName,
@@ -61,12 +63,10 @@ class OAuthService:
 
         return provider.build_authorization_url(
             state=authorization_data.state,
-            code_challenge=(
-                authorization_data.code_challenge
-            ),
+            code_challenge=(authorization_data.code_challenge),
         )
 
-    @trace_method('oauth.authenticate')
+    @trace_method("oauth.authenticate")
     async def authenticate(
         self,
         *,
@@ -108,7 +108,7 @@ class OAuthService:
 
             if not user.is_active:
                 raise InactiveUserError(
-                    'User is inactive',
+                    "User is inactive",
                 )
 
             token_pair = await create_login_session(
@@ -136,11 +136,9 @@ class OAuthService:
         user_info: OAuthUserInfo,
     ) -> User:
         """Находит либо создает локального OAuth-пользователя."""
-        social_account = (
-            await uow.social_accounts.get_by_provider_identity(
-                provider=provider_name.value,
-                provider_user_id=user_info.provider_user_id,
-            )
+        social_account = await uow.social_accounts.get_by_provider_identity(
+            provider=provider_name.value,
+            provider_user_id=user_info.provider_user_id,
         )
         if social_account is not None:
             return social_account.user
@@ -152,17 +150,15 @@ class OAuthService:
         existing_user = await uow.users.get_by_email(email)
         if existing_user is not None:
             raise OAuthAccountLinkRequiredError(
-                'A local account with this email already exists. '
-                'Sign in with the existing account before linking '
-                'the OAuth provider.'
+                "A local account with this email already exists. "
+                "Sign in with the existing account before linking "
+                "the OAuth provider."
             )
 
         user = await uow.users.create(
             login=self._build_social_login(
                 provider_name=provider_name,
-                provider_user_id=(
-                    user_info.provider_user_id
-                ),
+                provider_user_id=(user_info.provider_user_id),
             ),
             email=email,
             password_hash=hash_password(
@@ -183,9 +179,7 @@ class OAuthService:
         await uow.social_accounts.create(
             user_id=user.id,
             provider=provider_name.value,
-            provider_user_id=(
-                user_info.provider_user_id
-            ),
+            provider_user_id=(user_info.provider_user_id),
             email=email,
         )
 
@@ -194,7 +188,7 @@ class OAuthService:
         )
         if user_with_roles is None:
             raise UserNotFoundError(
-                'OAuth user was not created',
+                "OAuth user was not created",
             )
 
         return user_with_roles
@@ -206,12 +200,12 @@ class OAuthService:
         """Возвращает подходящий email OAuth-пользователя."""
         if not user_info.email:
             raise OAuthEmailRequiredError(
-                'OAuth provider did not return an email',
+                "OAuth provider did not return an email",
             )
 
         if user_info.email_verified is False:
             raise OAuthEmailRequiredError(
-                'OAuth provider returned an unverified email',
+                "OAuth provider returned an unverified email",
             )
 
         return user_info.email.strip().lower()
@@ -223,17 +217,10 @@ class OAuthService:
         provider_user_id: str,
     ) -> str:
         """Генерирует технический уникальный login."""
-        identity = (
-            f'{provider_name.value}:'
-            f'{provider_user_id}'
-        )
+        identity = f"{provider_name.value}:{provider_user_id}"
 
         identity_hash = hashlib.sha256(
-            identity.encode('utf-8'),
+            identity.encode("utf-8"),
         ).hexdigest()
 
-        return (
-            f'oauth_'
-            f'{provider_name.value}_'
-            f'{identity_hash}'
-        )
+        return f"oauth_{provider_name.value}_{identity_hash}"

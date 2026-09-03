@@ -1,20 +1,18 @@
 """Безопасное определение исходного IP-адреса клиента."""
+
 from __future__ import annotations
 
 import socket
 from ipaddress import ip_address, ip_network
 
-from fastapi import Request
-
 from core.config import get_settings
+from fastapi import Request
 
 
 def get_client_ip(request: Request) -> str | None:
     """Возвращает исходный IP только через доверенный proxy."""
     direct_ip = _normalize_ip(
-        request.client.host
-        if request.client is not None
-        else None,
+        request.client.host if request.client is not None else None,
     )
 
     if direct_ip is None:
@@ -29,17 +27,17 @@ def get_client_ip(request: Request) -> str | None:
         return direct_ip
 
     real_ip = _normalize_ip(
-        request.headers.get('x-real-ip'),
+        request.headers.get("x-real-ip"),
     )
     if real_ip is not None:
         return real_ip
 
     forwarded_for = request.headers.get(
-        'x-forwarded-for',
+        "x-forwarded-for",
     )
     if forwarded_for:
         first_forwarded_ip = forwarded_for.split(
-            ',',
+            ",",
             maxsplit=1,
         )[0].strip()
 
@@ -62,7 +60,7 @@ def _is_trusted_proxy(
 
     sources = (
         source.strip()
-        for source in configured_sources.split(',')
+        for source in configured_sources.split(",")
         if source.strip()
     )
 
@@ -95,7 +93,11 @@ def _resolve_host(host: str) -> set[str]:
     resolved_addresses: set[str] = set()
 
     for item in address_info:
-        normalized_ip = _normalize_ip(item[4][0])
+        raw_address = item[4][0]
+        if not isinstance(raw_address, str):
+            continue
+
+        normalized_ip = _normalize_ip(raw_address)
 
         if normalized_ip is not None:
             resolved_addresses.add(normalized_ip)

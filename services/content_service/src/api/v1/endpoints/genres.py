@@ -1,51 +1,50 @@
 """Модуль с endpoint'ами для жанров."""
+
 from http import HTTPStatus
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-
-from services.genre import GenreService
 from api.dependencies import get_genre_service
-
-from api.v1.schemas.genres import GenreResponse
 from api.v1.mappers.genres import build_genre_response
+from api.v1.schemas.genres import GenreResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
+from services.genre import GenreService
 
 router = APIRouter()
 
 
 @router.get(
-    '/',
+    "/",
     response_model=list[GenreResponse],
-    summary='Список жанров',
+    summary="Список жанров",
     description=(
-        'Возвращает список жанров с пагинацией, опциональным поиском '
-        'по названию и описанию, а также сортировкой по названию.'
+        "Возвращает список жанров с пагинацией, опциональным поиском "
+        "по названию и описанию, а также сортировкой по названию."
     ),
-    response_description='Список жанров с uuid и названием',
+    response_description="Список жанров с uuid и названием",
 )
 async def get_genres(
-    query: str | None = Query(  # noqa: B008
+    query: str | None = Query(
         None,
         min_length=1,
-        description='Поисковая строка для фильтрации жанров',
-        examples=['action'],
+        description="Поисковая строка для фильтрации жанров",
+        examples=["action"],
     ),
-    sort: str | None = Query(  # noqa: B008
+    sort: str | None = Query(
         None,
-        pattern='^-?name$',
+        pattern="^-?name$",
         description='Поле сортировки. Для убывания используется префикс "-".',
-        examples=['name'],
+        examples=["name"],
     ),
-    page_number: int = Query(  # noqa: B008
+    page_number: int = Query(
         1,
         ge=1,
-        description='Номер страницы',
+        description="Номер страницы",
     ),
-    page_size: int = Query(  # noqa: B008
+    page_size: int = Query(
         50,
         ge=1,
         le=100,
-        description='Количество жанров на странице',
+        description="Количество жанров на странице",
     ),
     genre_service: GenreService = Depends(get_genre_service),  # noqa: B008
 ) -> list[GenreResponse]:
@@ -57,25 +56,22 @@ async def get_genres(
         page_size=page_size,
     )
 
-    return [
-        build_genre_response(genre)
-        for genre in genres
-    ]
+    return [build_genre_response(genre) for genre in genres]
 
 
 @router.get(
-    '/{genre_id}',
+    "/{genre_id}",
     response_model=GenreResponse,
-    summary='Информация о жанре',
-    description='Возвращает информацию о жанре по его UUID.',
-    response_description='Информация о жанре',
+    summary="Информация о жанре",
+    description="Возвращает информацию о жанре по его UUID.",
+    response_description="Информация о жанре",
     responses={
         404: {
-            'description': 'Жанр не найден',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'genre_not_found',
+            "description": "Жанр не найден",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "genre_not_found",
                     },
                 },
             },
@@ -92,7 +88,7 @@ async def get_genre(
     if genre is None:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
-            detail='genre_not_found',
+            detail="genre_not_found",
         )
 
     return build_genre_response(genre)

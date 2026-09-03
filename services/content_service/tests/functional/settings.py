@@ -1,6 +1,6 @@
 """Настройки окружения функциональных тестов."""
-import json
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -16,17 +16,12 @@ def get_default_mappings_dir() -> Path:
     В Docker использует каталог, примонтированный в /app/mappings.
     """
     for parent in FUNCTIONAL_DIR.parents:
-        mappings_dir = (
-            parent
-            / 'infrastructure'
-            / 'elasticsearch'
-            / 'mappings'
-        )
+        mappings_dir = parent / "infrastructure" / "elasticsearch" / "mappings"
 
-        if mappings_dir is dir():
+        if mappings_dir.is_dir():
             return mappings_dir
 
-    return Path('/app/mappings')
+    return Path("/app/mappings")
 
 
 DEFAULT_MAPPINGS_DIR = get_default_mappings_dir()
@@ -34,15 +29,16 @@ DEFAULT_MAPPINGS_DIR = get_default_mappings_dir()
 
 class TestSettings(BaseSettings):
     """Хранит настройки окружения функциональных тестов."""
-    elastic_url: str = 'http://elasticsearch:9200'
-    redis_url: str = 'redis://redis:6379/0'
-    service_url: str = 'http://async_api:8000'
 
-    api_prefix: str = '/api/v1'
+    elastic_url: str = "http://elasticsearch:9200"
+    redis_url: str = "redis://redis:6379/0"
+    service_url: str = "http://async_api:8000"
 
-    es_movies_index: str = 'movies'
-    es_genres_index: str = 'genres'
-    es_persons_index: str = 'persons'
+    api_prefix: str = "/api/v1"
+
+    es_movies_index: str = "movies"
+    es_genres_index: str = "genres"
+    es_persons_index: str = "persons"
 
     schemas_dir: Path = DEFAULT_MAPPINGS_DIR
 
@@ -58,10 +54,10 @@ class TestSettings(BaseSettings):
     http_request_timeout: float = 10.0
 
     model_config = SettingsConfigDict(
-        env_file=FUNCTIONAL_DIR / '.env',
-        env_file_encoding='utf-8',
+        env_file=FUNCTIONAL_DIR / ".env",
+        env_file_encoding="utf-8",
         case_sensitive=False,
-        extra='ignore',
+        extra="ignore",
     )
 
     def get_elastic_url(self) -> str:
@@ -75,17 +71,17 @@ class TestSettings(BaseSettings):
     @property
     def es_movies_index_schema(self) -> dict[str, Any]:
         """Возвращает схему тестового индекса фильмов."""
-        return self._load_index_schema('movies.json')
+        return self._load_index_schema("movies.json")
 
     @property
     def es_genres_index_schema(self) -> dict[str, Any]:
         """Возвращает схему тестового индекса жанров."""
-        return self._load_index_schema('genres.json')
+        return self._load_index_schema("genres.json")
 
     @property
     def es_persons_index_schema(self) -> dict[str, Any]:
         """Возвращает схему тестового индекса персон."""
-        return self._load_index_schema('persons.json')
+        return self._load_index_schema("persons.json")
 
     def _load_index_schema(
         self,
@@ -96,12 +92,12 @@ class TestSettings(BaseSettings):
 
         if not schema_path.is_file():
             raise FileNotFoundError(
-                f'Elasticsearch schema not found: {schema_path}',
+                f"Elasticsearch schema not found: {schema_path}",
             )
 
         with schema_path.open(
-            mode='r',
-            encoding='utf-8',
+            mode="r",
+            encoding="utf-8",
         ) as schema_file:
             return json.load(schema_file)
 

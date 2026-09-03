@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Утилита управления Django-проектом admin-service."""
+
 import os
 import sys
 

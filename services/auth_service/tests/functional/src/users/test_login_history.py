@@ -1,4 +1,5 @@
 """Функциональные тесты истории входов пользователя."""
+
 from http import HTTPStatus
 
 import pytest
@@ -24,7 +25,7 @@ async def test_get_login_history(
 ) -> None:
     """Проверяет получение истории входов."""
     login_response = await make_post_request(
-        url=f'{test_settings.api_prefix}/auth/login',
+        url=f"{test_settings.api_prefix}/auth/login",
         json_data=get_login_data(),
     )
 
@@ -32,9 +33,9 @@ async def test_get_login_history(
         assert login_response.status == HTTPStatus.OK
 
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=auth_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with response:
@@ -43,7 +44,7 @@ async def test_get_login_history(
         assert response.status == HTTPStatus.OK
         assert len(body) == 2
         assert_has_fields(body[0], LOGIN_HISTORY_RESPONSE_FIELDS)
-        assert all(item['login'] == registered_user['login'] for item in body)
+        assert all(item["login"] == registered_user["login"] for item in body)
 
 
 @pytest.mark.asyncio
@@ -55,7 +56,7 @@ async def test_get_login_history_with_pagination(
     """Проверяет limit и offset истории входов."""
     for _ in range(2):
         login_response = await make_post_request(
-            url=f'{test_settings.api_prefix}/auth/login',
+            url=f"{test_settings.api_prefix}/auth/login",
             json_data=get_login_data(),
         )
 
@@ -63,9 +64,9 @@ async def test_get_login_history_with_pagination(
             assert login_response.status == HTTPStatus.OK
 
     full_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=auth_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with full_response:
@@ -75,9 +76,9 @@ async def test_get_login_history_with_pagination(
         assert len(full_body) == 3
 
     page_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=auth_headers,
-        query_data={'limit': 1, 'offset': 1},
+        query_data={"limit": 1, "offset": 1},
     )
 
     async with page_response:
@@ -94,10 +95,10 @@ async def test_get_login_history_from_cache(
     delete_login_history_by_user_id,
 ) -> None:
     """Проверяет возврат истории из Redis после удаления строк в БД."""
-    headers = build_auth_headers(registered_user_tokens['access_token'])
+    headers = build_auth_headers(registered_user_tokens["access_token"])
 
     user_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=headers,
     )
 
@@ -107,9 +108,9 @@ async def test_get_login_history_from_cache(
         assert user_response.status == HTTPStatus.OK
 
     first_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with first_response:
@@ -118,12 +119,12 @@ async def test_get_login_history_from_cache(
         assert first_response.status == HTTPStatus.OK
         assert len(first_body) == 1
 
-    await delete_login_history_by_user_id(user['id'])
+    await delete_login_history_by_user_id(user["id"])
 
     second_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with second_response:
@@ -141,9 +142,9 @@ async def test_successful_login_invalidates_history_cache(
 ) -> None:
     """Проверяет инвалидацию истории после успешного входа."""
     first_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=auth_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with first_response:
@@ -153,7 +154,7 @@ async def test_successful_login_invalidates_history_cache(
         assert len(first_body) == 1
 
     login_response = await make_post_request(
-        url=f'{test_settings.api_prefix}/auth/login',
+        url=f"{test_settings.api_prefix}/auth/login",
         json_data=get_login_data(),
     )
 
@@ -161,9 +162,9 @@ async def test_successful_login_invalidates_history_cache(
         assert login_response.status == HTTPStatus.OK
 
     second_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=auth_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with second_response:
@@ -172,7 +173,7 @@ async def test_successful_login_invalidates_history_cache(
         assert second_response.status == HTTPStatus.OK
         assert len(second_body) == 2
         assert second_body != first_body
-        assert second_body[0]['is_successful'] is True
+        assert second_body[0]["is_successful"] is True
 
 
 @pytest.mark.asyncio
@@ -183,9 +184,9 @@ async def test_failed_login_invalidates_history_cache(
 ) -> None:
     """Проверяет инвалидацию истории после неуспешного входа."""
     first_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=auth_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with first_response:
@@ -195,7 +196,7 @@ async def test_failed_login_invalidates_history_cache(
         assert len(first_body) == 1
 
     login_response = await make_post_request(
-        url=f'{test_settings.api_prefix}/auth/login',
+        url=f"{test_settings.api_prefix}/auth/login",
         json_data=get_wrong_password_login_data(),
     )
 
@@ -203,9 +204,9 @@ async def test_failed_login_invalidates_history_cache(
         assert login_response.status == HTTPStatus.UNAUTHORIZED
 
     second_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=auth_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with second_response:
@@ -214,19 +215,19 @@ async def test_failed_login_invalidates_history_cache(
         assert second_response.status == HTTPStatus.OK
         assert len(second_body) == 2
         assert second_body != first_body
-        assert second_body[0]['is_successful'] is False
-        assert second_body[0]['reason'] == 'Invalid password'
+        assert second_body[0]["is_successful"] is False
+        assert second_body[0]["reason"] == "Invalid password"
 
 
 @pytest.mark.parametrize(
-    'query_data',
+    "query_data",
     [
-        {'limit': 0},
-        {'limit': -1},
-        {'limit': 201},
-        {'limit': 'invalid'},
-        {'offset': -1},
-        {'offset': 'invalid'},
+        {"limit": 0},
+        {"limit": -1},
+        {"limit": 201},
+        {"limit": "invalid"},
+        {"offset": -1},
+        {"offset": "invalid"},
     ],
 )
 @pytest.mark.asyncio
@@ -237,7 +238,7 @@ async def test_get_login_history_with_invalid_query(
 ) -> None:
     """Проверяет валидацию пагинации истории входов."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
         headers=auth_headers,
         query_data=query_data,
     )
@@ -246,18 +247,18 @@ async def test_get_login_history_with_invalid_query(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.asyncio
 async def test_get_login_history_without_token(make_get_request) -> None:
     """Проверяет запрет получения истории без токена."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me/login-history',
+        url=f"{test_settings.api_prefix}/users/me/login-history",
     )
 
     async with response:
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"

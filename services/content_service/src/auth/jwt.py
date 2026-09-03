@@ -1,11 +1,11 @@
 """Локальная проверка access JWT."""
-import jwt
-from jwt import InvalidTokenError
-from pydantic import ValidationError
 
+import jwt
 from auth.exceptions import InvalidAccessTokenError
 from auth.models import AccessTokenClaims
 from core.config import Settings
+from jwt import InvalidTokenError
+from pydantic import ValidationError
 
 
 def decode_access_token(
@@ -21,11 +21,11 @@ def decode_access_token(
                 settings.jwt_algorithm,
             ],
             options={
-                'require': [
-                    'sub',
-                    'type',
-                    'iat',
-                    'exp',
+                "require": [
+                    "sub",
+                    "type",
+                    "iat",
+                    "exp",
                 ],
             },
         )
@@ -33,5 +33,5 @@ def decode_access_token(
         return AccessTokenClaims.model_validate(payload)
     except (InvalidTokenError, ValidationError) as error:
         raise InvalidAccessTokenError(
-            'Invalid access token',
+            "Invalid access token",
         ) from error

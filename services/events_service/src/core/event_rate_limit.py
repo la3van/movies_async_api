@@ -1,4 +1,5 @@
 """Ограничение частоты пользовательских событий через Redis."""
+
 from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
@@ -21,6 +22,7 @@ class RateLimiterUnavailableError(Exception):
 
 class EventRateLimiter(Protocol):
     """Интерфейс rate limiter пользовательских событий."""
+
     def check(
         self,
         user_id: UUID,
@@ -35,6 +37,7 @@ class EventRateLimiter(Protocol):
 
 class RedisEventRateLimiter:
     """Простой fixed-window rate limiter на Redis."""
+
     def __init__(
         self,
         *,

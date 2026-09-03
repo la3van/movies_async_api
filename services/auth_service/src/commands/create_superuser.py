@@ -1,15 +1,15 @@
 """CLI-команда создания суперпользователя."""
+
 import asyncio
 
 import typer
-
 from core.config import get_settings
 from core.security import hash_password
 from db import postgres
 from unit_of_work.postgres import SQLAlchemyUnitOfWork
 
 app = typer.Typer(
-    help='Команды управления суперпользователем auth-сервиса.',
+    help="Команды управления суперпользователем auth-сервиса.",
 )
 
 
@@ -59,7 +59,7 @@ async def _create_superuser() -> None:
                 typer.echo(
                     (
                         f'User with email "{settings.superuser_email}" '
-                        'already exists with another login.'
+                        "already exists with another login."
                     ),
                     err=True,
                 )
@@ -86,5 +86,5 @@ async def _create_superuser() -> None:
         await postgres.close_postgres()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app()

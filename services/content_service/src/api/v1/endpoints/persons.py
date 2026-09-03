@@ -1,67 +1,65 @@
 """Модуль с endpoint'ами для персон."""
+
 from http import HTTPStatus
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-
-from services.person import PersonService
 from api.dependencies import get_person_service
-
-from api.v1.schemas.films import ShortFilmResponse
-from api.v1.schemas.persons import PersonResponse
-
 from api.v1.mappers.persons import (
     build_person_response,
     build_short_film_response,
 )
+from api.v1.schemas.films import ShortFilmResponse
+from api.v1.schemas.persons import PersonResponse
 from core.rate_limit import rate_limit
+from fastapi import APIRouter, Depends, HTTPException, Query
+from services.person import PersonService
 
 router = APIRouter()
 
 
 @router.get(
-    '/search',
+    "/search",
     response_model=list[PersonResponse],
     dependencies=[
         Depends(
             rate_limit(
-                scope='persons:search',
+                scope="persons:search",
                 requests=30,
                 window_seconds=60,
             ),
         ),
     ],
-    summary='Поиск персон',
+    summary="Поиск персон",
     description=(
-        'Выполняет поиск персон по имени. '
-        'Возвращает найденных актёров, режиссёров и сценаристов '
-        'со списком связанных фильмов и ролей.'
+        "Выполняет поиск персон по имени. "
+        "Возвращает найденных актёров, режиссёров и сценаристов "
+        "со списком связанных фильмов и ролей."
     ),
-    response_description='Список найденных персон',
+    response_description="Список найденных персон",
 )
 async def search_persons(
-    query: str | None = Query(  # noqa: B008
+    query: str | None = Query(
         None,
         min_length=1,
-        description='Поисковая строка для поиска персон',
-        examples=['captain'],
+        description="Поисковая строка для поиска персон",
+        examples=["captain"],
     ),
-    sort: str | None = Query(  # noqa: B008
+    sort: str | None = Query(
         None,
-        pattern='^-?full_name$',
+        pattern="^-?full_name$",
         description='Поле сортировки. Для убывания используется префикс "-".',
-        examples=['full_name'],
+        examples=["full_name"],
     ),
-    page_number: int = Query(  # noqa: B008
+    page_number: int = Query(
         1,
         ge=1,
-        description='Номер страницы',
+        description="Номер страницы",
     ),
-    page_size: int = Query(  # noqa: B008
+    page_size: int = Query(
         50,
         ge=1,
         le=100,
-        description='Количество персон на странице',
+        description="Количество персон на странице",
     ),
     person_service: PersonService = Depends(get_person_service),  # noqa: B008
 ) -> list[PersonResponse]:
@@ -73,28 +71,25 @@ async def search_persons(
         page_size=page_size,
     )
 
-    return [
-        build_person_response(person)
-        for person in persons
-    ]
+    return [build_person_response(person) for person in persons]
 
 
 @router.get(
-    '/{person_id}/films',
+    "/{person_id}/films",
     response_model=list[ShortFilmResponse],
-    summary='Фильмы персоны',
+    summary="Фильмы персоны",
     description=(
-        'Возвращает фильмы, связанные с указанной персоной. '
-        'Персона может быть актёром, режиссёром или сценаристом фильма.'
+        "Возвращает фильмы, связанные с указанной персоной. "
+        "Персона может быть актёром, режиссёром или сценаристом фильма."
     ),
-    response_description='Список фильмов персоны',
+    response_description="Список фильмов персоны",
     responses={
         404: {
-            'description': 'Персона не найдена',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'person_not_found',
+            "description": "Персона не найдена",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "person_not_found",
                     },
                 },
             },
@@ -103,16 +98,16 @@ async def search_persons(
 )
 async def get_person_films(
     person_id: UUID,
-    page_number: int = Query(  # noqa: B008
+    page_number: int = Query(
         1,
         ge=1,
-        description='Номер страницы',
+        description="Номер страницы",
     ),
-    page_size: int = Query(  # noqa: B008
+    page_size: int = Query(
         50,
         ge=1,
         le=100,
-        description='Количество фильмов на странице',
+        description="Количество фильмов на странице",
     ),
     person_service: PersonService = Depends(get_person_service),  # noqa: B008
 ) -> list[ShortFilmResponse]:
@@ -126,31 +121,28 @@ async def get_person_films(
     if films is None:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
-            detail='person_not_found',
+            detail="person_not_found",
         )
 
-    return [
-        build_short_film_response(film)
-        for film in films
-    ]
+    return [build_short_film_response(film) for film in films]
 
 
 @router.get(
-    '/{person_id}',
+    "/{person_id}",
     response_model=PersonResponse,
-    summary='Информация о персоне',
+    summary="Информация о персоне",
     description=(
-        'Возвращает информацию о персоне по её UUID: '
-        'имя и список фильмов, в которых она участвовала.'
+        "Возвращает информацию о персоне по её UUID: "
+        "имя и список фильмов, в которых она участвовала."
     ),
-    response_description='Информация о персоне',
+    response_description="Информация о персоне",
     responses={
         404: {
-            'description': 'Персона не найдена',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'person_not_found',
+            "description": "Персона не найдена",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "person_not_found",
                     },
                 },
             },
@@ -167,7 +159,7 @@ async def get_person(
     if person is None:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
-            detail='person_not_found',
+            detail="person_not_found",
         )
 
     return build_person_response(person)

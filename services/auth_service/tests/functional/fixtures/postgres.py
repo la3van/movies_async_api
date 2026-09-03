@@ -1,4 +1,5 @@
 """Фикстуры PostgreSQL функциональных тестов."""
+
 from typing import Any
 from uuid import UUID
 
@@ -21,7 +22,7 @@ RESTART IDENTITY CASCADE
 """
 
 
-@pytest_asyncio.fixture(name='postgres_pool', scope='session')
+@pytest_asyncio.fixture(name="postgres_pool", scope="session")
 async def postgres_pool():
     """Создаёт пул подключений к PostgreSQL на время тестовой сессии."""
     pool = await asyncpg.create_pool(
@@ -40,7 +41,7 @@ async def postgres_pool():
     await pool.close()
 
 
-@pytest_asyncio.fixture(name='postgres_clear', autouse=True)
+@pytest_asyncio.fixture(name="postgres_clear", autouse=True)
 async def postgres_clear(postgres_pool: asyncpg.Pool):
     """Очищает таблицы auth-сервиса до и после каждого теста."""
     await truncate_auth_tables(postgres_pool)
@@ -50,9 +51,10 @@ async def postgres_clear(postgres_pool: asyncpg.Pool):
     await truncate_auth_tables(postgres_pool)
 
 
-@pytest.fixture(name='pg_fetch')
+@pytest.fixture(name="pg_fetch")
 def pg_fetch(postgres_pool: asyncpg.Pool):
     """Возвращает функцию выполнения SELECT-запроса с несколькими строками."""
+
     async def inner(
         query: str,
         *args: Any,
@@ -64,9 +66,10 @@ def pg_fetch(postgres_pool: asyncpg.Pool):
     return inner
 
 
-@pytest.fixture(name='pg_fetchrow')
+@pytest.fixture(name="pg_fetchrow")
 def pg_fetchrow(postgres_pool: asyncpg.Pool):
     """Возвращает функцию выполнения SELECT-запроса с одной строкой."""
+
     async def inner(
         query: str,
         *args: Any,
@@ -78,9 +81,10 @@ def pg_fetchrow(postgres_pool: asyncpg.Pool):
     return inner
 
 
-@pytest.fixture(name='pg_execute')
+@pytest.fixture(name="pg_execute")
 def pg_execute(postgres_pool: asyncpg.Pool):
     """Возвращает функцию выполнения SQL-запроса без результата."""
+
     async def inner(
         query: str,
         *args: Any,
@@ -92,9 +96,10 @@ def pg_execute(postgres_pool: asyncpg.Pool):
     return inner
 
 
-@pytest.fixture(name='get_user_by_login')
+@pytest.fixture(name="get_user_by_login")
 def get_user_by_login(pg_fetchrow):
     """Возвращает функцию получения пользователя по login."""
+
     async def inner(login: str) -> asyncpg.Record | None:
         """Возвращает пользоватя по login."""
         return await pg_fetchrow(
@@ -118,9 +123,10 @@ def get_user_by_login(pg_fetchrow):
     return inner
 
 
-@pytest.fixture(name='get_user_by_email')
+@pytest.fixture(name="get_user_by_email")
 def get_user_by_email(pg_fetchrow):
     """Возвращает функцию получения пользователя по email."""
+
     async def inner(email: str) -> asyncpg.Record | None:
         """Возвращает пользоватя по email."""
         return await pg_fetchrow(
@@ -144,9 +150,10 @@ def get_user_by_email(pg_fetchrow):
     return inner
 
 
-@pytest.fixture(name='promote_user_to_superuser')
+@pytest.fixture(name="promote_user_to_superuser")
 def promote_user_to_superuser(pg_execute):
     """Возвращает функцию повышения пользователя до суперпользователя."""
+
     async def inner(user_id: UUID) -> None:
         """Дулает пользователя активным суперпользователем."""
         await pg_execute(
@@ -163,9 +170,10 @@ def promote_user_to_superuser(pg_execute):
     return inner
 
 
-@pytest.fixture(name='get_refresh_sessions_by_user_id')
+@pytest.fixture(name="get_refresh_sessions_by_user_id")
 def get_refresh_sessions_by_user_id(pg_fetch):
     """Возвращает функцию получения refresh-сессий пользователя."""
+
     async def inner(user_id: UUID) -> list[asyncpg.Record]:
         """Возвращает refresh-сессии пользователя."""
         return await pg_fetch(
@@ -190,9 +198,10 @@ def get_refresh_sessions_by_user_id(pg_fetch):
     return inner
 
 
-@pytest.fixture(name='get_login_history_by_login')
+@pytest.fixture(name="get_login_history_by_login")
 def get_login_history_by_login(pg_fetch):
     """Возвращает функцию получения истории входов по login."""
+
     async def inner(login: str) -> list[asyncpg.Record]:
         """Возвращает историю входов по login."""
         return await pg_fetch(
@@ -223,7 +232,7 @@ async def truncate_auth_tables(postgres_pool: asyncpg.Pool) -> None:
         await connection.execute(TRUNCATE_AUTH_TABLES_QUERY)
 
 
-@pytest.fixture(name='delete_user_by_id')
+@pytest.fixture(name="delete_user_by_id")
 def delete_user_by_id(pg_execute):
     """Возвращает функцию удаления пользователя по id."""
 
@@ -241,7 +250,7 @@ def delete_user_by_id(pg_execute):
     return inner
 
 
-@pytest.fixture(name='delete_login_history_by_user_id')
+@pytest.fixture(name="delete_login_history_by_user_id")
 def delete_login_history_by_user_id(pg_execute):
     """Возвращает функцию удаления истории входов пользователя."""
 
@@ -259,7 +268,7 @@ def delete_login_history_by_user_id(pg_execute):
     return inner
 
 
-@pytest.fixture(name='delete_permission_by_id')
+@pytest.fixture(name="delete_permission_by_id")
 def delete_permission_by_id(pg_execute):
     """Возвращает функцию удаления permission по id."""
 
@@ -277,7 +286,7 @@ def delete_permission_by_id(pg_execute):
     return inner
 
 
-@pytest.fixture(name='delete_role_by_id')
+@pytest.fixture(name="delete_role_by_id")
 def delete_role_by_id(pg_execute):
     """Возвращает функцию удаления роли по id."""
 

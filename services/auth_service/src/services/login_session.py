@@ -1,4 +1,5 @@
 """Создание успешной пользовательской login-сессии."""
+
 from models.user import User
 from services.token import TokenPair, TokenService
 from unit_of_work.base import AbstractUnitOfWork
@@ -14,9 +15,7 @@ async def create_login_session(
 ) -> TokenPair:
     """Создаёт токены, refresh-сессию и запись истории входа."""
 
-    token_pair, refresh_token_data = (
-        token_service.create_token_pair(user)
-    )
+    token_pair, refresh_token_data = token_service.create_token_pair(user)
 
     await uow.refresh_sessions.create(
         session_id=refresh_token_data.session_id,

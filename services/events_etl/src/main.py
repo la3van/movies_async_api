@@ -1,4 +1,5 @@
 """Точка входа ETL-сервиса переноса пользовательских событий в ClickHouse."""
+
 import logging
 import signal
 from logging.config import dictConfig
@@ -7,7 +8,6 @@ from types import FrameType
 
 from clickhouse.client import ClickHouseEventStorage
 from clickhouse_connect.driver.exceptions import ClickHouseError
-
 from core.config import Settings, get_settings
 from core.logger import LOGGING_CONFIG
 from kafka.consumer import KafkaBatchConsumer
@@ -24,6 +24,7 @@ def register_signal_handlers(
     stop_event: Event,
 ) -> None:
     """Зарегистрировать обработчики сигналов завершения процесса."""
+
     def handle_shutdown_signal(
         signum: int,
         frame: FrameType | None,
@@ -53,10 +54,7 @@ def create_clickhouse_storage(
     """Создать клиент ClickHouse с повторными попытками при недоступности."""
     retry_count = 0
 
-    delay = (
-        settings
-        .clickhouse_retry_initial_delay_seconds
-    )
+    delay = settings.clickhouse_retry_initial_delay_seconds
 
     while not stop_event.is_set():
         try:
@@ -66,27 +64,19 @@ def create_clickhouse_storage(
 
             if not storage.is_ready():
                 storage.close()
-                raise ClickHouseError(
-                    "ClickHouse недоступен"
-                )
+                raise ClickHouseError("ClickHouse недоступен")
         except ClickHouseError:
             retry_count += 1
 
-            max_retries = (
-                settings.clickhouse_max_retries
-            )
+            max_retries = settings.clickhouse_max_retries
 
             logger.exception(
-                "Не удалось подключиться к ClickHouse: "
-                "retry=%s delay=%s",
+                "Не удалось подключиться к ClickHouse: retry=%s delay=%s",
                 retry_count,
                 delay,
             )
 
-            if (
-                max_retries > 0
-                and retry_count > max_retries
-            ):
+            if max_retries > 0 and retry_count > max_retries:
                 raise
 
             if stop_event.wait(delay):
@@ -94,14 +84,11 @@ def create_clickhouse_storage(
 
             delay = min(
                 delay * 2,
-                settings
-                .clickhouse_retry_max_delay_seconds,
+                settings.clickhouse_retry_max_delay_seconds,
             )
             continue
 
-        logger.info(
-            "Подключение к ClickHouse установлено"
-        )
+        logger.info("Подключение к ClickHouse установлено")
 
         return storage
 
@@ -160,9 +147,7 @@ def main() -> None:
             consumer=consumer,
             storage=storage,
             mapper=mapper,
-            dead_letter_publisher=(
-                dead_letter_publisher
-            ),
+            dead_letter_publisher=(dead_letter_publisher),
         )
 
         etl_service.run(
@@ -170,20 +155,16 @@ def main() -> None:
         )
     except ETLProcessingError:
         logger.exception(
-            "ETL-сервис остановлен из-за критической "
-            "ошибки обработки данных"
+            "ETL-сервис остановлен из-за критической ошибки обработки данных"
         )
         raise
     except ClickHouseError:
         logger.exception(
-            "ETL-сервис не смог установить соединение "
-            "с ClickHouse"
+            "ETL-сервис не смог установить соединение с ClickHouse"
         )
         raise
     finally:
-        logger.info(
-            "Начато завершение ETL-сервиса"
-        )
+        logger.info("Начато завершение ETL-сервиса")
 
         consumer.close()
         dead_letter_publisher.close()
@@ -191,9 +172,7 @@ def main() -> None:
         if storage is not None:
             storage.close()
 
-        logger.info(
-            "ETL-сервис завершён"
-        )
+        logger.info("ETL-сервис завершён")
 
 
 if __name__ == "__main__":

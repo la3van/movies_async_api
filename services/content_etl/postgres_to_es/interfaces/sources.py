@@ -1,8 +1,8 @@
 """Интерфейсы источников данных для ETL-пайплайнов."""
+
 from abc import ABC, abstractmethod
 
 from psycopg2.extensions import connection as PgConnection
-
 
 from postgres_to_es.models import (
     ChangedRecord,
@@ -14,6 +14,7 @@ from postgres_to_es.models import (
 
 class FilmsSource(ABC):
     """Источник данных для пайплайна фильмов."""
+
     @abstractmethod
     def get_changed_film_work_ids(
         self,
@@ -23,7 +24,7 @@ class FilmsSource(ABC):
         limit: int,
     ) -> list[ChangedRecord]:
         """Получает изменённые фильмы после указанного курсора."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def get_changed_person_ids(
@@ -34,7 +35,7 @@ class FilmsSource(ABC):
         limit: int,
     ) -> list[ChangedRecord]:
         """Получает изменённых персон после указанного курсора."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def get_changed_genre_ids(
@@ -45,7 +46,7 @@ class FilmsSource(ABC):
         limit: int,
     ) -> list[ChangedRecord]:
         """Получает изменённые жанры после указанного курсора."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def get_film_work_ids_by_person_ids(
@@ -54,7 +55,7 @@ class FilmsSource(ABC):
         person_ids: list[str],
     ) -> list[str]:
         """Получает фильмы, связанные с указанными персонами."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def get_film_work_ids_by_genre_ids(
@@ -63,7 +64,7 @@ class FilmsSource(ABC):
         genre_ids: list[str],
     ) -> list[str]:
         """Получает фильмы, связанные с указанными жанрами."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def get_films_by_ids(
@@ -72,7 +73,7 @@ class FilmsSource(ABC):
         film_work_ids: list[str],
     ) -> list[PostgresFilm]:
         """Получает полные данные фильмов по идентификаторам."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
 
 class GenresSource(ABC):
@@ -87,7 +88,7 @@ class GenresSource(ABC):
         limit: int,
     ) -> list[ChangedRecord]:
         """Получает изменённые жанры после указанного курсора."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def get_genres_by_ids(
@@ -96,7 +97,7 @@ class GenresSource(ABC):
         genre_ids: list[str],
     ) -> list[PostgresGenre]:
         """Получает полные данные жанров по идентификаторам."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
 
 class PersonsSource(ABC):
@@ -111,7 +112,7 @@ class PersonsSource(ABC):
         limit: int,
     ) -> list[ChangedRecord]:
         """Получает изменённых персон после указанного курсора."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def get_changed_film_work_ids(
@@ -122,7 +123,7 @@ class PersonsSource(ABC):
         limit: int,
     ) -> list[ChangedRecord]:
         """Получает изменённые фильмы после указанного курсора."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def get_person_ids_by_film_work_ids(
@@ -131,7 +132,7 @@ class PersonsSource(ABC):
         film_work_ids: list[str],
     ) -> list[str]:
         """Получает персон, связанных с указанными фильмами."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def get_persons_by_ids(
@@ -140,4 +141,4 @@ class PersonsSource(ABC):
         person_ids: list[str],
     ) -> list[PostgresPerson]:
         """Получает полные данные персон по идентификаторам."""
-        pass  # pragma: no cover
+        # pragma: no cover

@@ -1,4 +1,5 @@
 """Абстракция Unit of Work."""
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from types import TracebackType
@@ -8,13 +9,14 @@ from repositories.interfaces import (
     PermissionRepository,
     RefreshSessionRepository,
     RoleRepository,
-    UserRepository,
     SocialAccountRepository,
+    UserRepository,
 )
 
 
 class AbstractUnitOfWork(ABC):
     """Определяет границы одной бизнес-транзакции."""
+
     users: UserRepository
     roles: RoleRepository
     permissions: PermissionRepository
@@ -23,9 +25,9 @@ class AbstractUnitOfWork(ABC):
     social_accounts: SocialAccountRepository
 
     @abstractmethod
-    async def __aenter__(self) -> 'AbstractUnitOfWork':
+    async def __aenter__(self) -> "AbstractUnitOfWork":
         """Открывает UoW и инициализирует репозитории."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def __aexit__(
@@ -35,17 +37,17 @@ class AbstractUnitOfWork(ABC):
         traceback: TracebackType | None,
     ) -> None:
         """Освобождает ресурсы и откатывает транзакцию при ошибке."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def commit(self) -> None:
         """Фиксирует изменения текущей транзакции."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def rollback(self) -> None:
         """Откатывает изменения текущей транзакции."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
 
 UnitOfWorkFactory = Callable[[], AbstractUnitOfWork]

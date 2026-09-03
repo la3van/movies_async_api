@@ -1,9 +1,10 @@
 """Сервис работы с ролями."""
-from core.tracing import trace_method
+
 from uuid import UUID
 
 from api.v1.schemas.roles import RoleCreate, RoleResponse, RoleUpdate
 from cache.base import Cache
+from core.tracing import trace_method
 from services.cache_keys.roles import (
     get_role_cache_key,
     get_roles_cache_key,
@@ -20,6 +21,7 @@ from unit_of_work.base import UnitOfWorkFactory
 
 class RoleService:
     """Сервис управления ролями."""
+
     def __init__(
         self,
         uow_factory: UnitOfWorkFactory,
@@ -46,7 +48,7 @@ class RoleService:
         async with self._uow_factory() as uow:
             role_model = await uow.roles.get_by_id(role_id)
             if role_model is None:
-                raise RoleNotFoundError('Role not found')
+                raise RoleNotFoundError("Role not found")
 
             role = RoleResponse.model_validate(role_model)
 
@@ -102,14 +104,14 @@ class RoleService:
         async with self._uow_factory() as uow:
             existing_role = await uow.roles.get_by_name(role_data.name)
             if existing_role is not None:
-                raise RoleAlreadyExistsError('Role already exists')
+                raise RoleAlreadyExistsError("Role already exists")
 
             permissions = await uow.permissions.get_by_ids(
                 role_data.permission_ids,
             )
             if len(permissions) != len(set(role_data.permission_ids)):
                 raise PermissionNotFoundError(
-                    'Some permissions were not found',
+                    "Some permissions were not found",
                 )
 
             role_model = await uow.roles.create(
@@ -123,7 +125,7 @@ class RoleService:
 
             fresh_role_model = await uow.roles.get_by_id(role_model.id)
             if fresh_role_model is None:
-                raise RoleNotFoundError('Role not found')
+                raise RoleNotFoundError("Role not found")
 
             role = RoleResponse.model_validate(fresh_role_model)
 
@@ -141,12 +143,13 @@ class RoleService:
         async with self._uow_factory() as uow:
             role_model = await uow.roles.get_by_id(role_id)
             if role_model is None:
-                raise RoleNotFoundError('Role not found')
+                raise RoleNotFoundError("Role not found")
 
             fields_set = role_data.model_fields_set
 
             if (
-                'name' in fields_set
+                "name" in fields_set
+                and role_data.name is not None
                 and role_data.name != role_model.name
             ):
                 existing_role = await uow.roles.get_by_name(
@@ -154,18 +157,18 @@ class RoleService:
                 )
                 if existing_role is not None:
                     raise RoleAlreadyExistsError(
-                        'Role already exists',
+                        "Role already exists",
                     )
 
                 role_model.name = role_data.name
 
-            if 'description' in fields_set:
+            if "description" in fields_set:
                 role_model.description = role_data.description
 
-            if 'is_default' in fields_set:
+            if "is_default" in fields_set and role_data.is_default is not None:
                 role_model.is_default = role_data.is_default
 
-            if 'permission_ids' in fields_set:
+            if "permission_ids" in fields_set:
                 permission_ids = role_data.permission_ids or []
 
                 permissions = await uow.permissions.get_by_ids(
@@ -173,7 +176,7 @@ class RoleService:
                 )
                 if len(permissions) != len(set(permission_ids)):
                     raise PermissionNotFoundError(
-                        'Some permissions were not found',
+                        "Some permissions were not found",
                     )
 
                 role_model = await uow.roles.set_permissions(
@@ -189,7 +192,7 @@ class RoleService:
                 role_model.id,
             )
             if fresh_role_model is None:
-                raise RoleNotFoundError('Role not found')
+                raise RoleNotFoundError("Role not found")
 
             role = RoleResponse.model_validate(fresh_role_model)
 
@@ -203,7 +206,7 @@ class RoleService:
         async with self._uow_factory() as uow:
             role_model = await uow.roles.get_by_id(role_id)
             if role_model is None:
-                raise RoleNotFoundError('Role not found')
+                raise RoleNotFoundError("Role not found")
 
             await uow.roles.delete(role_model)
             await uow.commit()

@@ -1,12 +1,13 @@
 """Модуль с описанием Pydantic модели фильма."""
-from pydantic import BaseModel, ConfigDict, Field
 
 from models.genre import Genre
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FilmPerson(BaseModel):
     """Персона, связанная с фильмом."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     full_name: str
@@ -14,7 +15,8 @@ class FilmPerson(BaseModel):
 
 class ShortFilm(BaseModel):
     """Кратка информация о фильме для списков и поиска."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     title: str
@@ -23,9 +25,10 @@ class ShortFilm(BaseModel):
 
 class Film(BaseModel):
     """Полная информация о фильме."""
-    model_config = ConfigDict(extra='forbid')
 
-    uuid: str  # noqa: A003, VNE003
+    model_config = ConfigDict(extra="forbid")
+
+    uuid: str
     title: str
     imdb_rating: float | None = None
     description: str | None

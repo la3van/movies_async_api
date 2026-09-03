@@ -1,9 +1,10 @@
 """Функциональные тесты получения жанра по идентификатору."""
-import pytest
+
 from http import HTTPStatus
 
-from tests.functional.settings import test_settings
+import pytest
 
+from tests.functional.settings import test_settings
 from tests.functional.test_data.responses import (
     genre_to_response,
 )
@@ -17,7 +18,7 @@ async def test_get_genre_by_id(
     genre = genres_in_es[0]
 
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/genres/{genre["uuid"]}',
+        url=f"{test_settings.api_prefix}/genres/{genre['uuid']}",
     )
 
     async with response:
@@ -32,17 +33,17 @@ async def test_get_genre_by_id_when_not_found(
     genres_in_es,
     make_get_request,
 ) -> None:
-    missing_genre_id = '99999999-9999-9999-9999-999999999999'
+    missing_genre_id = "99999999-9999-9999-9999-999999999999"
 
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/genres/{missing_genre_id}',
+        url=f"{test_settings.api_prefix}/genres/{missing_genre_id}",
     )
 
     async with response:
         body = await response.json()
 
         assert response.status == HTTPStatus.NOT_FOUND
-        assert body == {'detail': 'genre_not_found'}
+        assert body == {"detail": "genre_not_found"}
 
 
 @pytest.mark.asyncio
@@ -54,7 +55,7 @@ async def test_get_genre_from_redis(
     genre = genres_in_es[0]
 
     first_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/genres/{genre["uuid"]}',
+        url=f"{test_settings.api_prefix}/genres/{genre['uuid']}",
     )
 
     async with first_response:
@@ -65,11 +66,11 @@ async def test_get_genre_from_redis(
 
     await es_delete_document(
         index=test_settings.es_genres_index,
-        document_id=genre['uuid'],
+        document_id=genre["uuid"],
     )
 
     second_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/genres/{genre["uuid"]}',
+        url=f"{test_settings.api_prefix}/genres/{genre['uuid']}",
     )
 
     async with second_response:
@@ -84,15 +85,15 @@ async def test_get_genre_from_redis(
 async def test_get_genre_by_invalid_id(
     make_get_request,
 ) -> None:
-    invalid_genre_id = 'not-a-uuid'
+    invalid_genre_id = "not-a-uuid"
 
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/genres/{invalid_genre_id}'
+        url=f"{test_settings.api_prefix}/genres/{invalid_genre_id}"
     )
 
     async with response:
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail'][0]['loc'] == ['path', 'genre_id']
-        assert body['detail'][0]['type'] == 'uuid_parsing'
+        assert body["detail"][0]["loc"] == ["path", "genre_id"]
+        assert body["detail"][0]["type"] == "uuid_parsing"

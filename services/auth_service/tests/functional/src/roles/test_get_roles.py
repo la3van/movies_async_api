@@ -1,4 +1,5 @@
 """Функциональные тесты получения ролей."""
+
 from http import HTTPStatus
 
 import pytest
@@ -20,9 +21,9 @@ async def test_get_roles(
 ) -> None:
     """Проверяет получение списка ролей."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/',
+        url=f"{test_settings.api_prefix}/roles/",
         headers=superuser_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with response:
@@ -30,7 +31,7 @@ async def test_get_roles(
 
         assert response.status == HTTPStatus.OK
         assert len(body) == 1
-        assert body[0]['id'] == created_role['id']
+        assert body[0]["id"] == created_role["id"]
         assert_has_fields(body[0], ROLE_RESPONSE_FIELDS)
 
 
@@ -41,7 +42,7 @@ async def test_get_empty_roles_list(
 ) -> None:
     """Проверяет получение пустого списка ролей."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/',
+        url=f"{test_settings.api_prefix}/roles/",
         headers=superuser_headers,
     )
 
@@ -61,7 +62,7 @@ async def test_get_roles_with_pagination(
 ) -> None:
     """Проверяет limit и offset списка ролей."""
     create_response = await make_post_request(
-        url=f'{test_settings.api_prefix}/roles/',
+        url=f"{test_settings.api_prefix}/roles/",
         json_data=get_second_role_create_data(),
         headers=superuser_headers,
     )
@@ -72,24 +73,24 @@ async def test_get_roles_with_pagination(
         assert create_response.status == HTTPStatus.CREATED
 
     full_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/',
+        url=f"{test_settings.api_prefix}/roles/",
         headers=superuser_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with full_response:
         full_body = await full_response.json()
 
         assert full_response.status == HTTPStatus.OK
-        assert {role['id'] for role in full_body} == {
-            created_role['id'],
-            second_role['id'],
+        assert {role["id"] for role in full_body} == {
+            created_role["id"],
+            second_role["id"],
         }
 
     page_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/',
+        url=f"{test_settings.api_prefix}/roles/",
         headers=superuser_headers,
-        query_data={'limit': 1, 'offset': 1},
+        query_data={"limit": 1, "offset": 1},
     )
 
     async with page_response:
@@ -108,23 +109,23 @@ async def test_get_roles_from_cache(
 ) -> None:
     """Проверяет возврат списка из Redis после удаления роли в БД."""
     first_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/',
+        url=f"{test_settings.api_prefix}/roles/",
         headers=superuser_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with first_response:
         first_body = await first_response.json()
 
         assert first_response.status == HTTPStatus.OK
-        assert [role['id'] for role in first_body] == [created_role['id']]
+        assert [role["id"] for role in first_body] == [created_role["id"]]
 
-    await delete_role_by_id(created_role['id'])
+    await delete_role_by_id(created_role["id"])
 
     second_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/',
+        url=f"{test_settings.api_prefix}/roles/",
         headers=superuser_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
 
     async with second_response:
@@ -142,7 +143,7 @@ async def test_get_role_by_id(
 ) -> None:
     """Проверяет получение роли по UUID."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/{created_role["id"]}',
+        url=f"{test_settings.api_prefix}/roles/{created_role['id']}",
         headers=superuser_headers,
     )
 
@@ -163,7 +164,7 @@ async def test_get_role_by_id_from_cache(
 ) -> None:
     """Проверяет возврат роли из Redis после удаления строки в БД."""
     first_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/{created_role["id"]}',
+        url=f"{test_settings.api_prefix}/roles/{created_role['id']}",
         headers=superuser_headers,
     )
 
@@ -172,10 +173,10 @@ async def test_get_role_by_id_from_cache(
 
         assert first_response.status == HTTPStatus.OK
 
-    await delete_role_by_id(created_role['id'])
+    await delete_role_by_id(created_role["id"])
 
     second_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/{created_role["id"]}',
+        url=f"{test_settings.api_prefix}/roles/{created_role['id']}",
         headers=superuser_headers,
     )
 
@@ -193,7 +194,7 @@ async def test_get_missing_role(
 ) -> None:
     """Проверяет получение отсутствующей роли."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/{MISSING_ROLE_ID}',
+        url=f"{test_settings.api_prefix}/roles/{MISSING_ROLE_ID}",
         headers=superuser_headers,
     )
 
@@ -201,18 +202,18 @@ async def test_get_missing_role(
         body = await response.json()
 
         assert response.status == HTTPStatus.NOT_FOUND
-        assert body['detail'] == 'Role not found'
+        assert body["detail"] == "Role not found"
 
 
 @pytest.mark.parametrize(
-    'query_data',
+    "query_data",
     [
-        {'limit': 0},
-        {'limit': -1},
-        {'limit': 501},
-        {'limit': 'invalid'},
-        {'offset': -1},
-        {'offset': 'invalid'},
+        {"limit": 0},
+        {"limit": -1},
+        {"limit": 501},
+        {"limit": "invalid"},
+        {"offset": -1},
+        {"offset": "invalid"},
     ],
 )
 @pytest.mark.asyncio
@@ -223,7 +224,7 @@ async def test_get_roles_with_invalid_query(
 ) -> None:
     """Проверяет валидацию пагинации списка ролей."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/',
+        url=f"{test_settings.api_prefix}/roles/",
         headers=superuser_headers,
         query_data=query_data,
     )
@@ -232,7 +233,7 @@ async def test_get_roles_with_invalid_query(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.asyncio
@@ -242,7 +243,7 @@ async def test_get_role_with_invalid_uuid(
 ) -> None:
     """Проверяет валидацию UUID роли."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/invalid-uuid',
+        url=f"{test_settings.api_prefix}/roles/invalid-uuid",
         headers=superuser_headers,
     )
 
@@ -250,14 +251,14 @@ async def test_get_role_with_invalid_uuid(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.parametrize(
-    'url',
+    "url",
     [
-        f'{test_settings.api_prefix}/roles/',
-        f'{test_settings.api_prefix}/roles/{MISSING_ROLE_ID}',
+        f"{test_settings.api_prefix}/roles/",
+        f"{test_settings.api_prefix}/roles/{MISSING_ROLE_ID}",
     ],
 )
 @pytest.mark.asyncio
@@ -272,14 +273,14 @@ async def test_get_roles_without_token(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"
 
 
 @pytest.mark.parametrize(
-    'url',
+    "url",
     [
-        f'{test_settings.api_prefix}/roles/',
-        f'{test_settings.api_prefix}/roles/{MISSING_ROLE_ID}',
+        f"{test_settings.api_prefix}/roles/",
+        f"{test_settings.api_prefix}/roles/{MISSING_ROLE_ID}",
     ],
 )
 @pytest.mark.asyncio
@@ -295,4 +296,4 @@ async def test_get_roles_by_regular_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.FORBIDDEN
-        assert body['detail'] == 'Not enough permissions'
+        assert body["detail"] == "Not enough permissions"

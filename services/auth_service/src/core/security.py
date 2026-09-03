@@ -1,12 +1,13 @@
 """Security-утилиты auth-сервиса."""
+
 import hashlib
 import secrets
 
 from passlib.context import CryptContext
 
 password_context = CryptContext(
-    schemes=['bcrypt'],
-    deprecated='auto',
+    schemes=["bcrypt"],
+    deprecated="auto",
 )
 
 
@@ -27,4 +28,4 @@ def generate_secure_token() -> str:
 
 def hash_token(token: str) -> str:
     """Возвращает SHA-256 хеш токена."""
-    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

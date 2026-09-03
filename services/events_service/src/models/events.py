@@ -1,4 +1,5 @@
 """Доменные модели и правила валидации пользовательских событий."""
+
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Annotated, Literal
@@ -13,7 +14,6 @@ from pydantic import (
     model_validator,
 )
 
-
 MAX_FUTURE_EVENT_CLOCK_SKEW = timedelta(
     minutes=5,
 )
@@ -21,6 +21,7 @@ MAX_FUTURE_EVENT_CLOCK_SKEW = timedelta(
 
 class EntityType(str, Enum):
     """Тип сущности онлайн-кинотеатра, связанной с событием."""
+
     MOVIE = "movie"
     GENRE = "genre"
     PERSON = "person"
@@ -28,6 +29,7 @@ class EntityType(str, Enum):
 
 class EventContext(BaseModel):
     """Контекст страницы и сущности, с которыми связано событие."""
+
     model_config = ConfigDict(extra="forbid")
 
     page: str = Field(
@@ -46,8 +48,7 @@ class EventContext(BaseModel):
 
         if has_entity_type != has_entity_id:
             raise ValueError(
-                "entity_type и entity_id должны "
-                "быть указаны одновременно"
+                "entity_type и entity_id должны быть указаны одновременно"
             )
 
         return self
@@ -55,6 +56,7 @@ class EventContext(BaseModel):
 
 class BaseEvent(BaseModel):
     """Общие поля любого пользовательского события."""
+
     model_config = ConfigDict(extra="forbid")
 
     schema_version: Literal[1] = 1
@@ -78,8 +80,7 @@ class BaseEvent(BaseModel):
         """Проверить timezone и запретить сильно будущие события."""
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError(
-                "occurred_at должен содержать информацию "
-                "о часовом поясе"
+                "occurred_at должен содержать информацию о часовом поясе"
             )
 
         value = value.astimezone(
@@ -92,8 +93,8 @@ class BaseEvent(BaseModel):
 
         if value > now + MAX_FUTURE_EVENT_CLOCK_SKEW:
             raise ValueError(
-                "occurred_at не может находиться "
-                "в будущем более чем на 5 минут"
+                "occurred_at не может находиться в будущем "
+                "более чем на 5 минут"
             )
 
         return value
@@ -101,6 +102,7 @@ class BaseEvent(BaseModel):
 
 class ClickPayload(BaseModel):
     """Дополнительные данные события клика."""
+
     model_config = ConfigDict(extra="forbid")
 
     element_type: str = Field(
@@ -121,12 +123,14 @@ class ClickPayload(BaseModel):
 
 class ClickEvent(BaseEvent):
     """Событие клика пользователя по элементу интерфейса."""
+
     event_type: Literal["click"] = "click"
     payload: ClickPayload
 
 
 class PageViewPayload(BaseModel):
     """Дополнительные данные просмотра страницы."""
+
     model_config = ConfigDict(extra="forbid")
 
     referrer: str | None = Field(
@@ -137,21 +141,21 @@ class PageViewPayload(BaseModel):
 
 class PageViewEvent(BaseEvent):
     """Событие просмотра пользователем страницы."""
+
     event_type: Literal["page_view"] = "page_view"
     payload: PageViewPayload
 
 
 class VideoEvent(BaseEvent):
     """Базовая модель события, связанного с просмотром фильма."""
+
     playback_id: UUID
 
     @model_validator(mode="after")
     def validate_movie_context(self) -> "VideoEvent":
         """Проверить наличие фильма в контексте видео-события."""
         if self.context.entity_type != EntityType.MOVIE:
-            raise ValueError(
-                "для видео-события entity_type должен быть movie"
-            )
+            raise ValueError("для видео-события entity_type должен быть movie")
 
         if self.context.entity_id is None:
             raise ValueError(
@@ -163,6 +167,7 @@ class VideoEvent(BaseEvent):
 
 class VideoStartedPayload(BaseModel):
     """Данные начала просмотра фильма."""
+
     model_config = ConfigDict(extra="forbid")
 
     duration_seconds: float = Field(gt=0)
@@ -170,12 +175,14 @@ class VideoStartedPayload(BaseModel):
 
 class VideoStartedEvent(VideoEvent):
     """Событие начала просмотра фильма."""
+
     event_type: Literal["video_started"] = "video_started"
     payload: VideoStartedPayload
 
 
 class VideoProgressPayload(BaseModel):
     """Данные о текущем прогрессе просмотра фильма."""
+
     model_config = ConfigDict(extra="forbid")
 
     position_seconds: float = Field(ge=0)
@@ -194,12 +201,14 @@ class VideoProgressPayload(BaseModel):
 
 class VideoProgressEvent(VideoEvent):
     """Событие изменения прогресса просмотра фильма."""
+
     event_type: Literal["video_progress"] = "video_progress"
     payload: VideoProgressPayload
 
 
 class VideoFinishedPayload(BaseModel):
     """Данные завершённого просмотра фильма."""
+
     model_config = ConfigDict(extra="forbid")
 
     duration_seconds: float = Field(gt=0)
@@ -207,12 +216,14 @@ class VideoFinishedPayload(BaseModel):
 
 class VideoFinishedEvent(VideoEvent):
     """Событие завершённого просмотра фильма."""
+
     event_type: Literal["video_finished"] = "video_finished"
     payload: VideoFinishedPayload
 
 
 class VideoQualityChangedPayload(BaseModel):
     """Данные изменения качества воспроизведения."""
+
     model_config = ConfigDict(extra="forbid")
 
     from_quality: str = Field(
@@ -229,23 +240,26 @@ class VideoQualityChangedPayload(BaseModel):
 
 class VideoQualityChangedEvent(VideoEvent):
     """Событие изменения качества воспроизведения фильма."""
-    event_type: Literal[
-        "video_quality_changed"
-    ] = "video_quality_changed"
+
+    event_type: Literal["video_quality_changed"] = "video_quality_changed"
 
     payload: VideoQualityChangedPayload
 
 
 class SearchFilters(BaseModel):
     """Параметры поиска и фильтрации фильмов, выбранные пользователем."""
+
     model_config = ConfigDict(extra="forbid")
 
     genre_id: UUID | None = None
 
-    sort: Literal[
-        "imdb_rating",
-        "-imdb_rating",
-    ] | None = None
+    sort: (
+        Literal[
+            "imdb_rating",
+            "-imdb_rating",
+        ]
+        | None
+    ) = None
 
     query: str | None = Field(
         default=None,
@@ -256,20 +270,15 @@ class SearchFilters(BaseModel):
     @model_validator(mode="after")
     def validate_filters(self) -> "SearchFilters":
         """Проверить наличие хотя бы одного параметра поиска."""
-        if (
-            self.genre_id is None
-            and self.sort is None
-            and self.query is None
-        ):
-            raise ValueError(
-                "должен быть указан хотя бы один параметр поиска"
-            )
+        if self.genre_id is None and self.sort is None and self.query is None:
+            raise ValueError("должен быть указан хотя бы один параметр поиска")
 
         return self
 
 
 class SearchFilterPayload(BaseModel):
     """Данные события использования поиска или фильтрации фильмов."""
+
     model_config = ConfigDict(extra="forbid")
 
     filters: SearchFilters
@@ -277,9 +286,8 @@ class SearchFilterPayload(BaseModel):
 
 class SearchFilterUsedEvent(BaseEvent):
     """Событие использования параметров поиска или фильтрации фильмов."""
-    event_type: Literal[
-        "search_filter_used"
-    ] = "search_filter_used"
+
+    event_type: Literal["search_filter_used"] = "search_filter_used"
 
     payload: SearchFilterPayload
 
@@ -297,4 +305,4 @@ EventRequest = Annotated[
     Field(discriminator="event_type"),
 ]
 
-EVENT_REQUEST_ADAPTER = TypeAdapter(EventRequest)
+EVENT_REQUEST_ADAPTER: TypeAdapter[EventRequest] = TypeAdapter(EventRequest)

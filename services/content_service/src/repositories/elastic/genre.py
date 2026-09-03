@@ -1,6 +1,6 @@
 """Реализация репозитория жанров через Elasticsearch."""
-from elasticsearch import AsyncElasticsearch, NotFoundError
 
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from models.genre import Genre
 from repositories.elastic.bodies.genres import (
     build_genres_body,
@@ -10,6 +10,7 @@ from repositories.interfaces.genre import GenreRepository
 
 class ElasticsearchGenreRepository(GenreRepository):
     """Репозиторий жанров, использующий Elasticsearch."""
+
     def __init__(
         self,
         elastic: AsyncElasticsearch,
@@ -34,7 +35,7 @@ class ElasticsearchGenreRepository(GenreRepository):
         except NotFoundError:
             return None
 
-        return Genre.model_validate(document['_source'])
+        return Genre.model_validate(document["_source"])
 
     async def get_many(
         self,
@@ -58,6 +59,6 @@ class ElasticsearchGenreRepository(GenreRepository):
         )
 
         return [
-            Genre.model_validate(hit['_source'])
-            for hit in response['hits']['hits']
+            Genre.model_validate(hit["_source"])
+            for hit in response["hits"]["hits"]
         ]

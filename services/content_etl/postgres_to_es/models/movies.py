@@ -1,4 +1,5 @@
 """Модели документов фильмов для Elasticsearch."""
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from postgres_to_es.models.common import BaseDocument
@@ -6,7 +7,8 @@ from postgres_to_es.models.common import BaseDocument
 
 class MovieGenre(BaseModel):
     """Жанр внутри документа фильма."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     name: str
@@ -14,7 +16,8 @@ class MovieGenre(BaseModel):
 
 class MoviePerson(BaseModel):
     """Персона внутри документа фильма."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     full_name: str
@@ -22,7 +25,8 @@ class MoviePerson(BaseModel):
 
 class MovieDocument(BaseDocument):
     """Документ фильма для индекса Elasticsearch."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     imdb_rating: float | None = None

@@ -1,4 +1,5 @@
 """Пайплайн загрузки персон в целевой индекс."""
+
 import logging
 
 from psycopg2.extensions import connection as PgConnection
@@ -13,11 +14,12 @@ from postgres_to_es.transforms import transform_persons
 
 logger = logging.getLogger(__name__)
 
-PERSONS_SCHEMA_FILENAME = 'persons.json'
+PERSONS_SCHEMA_FILENAME = "persons.json"
 
 
 class PersonsPipeline(BasePipeline):
     """Загружает документы персон."""
+
     def __init__(
         self,
         source: PersonsSource,
@@ -43,10 +45,10 @@ class PersonsPipeline(BasePipeline):
     ) -> bool:
         """Выполняет одну итерацию загрузки персон."""
         person_modified, person_id = self._get_cursor(
-            'person',
+            "person",
         )
         film_modified, film_id = self._get_cursor(
-            'film_work',
+            "film_work",
         )
 
         person_changes = self._source.get_changed_person_ids(
@@ -56,40 +58,27 @@ class PersonsPipeline(BasePipeline):
             limit=self._batch_size,
         )
 
-        film_work_changes = (
-            self._source.get_changed_film_work_ids(
-                connection=connection,
-                last_modified=film_modified,
-                last_id=film_id,
-                limit=self._batch_size,
-            )
+        film_work_changes = self._source.get_changed_film_work_ids(
+            connection=connection,
+            last_modified=film_modified,
+            last_id=film_id,
+            limit=self._batch_size,
         )
 
-        if not (
-            person_changes
-            or film_work_changes
-        ):
+        if not (person_changes or film_work_changes):
             logger.info(
-                'Изменения для индекса персон не найдены.',
+                "Изменения для индекса персон не найдены.",
             )
             return False
 
-        person_ids = {
-            record.id
-            for record in person_changes
-        }
+        person_ids = {record.id for record in person_changes}
 
         if film_work_changes:
-            changed_film_ids = [
-                record.id
-                for record in film_work_changes
-            ]
+            changed_film_ids = [record.id for record in film_work_changes]
 
-            related_person_ids = (
-                self._source.get_person_ids_by_film_work_ids(
-                    connection=connection,
-                    film_work_ids=changed_film_ids,
-                )
+            related_person_ids = self._source.get_person_ids_by_film_work_ids(
+                connection=connection,
+                film_work_ids=changed_film_ids,
             )
 
             person_ids.update(related_person_ids)
@@ -113,13 +102,13 @@ class PersonsPipeline(BasePipeline):
 
         state_updates.update(
             self._get_cursor_update(
-                prefix='person',
+                prefix="person",
                 records=person_changes,
             ),
         )
         state_updates.update(
             self._get_cursor_update(
-                prefix='film_work',
+                prefix="film_work",
                 records=film_work_changes,
             ),
         )
@@ -127,7 +116,7 @@ class PersonsPipeline(BasePipeline):
         self._state.set_states(state_updates)
 
         logger.info(
-            'Итерация пайплайна персон завершена.',
+            "Итерация пайплайна персон завершена.",
         )
 
         return True

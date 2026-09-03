@@ -1,4 +1,5 @@
 """Создание body запросов для поиска фильмов."""
+
 from typing import Any
 
 
@@ -10,26 +11,26 @@ def build_sorted_films_body(
     film_sort_fields: dict[str, str],
 ) -> dict[str, Any]:
     """Формирует запрос Elasticsearch для сортировки и фильтрации фильмов."""
-    order = 'desc' if sort.startswith('-') else 'asc'
+    order = "desc" if sort.startswith("-") else "asc"
     sort_field = film_sort_fields.get(
-        sort.lstrip('-'),
-        'imdb_rating',
+        sort.lstrip("-"),
+        "imdb_rating",
     )
 
     search_query: dict[str, Any] = {
-        'match_all': {},
+        "match_all": {},
     }
 
     if genre_filter:
         search_query = {
-            'bool': {
-                'filter': [
+            "bool": {
+                "filter": [
                     {
-                        'nested': {
-                            'path': 'genre',
-                            'query': {
-                                'term': {
-                                    'genre.uuid': genre_filter,
+                        "nested": {
+                            "path": "genre",
+                            "query": {
+                                "term": {
+                                    "genre.uuid": genre_filter,
                                 },
                             },
                         },
@@ -39,17 +40,17 @@ def build_sorted_films_body(
         }
 
     return {
-        '_source': ['uuid', 'title', 'imdb_rating'],
-        'query': search_query,
-        'sort': [
+        "_source": ["uuid", "title", "imdb_rating"],
+        "query": search_query,
+        "sort": [
             {
                 sort_field: {
-                    'order': order,
+                    "order": order,
                 },
             },
         ],
-        'from': (page_number - 1) * page_size,
-        'size': page_size,
+        "from": (page_number - 1) * page_size,
+        "size": page_size,
     }
 
 
@@ -62,68 +63,68 @@ def build_searched_films_body(
     normalized_query = query.strip().lower()
 
     return {
-        '_source': ['uuid', 'title', 'imdb_rating'],
-        'query': {
-            'bool': {
-                'should': [
+        "_source": ["uuid", "title", "imdb_rating"],
+        "query": {
+            "bool": {
+                "should": [
                     {
-                        'multi_match': {
-                            'query': normalized_query,
-                            'fields': [
-                                'title^5',
-                                'description',
+                        "multi_match": {
+                            "query": normalized_query,
+                            "fields": [
+                                "title^5",
+                                "description",
                             ],
-                            'fuzziness': 'AUTO',
+                            "fuzziness": "AUTO",
                         },
                     },
                     {
-                        'nested': {
-                            'path': 'actors',
-                            'query': {
-                                'match': {
-                                    'actors.full_name': {
-                                        'query': normalized_query,
-                                        'fuzziness': 'AUTO',
-                                        'boost': 2,
+                        "nested": {
+                            "path": "actors",
+                            "query": {
+                                "match": {
+                                    "actors.full_name": {
+                                        "query": normalized_query,
+                                        "fuzziness": "AUTO",
+                                        "boost": 2,
                                     },
                                 },
                             },
                         },
                     },
                     {
-                        'nested': {
-                            'path': 'writers',
-                            'query': {
-                                'match': {
-                                    'writers.full_name': {
-                                        'query': normalized_query,
-                                        'fuzziness': 'AUTO',
-                                        'boost': 2,
+                        "nested": {
+                            "path": "writers",
+                            "query": {
+                                "match": {
+                                    "writers.full_name": {
+                                        "query": normalized_query,
+                                        "fuzziness": "AUTO",
+                                        "boost": 2,
                                     },
                                 },
                             },
                         },
                     },
                     {
-                        'nested': {
-                            'path': 'directors',
-                            'query': {
-                                'match': {
-                                    'directors.full_name': {
-                                        'query': normalized_query,
-                                        'fuzziness': 'AUTO',
-                                        'boost': 2,
+                        "nested": {
+                            "path": "directors",
+                            "query": {
+                                "match": {
+                                    "directors.full_name": {
+                                        "query": normalized_query,
+                                        "fuzziness": "AUTO",
+                                        "boost": 2,
                                     },
                                 },
                             },
                         },
                     },
                 ],
-                'minimum_should_match': 1,
+                "minimum_should_match": 1,
             },
         },
-        'from': (page_number - 1) * page_size,
-        'size': page_size,
+        "from": (page_number - 1) * page_size,
+        "size": page_size,
     }
 
 
@@ -138,64 +139,64 @@ def build_similar_films_body(
     """Формирует запрос поиска фильмов по жанрам и,
     при необходимости, содержимому."""
     bool_query: dict[str, Any] = {
-        'filter': [
+        "filter": [
             {
-                'nested': {
-                    'path': 'genre',
-                    'query': {
-                        'terms': {
-                            'genre.uuid': genre_uuids,
+                "nested": {
+                    "path": "genre",
+                    "query": {
+                        "terms": {
+                            "genre.uuid": genre_uuids,
                         },
                     },
                 },
             },
         ],
-        'must_not': [
+        "must_not": [
             {
-                'term': {
-                    'uuid': film_id,
+                "term": {
+                    "uuid": film_id,
                 },
             },
         ],
     }
     if use_more_like_this:
-        bool_query['must'] = [
-                    {
-                        'more_like_this': {
-                            'fields': [
-                                'title',
-                                'description',
-                            ],
-                            'like': [
-                                {
-                                    '_index': index_name,
-                                    '_id': film_id,
-                                },
-                            ],
-                            'min_term_freq': 1,
-                            'min_doc_freq': 1,
-                            'max_query_terms': 25,
+        bool_query["must"] = [
+            {
+                "more_like_this": {
+                    "fields": [
+                        "title",
+                        "description",
+                    ],
+                    "like": [
+                        {
+                            "_index": index_name,
+                            "_id": film_id,
                         },
-                    },
-                ]
+                    ],
+                    "min_term_freq": 1,
+                    "min_doc_freq": 1,
+                    "max_query_terms": 25,
+                },
+            },
+        ]
 
     return {
-        '_source': ['uuid', 'title', 'imdb_rating'],
-        'query': {
-            'bool': bool_query,
+        "_source": ["uuid", "title", "imdb_rating"],
+        "query": {
+            "bool": bool_query,
         },
-        'sort': [
+        "sort": [
             {
-                '_score': {
-                    'order': 'desc',
+                "_score": {
+                    "order": "desc",
                 },
             },
             {
-                'imdb_rating': {
-                    'order': 'desc',
+                "imdb_rating": {
+                    "order": "desc",
                 },
             },
         ],
-        'from': (page_number - 1) * page_size,
-        'size': page_size,
+        "from": (page_number - 1) * page_size,
+        "size": page_size,
     }

@@ -1,6 +1,6 @@
 """Реализация репозитория фильмов через Elasticsearch."""
-from elasticsearch import AsyncElasticsearch, NotFoundError
 
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from models.film import Film, ShortFilm
 from repositories.elastic.bodies.films import (
     build_searched_films_body,
@@ -13,6 +13,7 @@ from repositories.interfaces.film import FilmRepository
 
 class ElasticsearchFilmRepository(FilmRepository):
     """Репозиторий фильмов, использующий Elasticsearch."""
+
     def __init__(
         self,
         elastic: AsyncElasticsearch,
@@ -62,8 +63,8 @@ class ElasticsearchFilmRepository(FilmRepository):
         )
 
         return [
-            build_short_film(hit['_source'])
-            for hit in response['hits']['hits']
+            build_short_film(hit["_source"])
+            for hit in response["hits"]["hits"]
         ]
 
     async def search(
@@ -85,8 +86,8 @@ class ElasticsearchFilmRepository(FilmRepository):
         )
 
         return [
-            build_short_film(hit['_source'])
-            for hit in response['hits']['hits']
+            build_short_film(hit["_source"])
+            for hit in response["hits"]["hits"]
         ]
 
     async def find_similar_by_content_and_genres(
@@ -115,8 +116,8 @@ class ElasticsearchFilmRepository(FilmRepository):
         )
 
         return [
-            build_short_film(hit['_source'])
-            for hit in response['hits']['hits']
+            build_short_film(hit["_source"])
+            for hit in response["hits"]["hits"]
         ]
 
     async def find_similar_by_genres(
@@ -144,6 +145,6 @@ class ElasticsearchFilmRepository(FilmRepository):
         )
 
         return [
-            build_short_film(hit['_source'])
-            for hit in response['hits']['hits']
+            build_short_film(hit["_source"])
+            for hit in response["hits"]["hits"]
         ]

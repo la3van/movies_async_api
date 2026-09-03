@@ -1,18 +1,19 @@
 """Реализация кеша приложения на основе Redis."""
+
 import json
 from collections.abc import Sequence
 from typing import TypeVar
 
+from cache.base import Cache
 from pydantic import BaseModel
 from redis.asyncio import Redis
 
-from cache.base import Cache
-
-ModelType = TypeVar('ModelType', bound=BaseModel)
+ModelType = TypeVar("ModelType", bound=BaseModel)
 
 
 class RedisCache(Cache):
     """Хранит сериализованные Pydantic-модели в Redis."""
+
     def __init__(self, redis: Redis) -> None:
         """Инициализирует кеш с готовым клиентом Redis."""
         self._redis = redis
@@ -44,8 +45,7 @@ class RedisCache(Cache):
         raw_models = json.loads(cached_data)
 
         return [
-            model_type.model_validate(raw_model)
-            for raw_model in raw_models
+            model_type.model_validate(raw_model) for raw_model in raw_models
         ]
 
     async def set_model(
@@ -68,10 +68,7 @@ class RedisCache(Cache):
         ttl: int,
     ) -> None:
         """Сериализует и сохраняет последовательность моделей в Redis."""
-        serialized_values = [
-            value.model_dump(mode='json')
-            for value in values
-        ]
+        serialized_values = [value.model_dump(mode="json") for value in values]
 
         await self._redis.set(
             key,

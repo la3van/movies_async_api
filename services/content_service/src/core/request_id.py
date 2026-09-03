@@ -1,4 +1,5 @@
 """Middleware для обработки X-Request-ID."""
+
 from uuid import uuid4
 
 from starlette.datastructures import MutableHeaders
@@ -13,6 +14,7 @@ from starlette.types import (
 
 class RequestIdMiddleware:
     """Сохраняет или создаёт X-Request-ID для HTTP-запроса."""
+
     def __init__(self, app: ASGIApp) -> None:
         self._app = app
 

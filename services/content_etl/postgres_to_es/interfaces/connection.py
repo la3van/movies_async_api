@@ -1,4 +1,5 @@
 """Интерфейс провайдера соединений с источником данных."""
+
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 
@@ -13,4 +14,4 @@ class ConnectionProvider(ABC):
         self,
     ) -> AbstractContextManager[PgConnection]:
         """Возвращает контекстный менеджер PostgreSQL-соединения."""
-        pass  # pragma: no cover
+        # pragma: no cover

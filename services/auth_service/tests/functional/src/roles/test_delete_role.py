@@ -1,4 +1,5 @@
 """Функциональные тесты удаления ролей."""
+
 from http import HTTPStatus
 
 import pytest
@@ -16,7 +17,7 @@ async def test_delete_role(
 ) -> None:
     """Проверяет удаление роли."""
     delete_response = await make_delete_request(
-        url=f'{test_settings.api_prefix}/roles/{created_role["id"]}',
+        url=f"{test_settings.api_prefix}/roles/{created_role['id']}",
         headers=superuser_headers,
     )
 
@@ -24,7 +25,7 @@ async def test_delete_role(
         assert delete_response.status == HTTPStatus.NO_CONTENT
 
     get_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/roles/{created_role["id"]}',
+        url=f"{test_settings.api_prefix}/roles/{created_role['id']}",
         headers=superuser_headers,
     )
 
@@ -32,7 +33,7 @@ async def test_delete_role(
         body = await get_response.json()
 
         assert get_response.status == HTTPStatus.NOT_FOUND
-        assert body['detail'] == 'Role not found'
+        assert body["detail"] == "Role not found"
 
 
 @pytest.mark.asyncio
@@ -45,8 +46,8 @@ async def test_delete_role_invalidates_related_caches(
     make_delete_request,
 ) -> None:
     """Проверяет инвалидацию роли, списка и профиля пользователя."""
-    item_url = f'{test_settings.api_prefix}/roles/{created_role["id"]}'
-    list_url = f'{test_settings.api_prefix}/roles/'
+    item_url = f"{test_settings.api_prefix}/roles/{created_role['id']}"
+    list_url = f"{test_settings.api_prefix}/roles/"
 
     item_response = await make_get_request(
         url=item_url,
@@ -58,7 +59,7 @@ async def test_delete_role_invalidates_related_caches(
     list_response = await make_get_request(
         url=list_url,
         headers=superuser_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
     async with list_response:
         role_list = await list_response.json()
@@ -67,14 +68,14 @@ async def test_delete_role_invalidates_related_caches(
         assert len(role_list) == 1
 
     user_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
     async with user_response:
         user = await user_response.json()
 
         assert user_response.status == HTTPStatus.OK
-        assert len(user['roles']) == 1
+        assert len(user["roles"]) == 1
 
     delete_response = await make_delete_request(
         url=item_url,
@@ -91,12 +92,12 @@ async def test_delete_role_invalidates_related_caches(
         body = await fresh_item_response.json()
 
         assert fresh_item_response.status == HTTPStatus.NOT_FOUND
-        assert body['detail'] == 'Role not found'
+        assert body["detail"] == "Role not found"
 
     fresh_list_response = await make_get_request(
         url=list_url,
         headers=superuser_headers,
-        query_data={'limit': 10, 'offset': 0},
+        query_data={"limit": 10, "offset": 0},
     )
     async with fresh_list_response:
         fresh_list = await fresh_list_response.json()
@@ -105,14 +106,14 @@ async def test_delete_role_invalidates_related_caches(
         assert fresh_list == []
 
     fresh_user_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
     async with fresh_user_response:
         fresh_user = await fresh_user_response.json()
 
         assert fresh_user_response.status == HTTPStatus.OK
-        assert fresh_user['roles'] == []
+        assert fresh_user["roles"] == []
 
 
 @pytest.mark.asyncio
@@ -122,7 +123,7 @@ async def test_delete_missing_role(
 ) -> None:
     """Проверяет удаление отсутствующей роли."""
     response = await make_delete_request(
-        url=f'{test_settings.api_prefix}/roles/{MISSING_ROLE_ID}',
+        url=f"{test_settings.api_prefix}/roles/{MISSING_ROLE_ID}",
         headers=superuser_headers,
     )
 
@@ -130,7 +131,7 @@ async def test_delete_missing_role(
         body = await response.json()
 
         assert response.status == HTTPStatus.NOT_FOUND
-        assert body['detail'] == 'Role not found'
+        assert body["detail"] == "Role not found"
 
 
 @pytest.mark.asyncio
@@ -140,7 +141,7 @@ async def test_delete_role_with_invalid_uuid(
 ) -> None:
     """Проверяет валидацию UUID роли при удалении."""
     response = await make_delete_request(
-        url=f'{test_settings.api_prefix}/roles/invalid-uuid',
+        url=f"{test_settings.api_prefix}/roles/invalid-uuid",
         headers=superuser_headers,
     )
 
@@ -148,7 +149,7 @@ async def test_delete_role_with_invalid_uuid(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.asyncio
@@ -158,14 +159,14 @@ async def test_delete_role_without_token(
 ) -> None:
     """Проверяет запрет удаления роли без токена."""
     response = await make_delete_request(
-        url=f'{test_settings.api_prefix}/roles/{created_role["id"]}',
+        url=f"{test_settings.api_prefix}/roles/{created_role['id']}",
     )
 
     async with response:
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"
 
 
 @pytest.mark.asyncio
@@ -176,7 +177,7 @@ async def test_delete_role_by_regular_user(
 ) -> None:
     """Проверяет запрет удаления роли обычным пользователем."""
     response = await make_delete_request(
-        url=f'{test_settings.api_prefix}/roles/{created_role["id"]}',
+        url=f"{test_settings.api_prefix}/roles/{created_role['id']}",
         headers=auth_headers,
     )
 
@@ -184,4 +185,4 @@ async def test_delete_role_by_regular_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.FORBIDDEN
-        assert body['detail'] == 'Not enough permissions'
+        assert body["detail"] == "Not enough permissions"

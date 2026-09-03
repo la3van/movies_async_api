@@ -1,4 +1,5 @@
 """Интерфейс репозитория пользователей."""
+
 from abc import ABC, abstractmethod
 from uuid import UUID
 
@@ -8,23 +9,24 @@ from models.user import User
 
 class UserRepository(ABC):
     """Определяет операции получения и сохранения пользователей."""
+
     @abstractmethod
     async def get_by_id(self, user_id: UUID) -> User | None:
         """Возвращает пользователя по идентификатору или None,
         если пользователь не найден."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def get_by_login(self, login: str) -> User | None:
         """Возвращает пользователя по логину или None,
         если пользователь не найден."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def get_by_email(self, email: str) -> User | None:
         """Возвращает пользователя по email или None,
         если пользователь не найден."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def create(
@@ -39,24 +41,24 @@ class UserRepository(ABC):
         is_superuser: bool = False,
     ) -> User:
         """Создаёт пользователя и возвращает созданную модель."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def add_roles(self, user: User, roles: list[Role]) -> User:
         """Добавляет пользователю роли и возвращает обновлённую модель."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def add_role(self, user: User, role: Role) -> User:
         """Добавляет пользователю роль и возвращает обновлённую модель."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def remove_role(self, user: User, role: Role) -> User:
         """Удаляет роль у пользователя и возвращает обновлённую модель."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def save(self, user: User) -> User:
         """Сохраняет пользователя и возвращает обновлённую модель."""
-        pass  # pragma: no cover
+        # pragma: no cover

@@ -1,7 +1,7 @@
 """Эндпоинты прав доступа."""
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from typing import Annotated
+from uuid import UUID
 
 from api.dependencies import (
     get_current_active_user,
@@ -16,21 +16,20 @@ from api.v1.schemas.permissions import (
     PermissionUpdate,
 )
 from api.v1.schemas.users import UserResponse
+from fastapi import APIRouter, Depends, Path, Query, status
 from services.permission import PermissionService
 
-
-router = APIRouter(prefix='/permissions', tags=['permissions'])
+router = APIRouter(prefix="/permissions", tags=["permissions"])
 
 
 @router.post(
-    '/check',
+    "/check",
     response_model=PermissionCheckResponse,
-    summary='Проверка права доступа',
+    summary="Проверка права доступа",
     description=(
-        'Проверяет, есть ли у текущего пользователя '
-        'указанное право доступа.'
+        "Проверяет, есть ли у текущего пользователя указанное право доступа."
     ),
-    response_description='Результат проверки права доступа',
+    response_description="Результат проверки права доступа",
 )
 async def check_permission(
     permission_data: PermissionCheckRequest,
@@ -50,24 +49,24 @@ async def check_permission(
 
 
 @router.get(
-    '/',
+    "/",
     response_model=list[PermissionResponse],
-    summary='Список прав доступа',
-    description='Возвращает список прав доступа с пагинацией.',
-    response_description='Список прав доступа',
+    summary="Список прав доступа",
+    description="Возвращает список прав доступа с пагинацией.",
+    response_description="Список прав доступа",
 )
 async def get_permissions(
-    limit: int = Query(  # noqa: B008
+    limit: int = Query(
         100,
         ge=1,
         le=500,
-        description='Максимальное количество прав в ответе',
+        description="Максимальное количество прав в ответе",
         examples=[100],
     ),
-    offset: int = Query(  # noqa: B008
+    offset: int = Query(
         0,
         ge=0,
-        description='Смещение от начала списка',
+        description="Смещение от начала списка",
         examples=[0],
     ),
     _current_user: UserResponse = Depends(require_superuser),  # noqa: B008
@@ -80,17 +79,17 @@ async def get_permissions(
 
 
 @router.get(
-    '/{permission_id}',
+    "/{permission_id}",
     response_model=PermissionResponse,
-    summary='Право доступа по идентификатору',
-    description='Возвращает одно право доступа по его UUID.',
-    response_description='Право доступа',
+    summary="Право доступа по идентификатору",
+    description="Возвращает одно право доступа по его UUID.",
+    response_description="Право доступа",
 )
 async def get_permission(
     permission_id: UUID = Path(  # noqa: B008
         ...,
-        description='UUID права доступа',
-        examples=['6f822a92-7b51-4753-8d00-ecfedf98a937'],
+        description="UUID права доступа",
+        examples=["6f822a92-7b51-4753-8d00-ecfedf98a937"],
     ),
     _current_user: UserResponse = Depends(require_superuser),  # noqa: B008
     permission_service: PermissionService = (
@@ -102,12 +101,12 @@ async def get_permission(
 
 
 @router.post(
-    '/',
+    "/",
     response_model=PermissionResponse,
     status_code=status.HTTP_201_CREATED,
-    summary='Создание права доступа',
-    description='Создаёт новое право доступа в системе.',
-    response_description='Созданное право доступа',
+    summary="Создание права доступа",
+    description="Создаёт новое право доступа в системе.",
+    response_description="Созданное право доступа",
 )
 async def create_permission(
     permission_data: PermissionCreate,
@@ -121,19 +120,22 @@ async def create_permission(
 
 
 @router.patch(
-    '/{permission_id}',
+    "/{permission_id}",
     response_model=PermissionResponse,
-    summary='Обновление права доступа',
-    description='Обновляет код и описание права доступа.',
-    response_description='Обновлённое право доступа',
+    summary="Обновление права доступа",
+    description="Обновляет код и описание права доступа.",
+    response_description="Обновлённое право доступа",
 )
 async def update_permission(
-    permission_id: UUID = Path(  # noqa: B008
-        ...,
-        description='UUID права доступа',
-        examples=['6f822a92-7b51-4753-8d00-ecfedf98a937'],
-    ),
-    permission_data: PermissionUpdate = ...,
+    permission_id: Annotated[
+        UUID,
+        Path(
+            ...,
+            description="UUID права доступа",
+            examples=["6f822a92-7b51-4753-8d00-ecfedf98a937"],
+        ),
+    ],
+    permission_data: PermissionUpdate,
     _current_user: UserResponse = Depends(require_superuser),  # noqa: B008
     permission_service: PermissionService = (
         Depends(get_permission_service)  # noqa: B008

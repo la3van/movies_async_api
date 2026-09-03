@@ -1,4 +1,5 @@
 """Общие фикстуры Elasticsearch."""
+
 from typing import Any
 
 import pytest
@@ -13,9 +14,10 @@ from tests.functional.utils.helpers import (
 )
 
 
-@pytest.fixture(name='es_write_data')
+@pytest.fixture(name="es_write_data")
 def es_write_data(es_client: AsyncElasticsearch):
     """Возвращает функцию пересоздания индекса и загрузки документов."""
+
     async def inner(
         index: str,
         index_schema: dict[str, Any],
@@ -36,17 +38,17 @@ def es_write_data(es_client: AsyncElasticsearch):
         _, errors = await async_bulk(
             client=es_client,
             actions=actions,
-            refresh='wait_for',
+            refresh="wait_for",
             raise_on_error=False,
         )
 
         if errors:
-            raise Exception('Ошибка записи данных в Elasticsearch')
+            raise Exception("Ошибка записи данных в Elasticsearch")
 
     return inner
 
 
-@pytest_asyncio.fixture(name='es_client', scope='session')
+@pytest_asyncio.fixture(name="es_client", scope="session")
 async def es_client():
     """Создаёт Elasticsearch-клиент на время тестовой сессии."""
     es_client = AsyncElasticsearch(
@@ -57,11 +59,12 @@ async def es_client():
     await es_client.close()
 
 
-@pytest_asyncio.fixture(name='es_delete_document')
+@pytest_asyncio.fixture(name="es_delete_document")
 async def es_delete_document(
     es_client: AsyncElasticsearch,
 ):
     """Возвращает функцию удаления документа из Elasticsearch."""
+
     async def inner(
         index: str,
         document_id: str,
@@ -70,7 +73,7 @@ async def es_delete_document(
         await es_client.delete(
             index=index,
             id=document_id,
-            refresh='wait_for',
+            refresh="wait_for",
         )
 
     return inner

@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ruff:
+    name: Ruff
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Check formatting
+        run: ruff format --check .
+
+      - name: Run Ruff
+        run: ruff check .
+
+  compatibility:
+    name: ${{ matrix.service }} / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+        service:
+          - ugc_service
+          - auth_service
+          - content_service
+          - content_etl
+          - events_service
+          - events_etl
+          - admin_service
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            -r requirements-dev.txt \
+            -r services/${{ matrix.service }}/requirements.txt
+          pip check
+
+      - name: Check compatibility and types
+        run: |
+          case "${{ matrix.service }}" in
+            content_etl)
+              cd services/content_etl
+              python -m compileall -q postgres_to_es
+              MYPYPATH=. python -m mypy \
+                --config-file ../../mypy.ini \
+                postgres_to_es
+              ;;
+
+            admin_service)
+              cd services/admin_service
+              python -m compileall \
+                -q admin_panel admin_auth content manage.py
+              SECRET_KEY=mypy-secret \
+              POSTGRES_PASSWORD=mypy-password \
+              MYPYPATH=. \
+              python -m mypy \
+                --config-file mypy.ini \
+                admin_panel admin_auth content manage.py
+              ;;
+
+            *)
+              cd "services/${{ matrix.service }}"
+              python -m compileall -q src
+              MYPYPATH=src python -m mypy \
+                --config-file ../../mypy.ini \
+                src
+              ;;
+          esac
+
+  tests:
+    name: Tests / ${{ matrix.service }} / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+        service:
+          - auth_service
+          - content_service
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Prepare test environment
+        run: |
+          cp \
+            "services/${{ matrix.service }}/tests/functional/.env.example" \
+            "services/${{ matrix.service }}/tests/functional/.env"
+
+          if [ "${{ matrix.service }}" = "content_service" ]; then
+            cp \
+              services/content_service/.env.example \
+              services/content_service/.env
+          fi
+
+      - name: Run functional tests
+        working-directory: services/${{ matrix.service }}/tests/functional
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
+        run: |
+          docker compose up --build \
+            --abort-on-container-exit \
+            --exit-code-from tests \
+            tests
+
+      - name: Stop test environment
+        if: always()
+        working-directory: services/${{ matrix.service }}/tests/functional
+        run: docker compose down -v --remove-orphans
+
+  telegram:
+    name: Telegram notification
+    needs:
+      - ruff
+      - compatibility
+      - tests
+    if: ${{ success() && github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send notification
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl --fail --request POST \
+            "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT_ID}" \
+            --data-urlencode \
+            "text=✅ CI успешно пройден: ${{ github.repository }}"

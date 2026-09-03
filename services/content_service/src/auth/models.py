@@ -1,4 +1,5 @@
 """Модели интеграции с Auth Service."""
+
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -19,10 +20,11 @@ NonEmptyStrictString = Annotated[
 
 class AccessTokenClaims(BaseModel):
     """Проверенные данные access token."""
-    model_config = ConfigDict(extra='ignore')
+
+    model_config = ConfigDict(extra="ignore")
 
     sub: UUID
-    type: Literal['access']
+    type: Literal["access"]
 
     iat: StrictInt
     exp: StrictInt
@@ -35,4 +37,5 @@ class AccessTokenClaims(BaseModel):
 
 class PermissionDecision(BaseModel):
     """Решение о наличии permission."""
+
     has_permission: StrictBool

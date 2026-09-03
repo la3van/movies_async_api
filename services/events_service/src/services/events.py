@@ -1,10 +1,10 @@
 """Сервис обработки и публикации пользовательских событий."""
+
 import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
 import orjson
-
 from kafka.base import (
     DeliveryMetadata,
     EventPublisher,
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class EventService:
     """Обрабатывает пользовательские события и публикует их в Kafka."""
+
     def __init__(
         self,
         publisher: EventPublisher,
@@ -41,17 +42,11 @@ class EventService:
             mode="json",
         )
 
-        message["user_id"] = str(
-            trusted_user_id
-        )
+        message["user_id"] = str(trusted_user_id)
 
-        message["received_at"] = (
-            received_at
-            .isoformat()
-            .replace(
-                "+00:00",
-                "Z",
-            )
+        message["received_at"] = received_at.isoformat().replace(
+            "+00:00",
+            "Z",
         )
         message["request_id"] = request_id
 
@@ -76,8 +71,7 @@ class EventService:
             )
 
             raise EventIngestionUnavailable(
-                "Система приёма пользовательских событий "
-                "временно недоступна"
+                "Система приёма пользовательских событий временно недоступна"
             ) from exc
 
         logger.info(

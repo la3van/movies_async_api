@@ -1,9 +1,6 @@
 """PostgreSQL-репозиторий социальных аккаунтов."""
-from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from uuid import UUID
 
 from models.role import Role
 from models.social_account import SocialAccount
@@ -11,12 +8,16 @@ from models.user import User
 from repositories.interfaces.social_account import (
     SocialAccountRepository,
 )
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 
 class PostgresSocialAccountRepository(
     SocialAccountRepository,
 ):
     """Реализует операции с социальными аккаунтами в PostgreSQL."""
+
     def __init__(
         self,
         session: AsyncSession,
@@ -46,8 +47,7 @@ class PostgresSocialAccountRepository(
             )
             .where(
                 SocialAccount.provider == provider,
-                SocialAccount.provider_user_id
-                == provider_user_id,
+                SocialAccount.provider_user_id == provider_user_id,
             )
         )
 

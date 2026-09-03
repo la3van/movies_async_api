@@ -1,4 +1,5 @@
 """Повторное выполнение операций с экспоненциальной задержкой."""
+
 import logging
 import random
 import time
@@ -17,17 +18,18 @@ from postgres_to_es.interfaces import RetryExecutor
 
 logger = logging.getLogger(__name__)
 
-Parameters = ParamSpec('Parameters')
-ResultType = TypeVar('ResultType')
+Parameters = ParamSpec("Parameters")
+ResultType = TypeVar("ResultType")
 
 
 class SupportsRetry(Protocol):
     """Объект, содержащий исполнитель повторных попыток."""
+
     _retry_executor: RetryExecutor
 
 
 OwnerType = TypeVar(
-    'OwnerType',
+    "OwnerType",
     bound=SupportsRetry,
 )
 
@@ -35,6 +37,7 @@ OwnerType = TypeVar(
 @dataclass(frozen=True, slots=True)
 class BackoffPolicy:
     """Настройки экспоненциальной задержки."""
+
     start_sleep_time: float
     factor: float
     max_sleep_time: float
@@ -44,23 +47,23 @@ class BackoffPolicy:
         """Проверяет корректность настроек."""
         if self.start_sleep_time < 0:
             raise ValueError(
-                'Начальная задержка не может быть отрицательной.',
+                "Начальная задержка не может быть отрицательной.",
             )
 
         if self.factor < 1:
             raise ValueError(
-                'Множитель backoff должен быть не меньше 1.',
+                "Множитель backoff должен быть не меньше 1.",
             )
 
         if self.max_sleep_time < self.start_sleep_time:
             raise ValueError(
-                'Максимальная задержка не может быть '
-                'меньше начальной.',
+                "Максимальная задержка не может быть меньше начальной.",
             )
 
 
 class BackoffRetryExecutor(RetryExecutor):
     """Выполняет операции с экспоненциальной задержкой."""
+
     def __init__(
         self,
         policy: BackoffPolicy,
@@ -92,7 +95,7 @@ class BackoffRetryExecutor(RetryExecutor):
                     self._policy.max_sleep_time,
                     (
                         self._policy.start_sleep_time
-                        * self._policy.factor ** attempt_number
+                        * self._policy.factor**attempt_number
                     ),
                 )
 
@@ -103,13 +106,10 @@ class BackoffRetryExecutor(RetryExecutor):
                     )
 
                 logger.warning(
-                    (
-                        'Operation %s failed: %s. '
-                        'Retry in %.2f seconds.'
-                    ),
+                    ("Operation %s failed: %s. Retry in %.2f seconds."),
                     getattr(
                         operation,
-                        '__name__',
+                        "__name__",
                         operation.__class__.__name__,
                     ),
                     error,
@@ -143,6 +143,7 @@ def retryable(
     ],
 ]:
     """Повторяет метод через executor, внедрённый в объект."""
+
     def decorator(
         function: Callable[
             Concatenate[

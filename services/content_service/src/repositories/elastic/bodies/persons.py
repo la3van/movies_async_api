@@ -1,4 +1,5 @@
 """Создание body запросов для поиска персон."""
+
 from typing import Any
 
 
@@ -11,32 +12,32 @@ def build_persons_body(
 ) -> dict[str, Any]:
     """Формирует запрос Elasticsearch для получения и поиска персон."""
     search_query: dict = {
-        'match_all': {},
+        "match_all": {},
     }
     if query:
         search_query = {
-            'match': {
-                'full_name': query,
+            "match": {
+                "full_name": query,
             },
         }
 
     body = {
-        'query': search_query,
-        'from': (page_number - 1) * page_size,
-        'size': page_size,
+        "query": search_query,
+        "from": (page_number - 1) * page_size,
+        "size": page_size,
     }
 
     if sort:
-        order = 'desc' if sort.startswith('-') else 'asc'
+        order = "desc" if sort.startswith("-") else "asc"
         sort_field = person_sort_fields.get(
-            sort.lstrip('-'),
-            'full_name.raw',
+            sort.lstrip("-"),
+            "full_name.raw",
         )
 
-        body['sort'] = [
+        body["sort"] = [
             {
                 sort_field: {
-                    'order': order,
+                    "order": order,
                 },
             },
         ]
@@ -51,53 +52,53 @@ def build_person_films_body(
 ) -> dict[str, Any]:
     """Формирует запрос Elasticsearch для получения фильмов персоны."""
     body = {
-        '_source': ['uuid', 'title', 'imdb_rating'],
-        'query': {
-            'bool': {
-                'should': [
+        "_source": ["uuid", "title", "imdb_rating"],
+        "query": {
+            "bool": {
+                "should": [
                     {
-                        'nested': {
-                            'path': 'actors',
-                            'query': {
-                                'term': {
-                                    'actors.uuid': person_id,
+                        "nested": {
+                            "path": "actors",
+                            "query": {
+                                "term": {
+                                    "actors.uuid": person_id,
                                 },
                             },
                         },
                     },
                     {
-                        'nested': {
-                            'path': 'writers',
-                            'query': {
-                                'term': {
-                                    'writers.uuid': person_id,
+                        "nested": {
+                            "path": "writers",
+                            "query": {
+                                "term": {
+                                    "writers.uuid": person_id,
                                 },
                             },
                         },
                     },
                     {
-                        'nested': {
-                            'path': 'directors',
-                            'query': {
-                                'term': {
-                                    'directors.uuid': person_id,
+                        "nested": {
+                            "path": "directors",
+                            "query": {
+                                "term": {
+                                    "directors.uuid": person_id,
                                 },
                             },
                         },
                     },
                 ],
-                'minimum_should_match': 1,
+                "minimum_should_match": 1,
             },
         },
-        'sort': [
+        "sort": [
             {
-                'imdb_rating': {
-                    'order': 'desc',
+                "imdb_rating": {
+                    "order": "desc",
                 },
             },
         ],
-        'from': (page_number - 1) * page_size,
-        'size': page_size,
+        "from": (page_number - 1) * page_size,
+        "size": page_size,
     }
 
     return body

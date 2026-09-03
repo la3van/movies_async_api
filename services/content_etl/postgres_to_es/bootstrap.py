@@ -1,4 +1,5 @@
 """Сборка зависимостей ETL-приложения."""
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -60,9 +61,7 @@ def build_etl_service() -> Iterator[ETLService]:
         port=settings.redis_port,
         db=settings.redis_db,
         decode_responses=True,
-        socket_connect_timeout=(
-            settings.redis_socket_connect_timeout
-        ),
+        socket_connect_timeout=(settings.redis_socket_connect_timeout),
         socket_timeout=settings.redis_socket_timeout,
         retry=Retry(
             backoff=NoBackoff(),
@@ -92,19 +91,19 @@ def build_etl_service() -> Iterator[ETLService]:
 
         films_state = _create_state(
             redis_adapter=redis_adapter,
-            state_key=settings.get_state_key('films'),
+            state_key=settings.get_state_key("films"),
             retry_executor=retry_executor,
         )
 
         genres_state = _create_state(
             redis_adapter=redis_adapter,
-            state_key=settings.get_state_key('genres'),
+            state_key=settings.get_state_key("genres"),
             retry_executor=retry_executor,
         )
 
         persons_state = _create_state(
             redis_adapter=redis_adapter,
-            state_key=settings.get_state_key('persons'),
+            state_key=settings.get_state_key("persons"),
             retry_executor=retry_executor,
         )
 

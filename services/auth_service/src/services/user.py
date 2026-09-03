@@ -1,7 +1,7 @@
 """Сервис работы с пользователями."""
-from core.tracing import trace_method
-from uuid import UUID
+
 from datetime import datetime, timezone
+from uuid import UUID
 
 from api.v1.schemas.login_history import LoginHistoryResponse
 from api.v1.schemas.users import (
@@ -11,23 +11,24 @@ from api.v1.schemas.users import (
 )
 from cache.base import Cache
 from core.security import hash_password, verify_password
+from core.tracing import trace_method
 from services.cache_keys.users import (
     get_login_history_cache_key,
     get_user_cache_key,
 )
 from services.exceptions import (
     InvalidCredentialsError,
+    InvalidLoginHistoryDateRangeError,
     RoleNotFoundError,
     UserNotFoundError,
-    InvalidLoginHistoryDateRangeError,
 )
-from unit_of_work.base import UnitOfWorkFactory
-
 from token_revocation.base import AccessTokenRevocationStore
+from unit_of_work.base import UnitOfWorkFactory
 
 
 class UserService:
     """Сервис пользовательских сценариев."""
+
     def __init__(
         self,
         uow_factory: UnitOfWorkFactory,
@@ -58,7 +59,7 @@ class UserService:
         async with self._uow_factory() as uow:
             user_model = await uow.users.get_by_id(user_id)
             if user_model is None:
-                raise UserNotFoundError('User not found')
+                raise UserNotFoundError("User not found")
 
             user = UserResponse.model_validate(user_model)
 
@@ -80,14 +81,14 @@ class UserService:
         async with self._uow_factory() as uow:
             user_model = await uow.users.get_by_id(user_id)
             if user_model is None:
-                raise UserNotFoundError('User not found')
+                raise UserNotFoundError("User not found")
 
             fields_set = user_data.model_fields_set
 
-            if 'first_name' in fields_set:
+            if "first_name" in fields_set:
                 user_model.first_name = user_data.first_name
 
-            if 'last_name' in fields_set:
+            if "last_name" in fields_set:
                 user_model.last_name = user_data.last_name
 
             user_model = await uow.users.save(user_model)
@@ -116,13 +117,13 @@ class UserService:
         async with self._uow_factory() as uow:
             user_model = await uow.users.get_by_id(user_id)
             if user_model is None:
-                raise UserNotFoundError('User not found')
+                raise UserNotFoundError("User not found")
 
             if not verify_password(
                 password_data.old_password,
                 user_model.password_hash,
             ):
-                raise InvalidCredentialsError('Invalid old password')
+                raise InvalidCredentialsError("Invalid old password")
 
             user_model.password_hash = hash_password(
                 password_data.new_password,
@@ -131,8 +132,7 @@ class UserService:
             await uow.users.save(user_model)
 
             revoked_session_ids = (
-                await uow.refresh_sessions
-                .revoke_all_by_user_id(user_id)
+                await uow.refresh_sessions.revoke_all_by_user_id(user_id)
             )
 
             await uow.commit()
@@ -165,7 +165,7 @@ class UserService:
             and created_from >= created_to
         ):
             raise InvalidLoginHistoryDateRangeError(
-                'created_from must be earlier than created_to',
+                "created_from must be earlier than created_to",
             )
 
         login_history_cache_key = get_login_history_cache_key(
@@ -186,16 +186,14 @@ class UserService:
         async with self._uow_factory() as uow:
             user_model = await uow.users.get_by_id(user_id)
             if user_model is None:
-                raise UserNotFoundError('User not found')
+                raise UserNotFoundError("User not found")
 
-            login_history_models = (
-                await uow.login_history.get_by_user_id(
-                    user_id,
-                    limit=limit,
-                    offset=offset,
-                    created_from=created_from,
-                    created_to=created_to,
-                )
+            login_history_models = await uow.login_history.get_by_user_id(
+                user_id,
+                limit=limit,
+                offset=offset,
+                created_from=created_from,
+                created_to=created_to,
             )
 
             login_history = [
@@ -221,11 +219,11 @@ class UserService:
         async with self._uow_factory() as uow:
             user_model = await uow.users.get_by_id(user_id)
             if user_model is None:
-                raise UserNotFoundError('User not found')
+                raise UserNotFoundError("User not found")
 
             role_model = await uow.roles.get_by_id(role_id)
             if role_model is None:
-                raise RoleNotFoundError('Role not found')
+                raise RoleNotFoundError("Role not found")
 
             user_model = await uow.users.add_role(
                 user_model,
@@ -252,11 +250,11 @@ class UserService:
         async with self._uow_factory() as uow:
             user_model = await uow.users.get_by_id(user_id)
             if user_model is None:
-                raise UserNotFoundError('User not found')
+                raise UserNotFoundError("User not found")
 
             role_model = await uow.roles.get_by_id(role_id)
             if role_model is None:
-                raise RoleNotFoundError('Role not found')
+                raise RoleNotFoundError("Role not found")
 
             user_model = await uow.users.remove_role(
                 user_model,
@@ -273,6 +271,7 @@ class UserService:
 
         return user
 
+    @staticmethod
     def _normalize_to_utc(
         value: datetime | None,
     ) -> datetime | None:

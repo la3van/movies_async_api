@@ -1,4 +1,5 @@
 """Конфигурация моделей контента в Django Admin."""
+
 from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest
@@ -16,6 +17,7 @@ from content.models import (
 @admin.register(Genre)
 class GenreAdmin(admin.ModelAdmin):
     """Настройки управления жанрами."""
+
     list_display = (
         "name",
         "created",
@@ -30,38 +32,32 @@ class GenreAdmin(admin.ModelAdmin):
         "created",
         "modified",
     )
-    ordering = (
-        "name",
-    )
+    ordering = ("name",)
 
 
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     """Настройки управления персонами."""
+
     list_display = (
         "full_name",
         "created",
         "modified",
     )
-    search_fields = (
-        "full_name",
-    )
+    search_fields = ("full_name",)
     readonly_fields = (
         "id",
         "created",
         "modified",
     )
-    ordering = (
-        "full_name",
-    )
+    ordering = ("full_name",)
 
 
 class GenreFilmWorkInline(admin.TabularInline):
     """Inline-редактор жанров кинопроизведения."""
+
     model = GenreFilmWork
-    autocomplete_fields = (
-        "genre",
-    )
+    autocomplete_fields = ("genre",)
     readonly_fields = (
         "id",
         "created",
@@ -72,10 +68,9 @@ class GenreFilmWorkInline(admin.TabularInline):
 
 class PersonFilmWorkInline(admin.TabularInline):
     """Inline-редактор персон кинопроизведения."""
+
     model = PersonFilmWork
-    autocomplete_fields = (
-        "person",
-    )
+    autocomplete_fields = ("person",)
     readonly_fields = (
         "id",
         "created",
@@ -87,6 +82,7 @@ class PersonFilmWorkInline(admin.TabularInline):
 @admin.register(FilmWork)
 class FilmWorkAdmin(admin.ModelAdmin):
     """Настройки управления фильмами и сериалами."""
+
     inlines = (
         GenreFilmWorkInline,
         PersonFilmWorkInline,
@@ -143,7 +139,4 @@ class FilmWorkAdmin(admin.ModelAdmin):
         film_work: FilmWork,
     ) -> str:
         """Возвращает жанры фильма одной строкой."""
-        return ", ".join(
-            genre.name
-            for genre in film_work.genres.all()
-        )
+        return ", ".join(genre.name for genre in film_work.genres.all())

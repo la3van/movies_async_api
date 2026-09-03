@@ -1,16 +1,17 @@
 """PostgreSQL-репозиторий прав доступа."""
-from uuid import UUID
-from datetime import datetime, timezone
 
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timezone
+from uuid import UUID
 
 from models.refresh_session import RefreshSession
 from repositories.interfaces.refresh_session import RefreshSessionRepository
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class PostgresRefreshSessionRepository(RefreshSessionRepository):
     """Реализует операции с refresh-сессиями в PostgreSQL."""
+
     def __init__(self, session: AsyncSession) -> None:
         """Сохраняет сессию PostgreSQL."""
         self.session = session
@@ -21,9 +22,8 @@ class PostgresRefreshSessionRepository(RefreshSessionRepository):
     ) -> RefreshSession | None:
         """Возвращает refresh-сессию по хешу токена или None,
         если она не найдена."""
-        statement = (
-            select(RefreshSession)
-            .where(RefreshSession.token_hash == token_hash)
+        statement = select(RefreshSession).where(
+            RefreshSession.token_hash == token_hash
         )
 
         result = await self.session.execute(statement)

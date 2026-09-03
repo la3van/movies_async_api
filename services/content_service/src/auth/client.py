@@ -1,7 +1,6 @@
 """HTTP-клиент для Auth Service."""
-import httpx
-from pydantic import BaseModel, StrictBool, ValidationError
 
+import httpx
 from auth.exceptions import (
     AuthServiceContractError,
     AuthServiceUnavailableError,
@@ -9,15 +8,18 @@ from auth.exceptions import (
     InvalidAccessTokenError,
 )
 from core.config import get_settings
+from pydantic import BaseModel, StrictBool, ValidationError
 
 
 class PermissionCheckResponse(BaseModel):
     """Ответ Auth Service на проверку permission."""
+
     has_permission: StrictBool
 
 
 class AuthServiceClient:
     """Выполняет запросы к Auth Serivce."""
+
     def __init__(
         self,
         client: httpx.AsyncClient,
@@ -33,20 +35,20 @@ class AuthServiceClient:
         """Проверяет permission через Auth Service."""
         headers = {
             **forwarded_headers,
-            'Authorization': f'Bearer {token}',
+            "Authorization": f"Bearer {token}",
         }
 
         try:
             response = await self._client.post(
-                'permissions/check',
+                "permissions/check",
                 json={
-                    'permission_code': permission_code,
+                    "permission_code": permission_code,
                 },
                 headers=headers,
             )
         except httpx.RequestError as error:
             raise AuthServiceUnavailableError(
-                'Auth Service is unavailable',
+                "Auth Service is unavailable",
             ) from error
 
         if response.status_code in {
@@ -54,12 +56,12 @@ class AuthServiceClient:
             404,
         }:
             raise InvalidAccessTokenError(
-                'Auth Service rejected access token',
+                "Auth Service rejected access token",
             )
 
         if response.status_code == 403:
             raise AuthUserForbiddenError(
-                'Auth Service rejected user',
+                "Auth Service rejected user",
             )
 
         if (
@@ -68,15 +70,12 @@ class AuthServiceClient:
             or response.status_code >= 500
         ):
             raise AuthServiceUnavailableError(
-                'Auth Service is temporarily unavailable',
+                "Auth Service is temporarily unavailable",
             )
 
         if response.status_code != 200:
             raise AuthServiceContractError(
-                (
-                    'Unexpected Auth Service status: '
-                    f'{response.status_code}'
-                ),
+                (f"Unexpected Auth Service status: {response.status_code}"),
             )
 
         try:
@@ -85,7 +84,7 @@ class AuthServiceClient:
             )
         except (ValueError, ValidationError) as error:
             raise AuthServiceContractError(
-                'Invalid Auth Service response',
+                "Invalid Auth Service response",
             ) from error
 
         return response_data.has_permission
@@ -132,7 +131,7 @@ async def get_auth_client() -> AuthServiceClient:
     """Возвращает инициализированный Auth Service client."""
     if auth_client is None:
         raise RuntimeError(
-            'Auth Service client is not initialized',
+            "Auth Service client is not initialized",
         )
 
     return auth_client

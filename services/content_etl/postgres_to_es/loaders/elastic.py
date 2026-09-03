@@ -8,6 +8,8 @@ from typing import Any, TypedDict
 
 from elastic_transport import (
     ConnectionError as ElasticsearchConnectionError,
+)
+from elastic_transport import (
     ConnectionTimeout as ElasticsearchConnectionTimeout,
 )
 from elasticsearch import Elasticsearch
@@ -28,6 +30,7 @@ class IndexSchema(TypedDict):
 
 class ElasticsearchLoader(DocumentLoader):
     """Создаёт индексы и загружает документы в Elasticsearch."""
+
     def __init__(
         self,
         client: Elasticsearch,
@@ -53,7 +56,7 @@ class ElasticsearchLoader(DocumentLoader):
         """Создаёт индекс Elasticsearch, если он отсутствует."""
         if self._client.indices.exists(index=index_name):
             logger.info(
-                'Индекс Elasticsearch %s уже существует.',
+                "Индекс Elasticsearch %s уже существует.",
                 index_name,
             )
             return
@@ -62,12 +65,12 @@ class ElasticsearchLoader(DocumentLoader):
 
         self._client.indices.create(
             index=index_name,
-            settings=schema['settings'],
-            mappings=schema['mappings'],
+            settings=schema["settings"],
+            mappings=schema["mappings"],
         )
 
         logger.info(
-            'Индекс Elasticsearch %s создан.',
+            "Индекс Elasticsearch %s создан.",
             index_name,
         )
 
@@ -85,7 +88,7 @@ class ElasticsearchLoader(DocumentLoader):
         """Загружает последовательность документов через Bulk API."""
         if not documents:
             logger.info(
-                'Нет документов для загрузки в индекс %s.',
+                "Нет документов для загрузки в индекс %s.",
                 index_name,
             )
             return
@@ -104,18 +107,18 @@ class ElasticsearchLoader(DocumentLoader):
 
         if not isinstance(response_body, Mapping):
             raise RuntimeError(
-                'Elasticsearch вернул некорректный ответ Bulk API.',
+                "Elasticsearch вернул некорректный ответ Bulk API.",
             )
 
-        if response_body.get('errors'):
+        if response_body.get("errors"):
             errors = self._extract_bulk_errors(response_body)
 
             raise RuntimeError(
-                f'Ошибка bulk-загрузки в Elasticsearch: {errors}',
+                f"Ошибка bulk-загрузки в Elasticsearch: {errors}",
             )
 
         logger.info(
-            'Загружено %s документов в индекс %s.',
+            "Загружено %s документов в индекс %s.",
             len(documents),
             index_name,
         )
@@ -128,32 +131,32 @@ class ElasticsearchLoader(DocumentLoader):
         schema_path = self._schemas_dir / schema_filename
 
         with schema_path.open(
-            mode='r',
-            encoding='utf-8',
+            mode="r",
+            encoding="utf-8",
         ) as file:
             raw_schema: Any = json.load(file)
 
         if not isinstance(raw_schema, dict):
             raise ValueError(
-                f'Схема {schema_path} должна быть JSON-объектом.',
+                f"Схема {schema_path} должна быть JSON-объектом.",
             )
 
-        settings = raw_schema.get('settings')
-        mappings = raw_schema.get('mappings')
+        settings = raw_schema.get("settings")
+        mappings = raw_schema.get("mappings")
 
         if not isinstance(settings, dict):
             raise ValueError(
-                f'В схеме {schema_path} отсутствует объект settings.',
+                f"В схеме {schema_path} отсутствует объект settings.",
             )
 
         if not isinstance(mappings, dict):
             raise ValueError(
-                f'В схеме {schema_path} отсутствует объект mappings.',
+                f"В схеме {schema_path} отсутствует объект mappings.",
             )
 
         return {
-            'settings': settings,
-            'mappings': mappings,
+            "settings": settings,
+            "mappings": mappings,
         }
 
     @staticmethod
@@ -167,15 +170,15 @@ class ElasticsearchLoader(DocumentLoader):
         for document in documents:
             operations.append(
                 {
-                    'index': {
-                        '_index': index_name,
-                        '_id': document.uuid,
+                    "index": {
+                        "_index": index_name,
+                        "_id": document.uuid,
                     },
                 },
             )
 
             operations.append(
-                document.model_dump(mode='json'),
+                document.model_dump(mode="json"),
             )
 
         return operations
@@ -186,14 +189,14 @@ class ElasticsearchLoader(DocumentLoader):
     ) -> list[dict[str, Any]]:
         """Извлекает информацию об ошибках отдельных операций."""
         errors: list[dict[str, Any]] = []
-        items = response.get('items', [])
+        items = response.get("items", [])
 
         if not isinstance(items, list):
             return [
                 {
-                    'reason': (
-                        'Поле items в ответе Bulk API '
-                        'имеет некорректный формат.'
+                    "reason": (
+                        "Поле items в ответе Bulk API имеет "
+                        "некорректный формат."
                     ),
                 },
             ]
@@ -202,22 +205,22 @@ class ElasticsearchLoader(DocumentLoader):
             if not isinstance(item, Mapping):
                 continue
 
-            index_result = item.get('index')
+            index_result = item.get("index")
 
             if not isinstance(index_result, Mapping):
                 continue
 
-            error = index_result.get('error')
+            error = index_result.get("error")
 
             if not isinstance(error, Mapping):
                 continue
 
             errors.append(
                 {
-                    '_id': index_result.get('_id'),
-                    'status': index_result.get('status'),
-                    'type': error.get('type'),
-                    'reason': error.get('reason'),
+                    "_id": index_result.get("_id"),
+                    "status": index_result.get("status"),
+                    "type": error.get("type"),
+                    "reason": error.get("reason"),
                 },
             )
 

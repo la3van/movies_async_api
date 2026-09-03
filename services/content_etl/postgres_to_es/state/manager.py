@@ -1,4 +1,5 @@
 """Менеджер состояния ETL-пайплайна."""
+
 from typing import Any
 
 from postgres_to_es.state.base import StateData, StateStorage
@@ -6,16 +7,13 @@ from postgres_to_es.state.base import StateData, StateStorage
 
 class State:
     """Управляет состоянием одного ETL-пайплайна."""
+
     def __init__(self, storage: StateStorage) -> None:
         """Загружает состояние из переданного хранилища."""
         self._storage = storage
         self._state = dict(storage.retrieve_state())
 
-    def set_state(
-        self,
-        key: str,
-        value: Any
-    ) -> None:
+    def set_state(self, key: str, value: Any) -> None:
         """Сохраняет одно значение состояния."""
         new_state = dict(self._state)
         new_state[key] = value

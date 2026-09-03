@@ -1,4 +1,5 @@
 """Фикстуры загрузки персон в Elasticsearch."""
+
 from typing import Any
 
 import pytest_asyncio
@@ -6,7 +7,7 @@ import pytest_asyncio
 from tests.functional.settings import test_settings
 
 
-@pytest_asyncio.fixture(name='persons_in_es')
+@pytest_asyncio.fixture(name="persons_in_es")
 async def persons_in_es(
     person_documents: list[dict[str, Any]],
     es_write_data,

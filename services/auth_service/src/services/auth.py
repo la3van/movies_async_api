@@ -1,11 +1,12 @@
 """Сервис аутентификации."""
-from core.tracing import trace_method
+
 from datetime import datetime, timezone
 from uuid import UUID
 
 from api.v1.schemas.auth import LoginRequest, RegisterRequest
 from cache.base import Cache
 from core.security import hash_password, hash_token, verify_password
+from core.tracing import trace_method
 from models.refresh_session import RefreshSession
 from services.cache_keys.users import (
     get_login_history_cache_pattern,
@@ -17,17 +18,18 @@ from services.exceptions import (
     UserAlreadyExistsError,
     UserNotFoundError,
 )
-from services.token import TokenPair, TokenService
 from services.login_session import create_login_session
+from services.token import TokenPair, TokenService
+from token_revocation.base import AccessTokenRevocationStore
 from unit_of_work.base import (
     AbstractUnitOfWork,
     UnitOfWorkFactory,
 )
-from token_revocation.base import AccessTokenRevocationStore
 
 
 class AuthService:
     """Сервис регистрации, логина и управления refresh-сессиями."""
+
     def __init__(
         self,
         uow_factory: UnitOfWorkFactory,
@@ -56,7 +58,7 @@ class AuthService:
             )
             if existing_user is not None:
                 raise UserAlreadyExistsError(
-                    'User with this login already exists',
+                    "User with this login already exists",
                 )
 
             existing_user = await uow.users.get_by_email(
@@ -64,7 +66,7 @@ class AuthService:
             )
             if existing_user is not None:
                 raise UserAlreadyExistsError(
-                    'User with this email already exists',
+                    "User with this email already exists",
                 )
 
             user = await uow.users.create(
@@ -86,7 +88,7 @@ class AuthService:
 
             user_with_roles = await uow.users.get_by_id(user.id)
             if user_with_roles is None:
-                raise UserNotFoundError('User not found')
+                raise UserNotFoundError("User not found")
 
             token_pair = await create_login_session(
                 uow=uow,
@@ -118,12 +120,12 @@ class AuthService:
                 await self._save_failed_login(
                     uow,
                     login=login_data.login,
-                    reason='User not found',
+                    reason="User not found",
                     user_agent=user_agent,
                     ip_address=ip_address,
                 )
                 raise InvalidCredentialsError(
-                    'Invalid login or password',
+                    "Invalid login or password",
                 )
 
             if not verify_password(
@@ -134,12 +136,12 @@ class AuthService:
                     uow,
                     login=login_data.login,
                     user_id=user.id,
-                    reason='Invalid password',
+                    reason="Invalid password",
                     user_agent=user_agent,
                     ip_address=ip_address,
                 )
                 raise InvalidCredentialsError(
-                    'Invalid login or password',
+                    "Invalid login or password",
                 )
 
             if not user.is_active:
@@ -147,11 +149,11 @@ class AuthService:
                     uow,
                     login=login_data.login,
                     user_id=user.id,
-                    reason='User is inactive',
+                    reason="User is inactive",
                     user_agent=user_agent,
                     ip_address=ip_address,
                 )
-                raise InactiveUserError('User is inactive')
+                raise InactiveUserError("User is inactive")
 
             token_pair = await create_login_session(
                 uow=uow,
@@ -187,7 +189,7 @@ class AuthService:
             )
             if user is None or not user.is_active:
                 raise InvalidRefreshTokenError(
-                    'Invalid refresh token',
+                    "Invalid refresh token",
                 )
 
             await uow.refresh_sessions.revoke(
@@ -248,8 +250,7 @@ class AuthService:
             )
 
             revoked_session_ids = (
-                await uow.refresh_sessions
-                .revoke_all_by_user_id(
+                await uow.refresh_sessions.revoke_all_by_user_id(
                     user_id=refresh_session.user_id,
                     exclude_session_id=refresh_session.id,
                 )
@@ -294,25 +295,23 @@ class AuthService:
         """Возвращает валидную refresh-сессию или выбрасывает ошибку."""
         token_hash = hash_token(refresh_token)
 
-        refresh_session = (
-            await uow.refresh_sessions.get_by_token_hash(
-                token_hash,
-            )
+        refresh_session = await uow.refresh_sessions.get_by_token_hash(
+            token_hash,
         )
 
         if refresh_session is None:
             raise InvalidRefreshTokenError(
-                'Invalid refresh token',
+                "Invalid refresh token",
             )
 
         if refresh_session.revoked_at is not None:
             raise InvalidRefreshTokenError(
-                'Refresh token has been revoked',
+                "Refresh token has been revoked",
             )
 
         if self._is_refresh_session_expired(refresh_session):
             raise InvalidRefreshTokenError(
-                'Refresh token has expired',
+                "Refresh token has expired",
             )
 
         return refresh_session

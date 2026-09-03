@@ -6,6 +6,8 @@
 
 ```text
 infrastructure/
+├── clickhouse/
+│   └── init.sql
 ├── elasticsearch/
 │   ├── mappings/
 │   │   ├── genres.json
@@ -48,9 +50,14 @@ infrastructure/
 
 - `/api/v1/films`, `/genres`, `/persons` и `/api/openapi*` → Content Service;
 - `/api/v1/auth`, `/users`, `/roles`, `/permissions`, `/docs`, `/openapi.json` и `/health` → Auth Service;
+- `/api/v1/events` → Events Service;
+- `/api/v1/bookmarks`, `/ratings` и `/reviews` → UGC Service;
+- `/ugc/docs`, `/ugc/openapi.json`, `/ugc/redoc`, `/ugc/health` и
+  `/ugc/ready` → UGC Service;
 - `/admin/`, `/static/` и `/__debug__/` → Admin Service.
 
-`content-service`, `auth-service` и `admin-service` доступны только внутри Docker-сети. Из этих прикладных HTTP-сервисов порт на хост публикует только Nginx.
+Все прикладные HTTP-сервисы доступны с хоста только через Nginx. Собственные
+порты приложений остаются внутри Docker-сети.
 
 Подробнее: [nginx/README.md](nginx/README.md).
 
@@ -63,7 +70,9 @@ infrastructure/
 - OTLP/gRPC внутри Docker-сети: `jaeger:4317`;
 - Jaeger UI на хосте: `http://127.0.0.1:16686/`.
 
-Traces экспортируют `content-service`, `auth-service` и `admin-service`. Nginx не создаёт OpenTelemetry spans, но назначает `X-Request-ID`, который сохраняется в серверных spans и access log.
+Traces экспортируют `content-service`, `auth-service`, `admin-service`,
+`events-service` и `ugc-service`. Nginx не создаёт OpenTelemetry spans, но
+назначает `X-Request-ID`, который сохраняется в серверных spans и access log.
 
 Подробнее: [jaeger/README.md](jaeger/README.md).
 
@@ -74,6 +83,13 @@ Traces экспортируют `content-service`, `auth-service` и `admin-serv
 SQL-файлы монтируются в `/docker-entrypoint-initdb.d` контейнера `theatre-db` и выполняются официальным образом PostgreSQL при первом создании пустого volume.
 
 Подробнее: [postgres/README.md](postgres/README.md).
+
+## Kafka, ClickHouse и MongoDB
+
+Kafka хранит поток пользовательских событий между Events Service и Events
+ETL. `clickhouse/init.sql` создаёт аналитическую таблицу для Events ETL.
+MongoDB является основным хранилищем UGC Service и сохраняет данные в named
+volume `mongodb_data`.
 
 ## Правила изменений
 

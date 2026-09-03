@@ -29,6 +29,8 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.10}
     env_file:
       - .env
     environment:
@@ -59,6 +61,8 @@ services:
     build:
       context: ../..
       dockerfile: tests/functional/Dockerfile
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.10}
     env_file:
       - .env
     depends_on:

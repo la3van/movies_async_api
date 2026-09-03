@@ -1,53 +1,50 @@
 """FastAPI dependencies auth-сервиса."""
-import httpx
 
 from collections.abc import AsyncIterator
 
+import httpx
+from api.v1.schemas.users import UserResponse
+from cache.redis import RedisCache
+from core.client_ip import get_client_ip
+from core.config import get_settings
+from core.jwt import decode_access_token
+from db.postgres import get_session_factory
+from db.redis import get_redis
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from jwt import ExpiredSignatureError, InvalidTokenError
+from oauth.base import OAuthProvider
+from oauth.providers import (
+    GoogleOAuthProvider,
+    VkOAuthProvider,
+    YandexOAuthProvider,
+)
+from oauth.registry import OAuthProviderRegistry
+from oauth.state import RedisOAuthStateStore
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
-from api.v1.schemas.users import UserResponse
-from cache.redis import RedisCache
-from core.config import get_settings
-from core.jwt import decode_access_token
-from core.client_ip import get_client_ip
-from db.postgres import get_session_factory
-from db.redis import get_redis
 from services.auth import AuthService
 from services.exceptions import (
     InactiveUserError,
     InvalidCredentialsError,
     PermissionDeniedError,
 )
+from services.oauth import OAuthService
 from services.permission import PermissionService
 from services.role import RoleService
 from services.token import TokenService
 from services.user import UserService
-from unit_of_work.base import AbstractUnitOfWork, UnitOfWorkFactory
-from unit_of_work.postgres import SQLAlchemyUnitOfWork
-
-from oauth.base import OAuthProvider
-from oauth.state import RedisOAuthStateStore
-from oauth.providers import (
-    YandexOAuthProvider,
-    GoogleOAuthProvider,
-    VkOAuthProvider,
-)
-from oauth.registry import OAuthProviderRegistry
-from services.oauth import OAuthService
-
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from token_revocation.base import (
     AccessTokenRevocationStore,
 )
 from token_revocation.redis import (
     RedisAccessTokenRevocationStore,
 )
+from unit_of_work.base import AbstractUnitOfWork, UnitOfWorkFactory
+from unit_of_work.postgres import SQLAlchemyUnitOfWork
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl='/api/v1/auth/login',
+    tokenUrl="/api/v1/auth/login",
 )
 
 
@@ -97,9 +94,7 @@ async def get_access_token_revocation_store(
         key_prefix=settings.build_redis_key(
             settings.access_token_revocation_key_prefix,
         ),
-        session_ttl_seconds=(
-            settings.access_token_expire_minutes * 60
-        ),
+        session_ttl_seconds=(settings.access_token_expire_minutes * 60),
         clock_skew_seconds=(
             settings.access_token_revocation_clock_skew_seconds
         ),
@@ -128,9 +123,7 @@ def get_yandex_oauth_provider(
     settings = get_settings()
 
     client_id = settings.yandex_oauth_client_id
-    client_secret = (
-        settings.yandex_oauth_client_secret.get_secret_value()
-    )
+    client_secret = settings.yandex_oauth_client_secret.get_secret_value()
 
     if not client_id or not client_secret:
         return None
@@ -153,10 +146,7 @@ def get_google_oauth_provider(
     settings = get_settings()
 
     client_id = settings.google_oauth_client_id
-    client_secret = (
-        settings.google_oauth_client_secret
-        .get_secret_value()
-    )
+    client_secret = settings.google_oauth_client_secret.get_secret_value()
 
     if not client_id or not client_secret:
         return None
@@ -290,9 +280,7 @@ async def get_permission_service(
     return PermissionService(
         uow_factory=uow_factory,
         cache=cache,
-        permission_cache_ttl=(
-            settings.permission_cache_expire_in_seconds
-        ),
+        permission_cache_ttl=(settings.permission_cache_expire_in_seconds),
     )
 
 
@@ -325,7 +313,7 @@ async def get_current_user(
         InvalidTokenError,
     ) as error:
         raise InvalidCredentialsError(
-            'Could not validate credentials',
+            "Could not validate credentials",
         ) from error
 
     is_revoked = await revocation_store.is_revoked(
@@ -335,7 +323,7 @@ async def get_current_user(
 
     if is_revoked:
         raise InvalidCredentialsError(
-            'Access token has been revoked',
+            "Access token has been revoked",
         )
 
     return await user_service.get_by_id(
@@ -348,7 +336,7 @@ async def get_current_active_user(
 ) -> UserResponse:
     """Возвращает текущего активного пользователя."""
     if not current_user.is_active:
-        raise InactiveUserError('User is inactive')
+        raise InactiveUserError("User is inactive")
 
     return current_user
 
@@ -358,14 +346,14 @@ async def require_superuser(
 ) -> UserResponse:
     """Проверяет, что текущий пользователь является суперпользователем."""
     if not current_user.is_superuser:
-        raise PermissionDeniedError('Not enough permissions')
+        raise PermissionDeniedError("Not enough permissions")
 
     return current_user
 
 
 def get_request_user_agent(request: Request) -> str | None:
     """Возвращает User-Agent из запроса."""
-    return request.headers.get('user-agent')
+    return request.headers.get("user-agent")
 
 
 def get_request_ip_address(request: Request) -> str | None:

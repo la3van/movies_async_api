@@ -1,4 +1,5 @@
 """Чтение пользовательских событий из Kafka и управление offsets."""
+
 import logging
 
 from confluent_kafka import (
@@ -8,7 +9,6 @@ from confluent_kafka import (
     Message,
     TopicPartition,
 )
-
 from core.config import Settings
 from kafka.base import ConsumedMessage
 from kafka.exceptions import (
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class KafkaBatchConsumer:
     """Получает пользовательские события из Kafka пакетами."""
+
     def __init__(
         self,
         settings: Settings,
@@ -31,10 +32,7 @@ class KafkaBatchConsumer:
         self._settings = settings
         self._topic = settings.kafka_topic
 
-        self._consumer = (
-            consumer
-            or Consumer(settings.kafka_consumer_config)
-        )
+        self._consumer = consumer or Consumer(settings.kafka_consumer_config)
 
         self._subscribed = False
         self._closed = False
@@ -54,8 +52,7 @@ class KafkaBatchConsumer:
             )
         except KafkaException as exc:
             raise KafkaConsumeError(
-                f"Не удалось подписаться на Kafka topic "
-                f"{self._topic}"
+                f"Не удалось подписаться на Kafka topic {self._topic}"
             ) from exc
 
         self._subscribed = True
@@ -70,23 +67,16 @@ class KafkaBatchConsumer:
         self._ensure_open()
 
         if not self._subscribed:
-            raise KafkaConsumeError(
-                "Kafka Consumer не подписан на topic"
-            )
+            raise KafkaConsumeError("Kafka Consumer не подписан на topic")
 
         try:
             messages = self._consumer.consume(
-                num_messages=(
-                    self._settings.kafka_batch_size
-                ),
-                timeout=(
-                    self._settings.kafka_poll_timeout_seconds
-                ),
+                num_messages=(self._settings.kafka_batch_size),
+                timeout=(self._settings.kafka_poll_timeout_seconds),
             )
         except (KafkaException, RuntimeError) as exc:
             raise KafkaConsumeError(
-                "Не удалось получить сообщения из Kafka: "
-                f"{exc}"
+                f"Не удалось получить сообщения из Kafka: {exc}"
             ) from exc
 
         if not messages:
@@ -100,17 +90,23 @@ class KafkaBatchConsumer:
             error = message.error()
 
             if error is not None:
+                raise KafkaConsumeError(f"Ошибка Kafka message: {error}")
+
+            topic = message.topic()
+            partition = message.partition()
+            offset = message.offset()
+
+            if topic is None or partition is None or offset is None:
                 raise KafkaConsumeError(
-                    "Ошибка Kafka message: "
-                    f"{error}"
+                    "Kafka message содержит неполные метаданные"
                 )
 
             result.append(
                 ConsumedMessage(
                     value=message.value(),
-                    topic=message.topic(),
-                    partition=message.partition(),
-                    offset=message.offset(),
+                    topic=topic,
+                    partition=partition,
+                    offset=offset,
                 )
             )
 
@@ -124,18 +120,16 @@ class KafkaBatchConsumer:
         self._ensure_open()
 
         if not messages:
-            return []
+            return
 
         offsets = self._build_commit_offsets(
             messages,
         )
 
         try:
-            commited_offsets = (
-                self._consumer.commit(
-                    offsets=offsets,
-                    asynchronous=False,
-                )
+            commited_offsets = self._consumer.commit(
+                offsets=offsets,
+                asynchronous=False,
             )
         except KafkaException as exc:
             raise KafkaCommitError(
@@ -143,18 +137,17 @@ class KafkaBatchConsumer:
             ) from exc
 
         if commited_offsets is None:
-            raise KafkaCommitError(
-                "Kafka не вернула результат commit"
-            )
+            raise KafkaCommitError("Kafka не вернула результат commit")
 
         failed_offsets = [
-            partition for partition in commited_offsets
+            partition
+            for partition in commited_offsets
             if partition.error is not None
         ]
         if failed_offsets:
             raise KafkaCommitError(
-                "Не удалось подтвердить offsets "
-                f"для partitions: {failed_offsets}"
+                "Не удалось подтвердить offsets для partitions: "
+                f"{failed_offsets}"
             )
 
         logger.info(
@@ -164,7 +157,8 @@ class KafkaBatchConsumer:
                     partition.topic,
                     partition.partition,
                     partition.offset,
-                ) for partition in commited_offsets
+                )
+                for partition in commited_offsets
             ],
         )
 
@@ -178,20 +172,14 @@ class KafkaBatchConsumer:
         try:
             self._consumer.close()
         except Exception:
-            logger.exception(
-                "Ошибка при закрытии Kafka Consumer"
-            )
+            logger.exception("Ошибка при закрытии Kafka Consumer")
         else:
-            logger.info(
-                "Kafka Consumer успешно закрыт"
-            )
+            logger.info("Kafka Consumer успешно закрыт")
 
     def _ensure_open(self) -> None:
         """Проверить, что Consumer не закрыт."""
         if self._closed:
-            raise KafkaConsumerClosed(
-                "Kafka Consumer уже завершил работу"
-            )
+            raise KafkaConsumerClosed("Kafka Consumer уже завершил работу")
 
     @staticmethod
     def _is_partition_eof(
@@ -200,10 +188,7 @@ class KafkaBatchConsumer:
         """Проверить достижение конца Kafka partition."""
         error = message.error()
 
-        return (
-            error is not None
-            and error.code() == KafkaError._PARTITION_EOF
-        )
+        return error is not None and error.code() == KafkaError._PARTITION_EOF
 
     @staticmethod
     def _build_commit_offsets(
@@ -222,7 +207,7 @@ class KafkaBatchConsumer:
             )
 
             current_offset = latest_offsets.get(key)
-            if (current_offset is None or message.offset > current_offset):
+            if current_offset is None or message.offset > current_offset:
                 latest_offsets[key] = message.offset
 
         return [

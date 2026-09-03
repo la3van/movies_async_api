@@ -6,6 +6,8 @@ from typing import cast
 from redis import Redis
 from redis.exceptions import (
     ConnectionError as RedisConnectionError,
+)
+from redis.exceptions import (
     TimeoutError as RedisTimeoutError,
 )
 
@@ -16,6 +18,7 @@ from postgres_to_es.state.base import StateData, StateStorage
 
 class RedisStateStorage(StateStorage):
     """Хранит состояние одного ETL-пайплайна в Redis."""
+
     def __init__(
         self,
         redis_adapter: Redis,
@@ -69,7 +72,7 @@ class RedisStateStorage(StateStorage):
 
         if not isinstance(state, dict):
             raise ValueError(
-                'Состояние ETL в Redis должно быть JSON-объектом.',
+                "Состояние ETL в Redis должно быть JSON-объектом.",
             )
 
         return cast(StateData, state)

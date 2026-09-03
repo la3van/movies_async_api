@@ -1,4 +1,5 @@
 """Преобразование моделей авторизации в схемы API."""
+
 from api.v1.schemas.auth import TokenPairResponse
 from services.token import TokenPair
 

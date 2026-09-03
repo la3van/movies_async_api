@@ -1,27 +1,29 @@
 """Сервис работы с токенами."""
-from uuid import UUID, uuid4
 
-from core.tracing import trace_method
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from uuid import UUID, uuid4
 
 from core.config import get_settings
 from core.jwt import create_access_token
 from core.security import generate_secure_token, hash_token
+from core.tracing import trace_method
 from models.user import User
 
 
 @dataclass(frozen=True, slots=True)
 class TokenPair:
     """Пара access и refresh токенов."""
+
     access_token: str
     refresh_token: str
-    token_type: str = 'bearer'
+    token_type: str = "bearer"
 
 
 @dataclass(frozen=True, slots=True)
 class RefreshTokenData:
     """Данные refresh-токена для сохранения сессии."""
+
     session_id: UUID
     token: str
     token_hash: str
@@ -30,6 +32,7 @@ class RefreshTokenData:
 
 class TokenService:
     """Сервис создания access и refresh токенов."""
+
     def __init__(self) -> None:
         """Запоминаем настройки auth-сервиса."""
         self._settings = get_settings()
@@ -53,13 +56,8 @@ class TokenService:
         token = generate_secure_token()
         token_hash = hash_token(token)
 
-        expires_at = (
-            datetime.now(timezone.utc)
-            + timedelta(
-                days=(
-                    self._settings.refresh_token_expire_days
-                ),
-            )
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            days=(self._settings.refresh_token_expire_days),
         )
 
         return RefreshTokenData(
@@ -71,13 +69,10 @@ class TokenService:
 
     @trace_method("tokens.create_pair")
     def create_token_pair(
-        self,
-        user: User
+        self, user: User
     ) -> tuple[TokenPair, RefreshTokenData]:
         """Создаёт пару токенов."""
-        refresh_token_data = (
-            self.create_refresh_token_data()
-        )
+        refresh_token_data = self.create_refresh_token_data()
 
         access_token = self.create_access_token_for_user(
             user=user,

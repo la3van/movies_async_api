@@ -1,4 +1,5 @@
 """Точка запуска ETL-приложения."""
+
 from postgres_to_es.bootstrap import build_etl_service
 
 
@@ -8,5 +9,5 @@ def main() -> None:
         service.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

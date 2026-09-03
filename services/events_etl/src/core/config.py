@@ -1,4 +1,5 @@
 """Настройки ETL-сервиса переноса пользовательских событий в ClickHouse."""
+
 from functools import lru_cache
 from typing import Any, Literal
 
@@ -8,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Настройки ETL-сервиса."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -18,11 +20,7 @@ class Settings(BaseSettings):
     project_name: str = "events-etl"
 
     # Kafka
-    kafka_bootstrap_servers: str = (
-        "kafka-0:9092,"
-        "kafka-1:9092,"
-        "kafka-2:9092"
-    )
+    kafka_bootstrap_servers: str = "kafka-0:9092,kafka-1:9092,kafka-2:9092"
 
     kafka_topic: str = "user-events"
     kafka_group_id: str = "events-clickhouse-etl"
@@ -164,9 +162,7 @@ class Settings(BaseSettings):
             "client.id": self.kafka_dlq_client_id,
             "acks": "all",
             "enable.idempotence": True,
-            "delivery.timeout.ms": (
-                self.kafka_dlq_delivery_timeout_ms
-            ),
+            "delivery.timeout.ms": (self.kafka_dlq_delivery_timeout_ms),
         }
 
     @property

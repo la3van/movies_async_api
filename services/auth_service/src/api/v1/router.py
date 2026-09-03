@@ -1,13 +1,13 @@
 """Главный роутер API v1."""
-from fastapi import APIRouter
 
 from api.v1.endpoints import (
     auth,
-    users,
-    roles,
-    permissions,
     oauth,
+    permissions,
+    roles,
+    users,
 )
+from fastapi import APIRouter
 
 api_router = APIRouter()
 

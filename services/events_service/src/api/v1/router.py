@@ -1,8 +1,7 @@
 """Маршрутизации API весрии 1."""
-from flask import Blueprint
 
 from api.v1.endpoints.events import router as events_router
-
+from flask import Blueprint
 
 api_router = Blueprint(
     "api_v1",

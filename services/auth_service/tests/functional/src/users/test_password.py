@@ -1,4 +1,5 @@
 """Функциональные тесты смены пароля."""
+
 from http import HTTPStatus
 
 import pytest
@@ -26,7 +27,7 @@ async def test_change_password(
 ) -> None:
     """Проверяет смену пароля и отзыв refresh-сессий."""
     response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me/password',
+        url=f"{test_settings.api_prefix}/users/me/password",
         json_data=get_change_password_data(
             old_password=VALID_USER_PASSWORD,
         ),
@@ -37,7 +38,7 @@ async def test_change_password(
         assert response.status == HTTPStatus.NO_CONTENT
 
     old_password_response = await make_post_request(
-        url=f'{test_settings.api_prefix}/auth/login',
+        url=f"{test_settings.api_prefix}/auth/login",
         json_data=get_login_data(
             login=VALID_USER_LOGIN,
             password=VALID_USER_PASSWORD,
@@ -48,10 +49,10 @@ async def test_change_password(
         body = await old_password_response.json()
 
         assert old_password_response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Invalid login or password'
+        assert body["detail"] == "Invalid login or password"
 
     new_password_response = await make_post_request(
-        url=f'{test_settings.api_prefix}/auth/login',
+        url=f"{test_settings.api_prefix}/auth/login",
         json_data=get_login_data(
             login=VALID_USER_LOGIN,
             password=NEW_PASSWORD,
@@ -62,11 +63,11 @@ async def test_change_password(
         body = await new_password_response.json()
 
         assert new_password_response.status == HTTPStatus.OK
-        assert body['access_token']
-        assert body['refresh_token']
+        assert body["access_token"]
+        assert body["refresh_token"]
 
     refresh_response = await make_post_request(
-        url=f'{test_settings.api_prefix}/auth/refresh',
+        url=f"{test_settings.api_prefix}/auth/refresh",
         json_data=get_refresh_data(refresh_token),
     )
 
@@ -74,7 +75,7 @@ async def test_change_password(
         body = await refresh_response.json()
 
         assert refresh_response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Refresh token has been revoked'
+        assert body["detail"] == "Refresh token has been revoked"
 
 
 @pytest.mark.asyncio
@@ -87,18 +88,18 @@ async def test_change_password_invalidates_user_cache(
 ) -> None:
     """Проверяет удаление кеша профиля после смены пароля."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
 
     async with response:
         assert response.status == HTTPStatus.OK
 
-    cache_key = f'user:profile:{registered_user["id"]}'
+    cache_key = f"user:profile:{registered_user['id']}"
     assert await redis_exists(cache_key) is True
 
     password_response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me/password',
+        url=f"{test_settings.api_prefix}/users/me/password",
         json_data=get_change_password_data(
             old_password=VALID_USER_PASSWORD,
         ),
@@ -118,7 +119,7 @@ async def test_change_password_with_wrong_old_password(
 ) -> None:
     """Проверяет смену пароля с неверным старым паролем."""
     response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me/password',
+        url=f"{test_settings.api_prefix}/users/me/password",
         json_data=get_wrong_old_password_data(),
         headers=auth_headers,
     )
@@ -127,23 +128,23 @@ async def test_change_password_with_wrong_old_password(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Invalid old password'
+        assert body["detail"] == "Invalid old password"
 
 
 @pytest.mark.parametrize(
-    'payload',
+    "payload",
     [
         None,
         {},
-        {'new_password': NEW_PASSWORD},
-        {'old_password': VALID_USER_PASSWORD},
-        {'old_password': 'short', 'new_password': NEW_PASSWORD},
-        {'old_password': VALID_USER_PASSWORD, 'new_password': 'short'},
-        {'old_password': 'x' * 129, 'new_password': NEW_PASSWORD},
-        {'old_password': VALID_USER_PASSWORD, 'new_password': 'x' * 129},
-        {'old_password': None, 'new_password': NEW_PASSWORD},
-        {'old_password': VALID_USER_PASSWORD, 'new_password': None},
-        {'old_password': 123, 'new_password': NEW_PASSWORD},
+        {"new_password": NEW_PASSWORD},
+        {"old_password": VALID_USER_PASSWORD},
+        {"old_password": "short", "new_password": NEW_PASSWORD},
+        {"old_password": VALID_USER_PASSWORD, "new_password": "short"},
+        {"old_password": "x" * 129, "new_password": NEW_PASSWORD},
+        {"old_password": VALID_USER_PASSWORD, "new_password": "x" * 129},
+        {"old_password": None, "new_password": NEW_PASSWORD},
+        {"old_password": VALID_USER_PASSWORD, "new_password": None},
+        {"old_password": 123, "new_password": NEW_PASSWORD},
     ],
 )
 @pytest.mark.asyncio
@@ -154,7 +155,7 @@ async def test_change_password_with_invalid_payload(
 ) -> None:
     """Проверяет валидацию параметров смены пароля."""
     response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me/password',
+        url=f"{test_settings.api_prefix}/users/me/password",
         json_data=payload,
         headers=auth_headers,
     )
@@ -163,14 +164,14 @@ async def test_change_password_with_invalid_payload(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.asyncio
 async def test_change_password_without_token(make_patch_request) -> None:
     """Проверяет запрет смены пароля без токена."""
     response = await make_patch_request(
-        url=f'{test_settings.api_prefix}/users/me/password',
+        url=f"{test_settings.api_prefix}/users/me/password",
         json_data=get_change_password_data(
             old_password=VALID_USER_PASSWORD,
         ),
@@ -180,4 +181,4 @@ async def test_change_password_without_token(make_patch_request) -> None:
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"

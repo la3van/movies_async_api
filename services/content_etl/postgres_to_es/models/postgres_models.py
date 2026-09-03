@@ -1,10 +1,12 @@
 """Модели данных, получаемых из PostgreSQL."""
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class PostgresFilmGenre(BaseModel):
     """Жанр фильма из PostgreSQL."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     name: str
@@ -12,7 +14,8 @@ class PostgresFilmGenre(BaseModel):
 
 class PostgresFilmPerson(BaseModel):
     """Персона фильма из PostgreSQL."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     full_name: str
@@ -20,7 +23,8 @@ class PostgresFilmPerson(BaseModel):
 
 class PostgresFilm(BaseModel):
     """Фильм из PostgreSQL."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     title: str
@@ -34,7 +38,8 @@ class PostgresFilm(BaseModel):
 
 class PostgresGenre(BaseModel):
     """Жанр из PostgreSQL."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     name: str
@@ -43,7 +48,8 @@ class PostgresGenre(BaseModel):
 
 class PostgresPersonFilm(BaseModel):
     """Фильм, связанный с персоной, из PostgreSQL."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     roles: list[str] = Field(default_factory=list)
@@ -51,7 +57,8 @@ class PostgresPersonFilm(BaseModel):
 
 class PostgresPerson(BaseModel):
     """Персона из PostgreSQL."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     uuid: str
     full_name: str

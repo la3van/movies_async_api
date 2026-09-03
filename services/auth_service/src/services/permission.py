@@ -1,5 +1,5 @@
 """Сервис работы с правами доступа."""
-from core.tracing import trace_method
+
 from uuid import UUID
 
 from api.v1.schemas.permissions import (
@@ -8,6 +8,7 @@ from api.v1.schemas.permissions import (
     PermissionUpdate,
 )
 from cache.base import Cache
+from core.tracing import trace_method
 from services.cache_keys.permissions import (
     get_permission_cache_key,
     get_permissions_cache_key,
@@ -27,6 +28,7 @@ from unit_of_work.base import UnitOfWorkFactory
 
 class PermissionService:
     """Сервис управления правами доступа."""
+
     def __init__(
         self,
         uow_factory: UnitOfWorkFactory,
@@ -58,7 +60,7 @@ class PermissionService:
                 permission_id,
             )
             if permission_model is None:
-                raise PermissionNotFoundError('Permission not found')
+                raise PermissionNotFoundError("Permission not found")
 
             permission = PermissionResponse.model_validate(
                 permission_model,
@@ -120,7 +122,7 @@ class PermissionService:
             )
             if existing_permission is not None:
                 raise PermissionAlreadyExistsError(
-                    'Permission already exists',
+                    "Permission already exists",
                 )
 
             permission_model = await uow.permissions.create(
@@ -154,12 +156,13 @@ class PermissionService:
                 permission_id,
             )
             if permission_model is None:
-                raise PermissionNotFoundError('Permission not found')
+                raise PermissionNotFoundError("Permission not found")
 
             fields_set = permission_data.model_fields_set
 
             if (
-                'code' in fields_set
+                "code" in fields_set
+                and permission_data.code is not None
                 and permission_data.code != permission_model.code
             ):
                 existing_permission = await uow.permissions.get_by_code(
@@ -167,12 +170,12 @@ class PermissionService:
                 )
                 if existing_permission is not None:
                     raise PermissionAlreadyExistsError(
-                        'Permission already exists',
+                        "Permission already exists",
                     )
 
                 permission_model.code = permission_data.code
 
-            if 'description' in fields_set:
+            if "description" in fields_set:
                 permission_model.description = permission_data.description
 
             permission_model = await uow.permissions.save(

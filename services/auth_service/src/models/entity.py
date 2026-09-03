@@ -1,4 +1,5 @@
 """Базовые mixin-классы для SQLAlchemy-моделей."""
+
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 class UUIDMixin:
     """Mixin с UUID primary key."""
+
     id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True),
         primary_key=True,
@@ -18,6 +20,7 @@ class UUIDMixin:
 
 class TimestampMixin:
     """Mixin с датами создания и обновления записи."""
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

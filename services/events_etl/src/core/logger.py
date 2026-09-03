@@ -1,12 +1,6 @@
 """Настройка логирования ETL-сервиса."""
 
-
-LOG_FORMAT = (
-    "%(asctime)s "
-    "%(levelname)s "
-    "%(name)s "
-    "%(message)s"
-)
+LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 
 LOGGING_CONFIG = {

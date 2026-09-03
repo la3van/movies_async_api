@@ -1,4 +1,5 @@
 """Фикстуры загрузки жанров в Elasticsearch."""
+
 from typing import Any
 
 import pytest_asyncio
@@ -6,7 +7,7 @@ import pytest_asyncio
 from tests.functional.settings import test_settings
 
 
-@pytest_asyncio.fixture(name='genres_in_es')
+@pytest_asyncio.fixture(name="genres_in_es")
 async def genres_in_es(
     genre_documents: list[dict[str, Any]],
     es_write_data,

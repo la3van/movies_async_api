@@ -1,0 +1,1 @@
+"""HTTP API UGC Service."""

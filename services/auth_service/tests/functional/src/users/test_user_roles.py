@@ -1,4 +1,5 @@
 """Функциональные тесты назначения ролей пользователям."""
+
 from http import HTTPStatus
 
 import pytest
@@ -6,14 +7,12 @@ import pytest
 from tests.functional.settings import test_settings
 from tests.functional.test_data.roles import MISSING_ROLE_ID
 
-MISSING_USER_ID = '00000000-0000-0000-0000-000000000003'
+MISSING_USER_ID = "00000000-0000-0000-0000-000000000003"
 
 
 def build_user_role_url(user_id: str, role_id: str) -> str:
     """Формирует URL управления ролью пользователя."""
-    return (
-        f'{test_settings.api_prefix}/users/{user_id}/roles/{role_id}'
-    )
+    return f"{test_settings.api_prefix}/users/{user_id}/roles/{role_id}"
 
 
 @pytest.mark.asyncio
@@ -26,8 +25,8 @@ async def test_assign_role_to_user(
     """Проверяет назначение роли пользователю."""
     response = await make_post_request(
         url=build_user_role_url(
-            registered_user['id'],
-            created_role['id'],
+            registered_user["id"],
+            created_role["id"],
         ),
         headers=superuser_headers,
     )
@@ -36,9 +35,9 @@ async def test_assign_role_to_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['id'] == registered_user['id']
-        assert [role['id'] for role in body['roles']] == [
-            created_role['id'],
+        assert body["id"] == registered_user["id"]
+        assert [role["id"] for role in body["roles"]] == [
+            created_role["id"],
         ]
 
 
@@ -52,8 +51,8 @@ async def test_assign_same_role_is_idempotent(
     """Проверяет повторное назначение уже назначенной роли."""
     response = await make_post_request(
         url=build_user_role_url(
-            user_with_role['id'],
-            created_role['id'],
+            user_with_role["id"],
+            created_role["id"],
         ),
         headers=superuser_headers,
     )
@@ -62,8 +61,8 @@ async def test_assign_same_role_is_idempotent(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert len(body['roles']) == 1
-        assert body['roles'][0]['id'] == created_role['id']
+        assert len(body["roles"]) == 1
+        assert body["roles"][0]["id"] == created_role["id"]
 
 
 @pytest.mark.asyncio
@@ -77,7 +76,7 @@ async def test_assign_role_invalidates_user_cache(
 ) -> None:
     """Проверяет очистку кеша профиля после назначения роли."""
     first_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
 
@@ -85,12 +84,12 @@ async def test_assign_role_invalidates_user_cache(
         first_body = await first_response.json()
 
         assert first_response.status == HTTPStatus.OK
-        assert first_body['roles'] == []
+        assert first_body["roles"] == []
 
     assign_response = await make_post_request(
         url=build_user_role_url(
-            registered_user['id'],
-            created_role['id'],
+            registered_user["id"],
+            created_role["id"],
         ),
         headers=superuser_headers,
     )
@@ -99,7 +98,7 @@ async def test_assign_role_invalidates_user_cache(
         assert assign_response.status == HTTPStatus.OK
 
     second_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
 
@@ -107,8 +106,8 @@ async def test_assign_role_invalidates_user_cache(
         second_body = await second_response.json()
 
         assert second_response.status == HTTPStatus.OK
-        assert [role['id'] for role in second_body['roles']] == [
-            created_role['id'],
+        assert [role["id"] for role in second_body["roles"]] == [
+            created_role["id"],
         ]
 
 
@@ -122,8 +121,8 @@ async def test_remove_role_from_user(
     """Проверяет удаление роли у пользователя."""
     response = await make_delete_request(
         url=build_user_role_url(
-            user_with_role['id'],
-            created_role['id'],
+            user_with_role["id"],
+            created_role["id"],
         ),
         headers=superuser_headers,
     )
@@ -132,8 +131,8 @@ async def test_remove_role_from_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['id'] == user_with_role['id']
-        assert body['roles'] == []
+        assert body["id"] == user_with_role["id"]
+        assert body["roles"] == []
 
 
 @pytest.mark.asyncio
@@ -146,8 +145,8 @@ async def test_remove_unassigned_role_is_idempotent(
     """Проверяет удаление роли, которой у пользователя нет."""
     response = await make_delete_request(
         url=build_user_role_url(
-            registered_user['id'],
-            created_role['id'],
+            registered_user["id"],
+            created_role["id"],
         ),
         headers=superuser_headers,
     )
@@ -156,7 +155,7 @@ async def test_remove_unassigned_role_is_idempotent(
         body = await response.json()
 
         assert response.status == HTTPStatus.OK
-        assert body['roles'] == []
+        assert body["roles"] == []
 
 
 @pytest.mark.asyncio
@@ -170,7 +169,7 @@ async def test_remove_role_invalidates_user_cache(
 ) -> None:
     """Проверяет очистку кеша профиля после удаления роли."""
     first_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
 
@@ -178,12 +177,12 @@ async def test_remove_role_invalidates_user_cache(
         first_body = await first_response.json()
 
         assert first_response.status == HTTPStatus.OK
-        assert len(first_body['roles']) == 1
+        assert len(first_body["roles"]) == 1
 
     delete_response = await make_delete_request(
         url=build_user_role_url(
-            user_with_role['id'],
-            created_role['id'],
+            user_with_role["id"],
+            created_role["id"],
         ),
         headers=superuser_headers,
     )
@@ -192,7 +191,7 @@ async def test_remove_role_invalidates_user_cache(
         assert delete_response.status == HTTPStatus.OK
 
     second_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
 
@@ -200,10 +199,10 @@ async def test_remove_role_invalidates_user_cache(
         second_body = await second_response.json()
 
         assert second_response.status == HTTPStatus.OK
-        assert second_body['roles'] == []
+        assert second_body["roles"] == []
 
 
-@pytest.mark.parametrize('method_name', ['post', 'delete'])
+@pytest.mark.parametrize("method_name", ["post", "delete"])
 @pytest.mark.asyncio
 async def test_manage_user_role_without_token(
     registered_user,
@@ -214,15 +213,13 @@ async def test_manage_user_role_without_token(
 ) -> None:
     """Проверяет запрет управления ролями без access-токена."""
     request = (
-        make_post_request
-        if method_name == 'post'
-        else make_delete_request
+        make_post_request if method_name == "post" else make_delete_request
     )
 
     response = await request(
         url=build_user_role_url(
-            registered_user['id'],
-            created_role['id'],
+            registered_user["id"],
+            created_role["id"],
         ),
     )
 
@@ -230,10 +227,10 @@ async def test_manage_user_role_without_token(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"
 
 
-@pytest.mark.parametrize('method_name', ['post', 'delete'])
+@pytest.mark.parametrize("method_name", ["post", "delete"])
 @pytest.mark.asyncio
 async def test_manage_user_role_by_regular_user(
     registered_user,
@@ -245,15 +242,13 @@ async def test_manage_user_role_by_regular_user(
 ) -> None:
     """Проверяет недостаточные права обычного пользователя."""
     request = (
-        make_post_request
-        if method_name == 'post'
-        else make_delete_request
+        make_post_request if method_name == "post" else make_delete_request
     )
 
     response = await request(
         url=build_user_role_url(
-            registered_user['id'],
-            created_role['id'],
+            registered_user["id"],
+            created_role["id"],
         ),
         headers=auth_headers,
     )
@@ -262,10 +257,10 @@ async def test_manage_user_role_by_regular_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.FORBIDDEN
-        assert body['detail'] == 'Not enough permissions'
+        assert body["detail"] == "Not enough permissions"
 
 
-@pytest.mark.parametrize('method_name', ['post', 'delete'])
+@pytest.mark.parametrize("method_name", ["post", "delete"])
 @pytest.mark.asyncio
 async def test_manage_role_for_missing_user(
     created_role,
@@ -276,13 +271,11 @@ async def test_manage_role_for_missing_user(
 ) -> None:
     """Проверяет управление ролью несуществующего пользователя."""
     request = (
-        make_post_request
-        if method_name == 'post'
-        else make_delete_request
+        make_post_request if method_name == "post" else make_delete_request
     )
 
     response = await request(
-        url=build_user_role_url(MISSING_USER_ID, created_role['id']),
+        url=build_user_role_url(MISSING_USER_ID, created_role["id"]),
         headers=superuser_headers,
     )
 
@@ -290,10 +283,10 @@ async def test_manage_role_for_missing_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.NOT_FOUND
-        assert body['detail'] == 'User not found'
+        assert body["detail"] == "User not found"
 
 
-@pytest.mark.parametrize('method_name', ['post', 'delete'])
+@pytest.mark.parametrize("method_name", ["post", "delete"])
 @pytest.mark.asyncio
 async def test_manage_missing_role_for_user(
     registered_user,
@@ -304,14 +297,12 @@ async def test_manage_missing_role_for_user(
 ) -> None:
     """Проверяет управление несуществующей ролью пользователя."""
     request = (
-        make_post_request
-        if method_name == 'post'
-        else make_delete_request
+        make_post_request if method_name == "post" else make_delete_request
     )
 
     response = await request(
         url=build_user_role_url(
-            registered_user['id'],
+            registered_user["id"],
             MISSING_ROLE_ID,
         ),
         headers=superuser_headers,
@@ -321,15 +312,15 @@ async def test_manage_missing_role_for_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.NOT_FOUND
-        assert body['detail'] == 'Role not found'
+        assert body["detail"] == "Role not found"
 
 
-@pytest.mark.parametrize('method_name', ['post', 'delete'])
+@pytest.mark.parametrize("method_name", ["post", "delete"])
 @pytest.mark.parametrize(
-    ('user_id', 'role_id'),
+    ("user_id", "role_id"),
     [
-        ('invalid-user-id', MISSING_ROLE_ID),
-        (MISSING_USER_ID, 'invalid-role-id'),
+        ("invalid-user-id", MISSING_ROLE_ID),
+        (MISSING_USER_ID, "invalid-role-id"),
     ],
 )
 @pytest.mark.asyncio
@@ -343,9 +334,7 @@ async def test_manage_user_role_with_invalid_uuid(
 ) -> None:
     """Проверяет валидацию UUID пользователя и роли."""
     request = (
-        make_post_request
-        if method_name == 'post'
-        else make_delete_request
+        make_post_request if method_name == "post" else make_delete_request
     )
 
     response = await request(
@@ -357,4 +346,4 @@ async def test_manage_user_role_with_invalid_uuid(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]

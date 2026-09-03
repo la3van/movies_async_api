@@ -1,13 +1,12 @@
 """Метрики состояния и производительности ETL-сервиса."""
+
+from core.config import Settings
 from prometheus_client import (
     Counter,
     Gauge,
     Histogram,
     start_http_server,
 )
-
-from core.config import Settings
-
 
 EVENTS_PROCESSED_TOTAL = Counter(
     "events_etl_processed_total",

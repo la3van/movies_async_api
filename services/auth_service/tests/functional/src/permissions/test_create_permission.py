@@ -1,4 +1,5 @@
 """Функциональные тесты создания permissions."""
+
 from http import HTTPStatus
 from typing import Any
 
@@ -14,7 +15,7 @@ from tests.functional.test_data.permissions import (
 from tests.functional.test_data.responses import PERMISSION_RESPONSE_FIELDS
 from tests.functional.utils.helpers import assert_has_fields
 
-PERMISSIONS_URL = f'{test_settings.api_prefix}/permissions/'
+PERMISSIONS_URL = f"{test_settings.api_prefix}/permissions/"
 
 
 def _assert_validation_error(
@@ -22,10 +23,9 @@ def _assert_validation_error(
     field: str,
 ) -> None:
     """Проверяет наличие ошибки валидации указанного поля."""
-    assert isinstance(body.get('detail'), list)
+    assert isinstance(body.get("detail"), list)
     assert any(
-        error.get('loc', [])[-1:] == [field]
-        for error in body['detail']
+        error.get("loc", [])[-1:] == [field] for error in body["detail"]
     )
 
 
@@ -46,8 +46,8 @@ async def test_create_permission(
 
         assert response.status == HTTPStatus.CREATED
         assert_has_fields(body, PERMISSION_RESPONSE_FIELDS)
-        assert body['code'] == PERMISSION_CODE
-        assert body['description'] == PERMISSION_DESCRIPTION
+        assert body["code"] == PERMISSION_CODE
+        assert body["description"] == PERMISSION_DESCRIPTION
 
 
 @pytest.mark.asyncio
@@ -59,7 +59,7 @@ async def test_create_permission_without_description(
     response = await make_post_request(
         url=PERMISSIONS_URL,
         json_data={
-            'code': PERMISSION_CODE,
+            "code": PERMISSION_CODE,
         },
         headers=superuser_headers,
     )
@@ -68,8 +68,8 @@ async def test_create_permission_without_description(
         body = await response.json()
 
         assert response.status == HTTPStatus.CREATED
-        assert body['code'] == PERMISSION_CODE
-        assert body['description'] is None
+        assert body["code"] == PERMISSION_CODE
+        assert body["description"] is None
 
 
 @pytest.mark.asyncio
@@ -89,7 +89,7 @@ async def test_create_duplicate_permission(
         body = await response.json()
 
         assert response.status == HTTPStatus.CONFLICT
-        assert body['detail'] == 'Permission already exists'
+        assert body["detail"] == "Permission already exists"
 
 
 @pytest.mark.asyncio
@@ -108,7 +108,7 @@ async def test_create_permission_by_regular_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.FORBIDDEN
-        assert body['detail'] == 'Not enough permissions'
+        assert body["detail"] == "Not enough permissions"
 
 
 @pytest.mark.asyncio
@@ -125,7 +125,7 @@ async def test_create_permission_without_token(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"
 
 
 @pytest.mark.asyncio
@@ -143,20 +143,20 @@ async def test_create_permission_without_body(
         body = await response.json()
 
         assert response.status == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ('payload', 'error_field'),
+    ("payload", "error_field"),
     [
-        ({}, 'code'),
-        ({'description': PERMISSION_DESCRIPTION}, 'code'),
-        ({'code': None}, 'code'),
-        ({'code': ''}, 'code'),
-        ({'code': 'x' * 101}, 'code'),
-        ({'code': 123}, 'code'),
-        ({'code': PERMISSION_CODE, 'description': 123}, 'description'),
+        ({}, "code"),
+        ({"description": PERMISSION_DESCRIPTION}, "code"),
+        ({"code": None}, "code"),
+        ({"code": ""}, "code"),
+        ({"code": "x" * 101}, "code"),
+        ({"code": 123}, "code"),
+        ({"code": PERMISSION_CODE, "description": 123}, "description"),
     ],
 )
 async def test_create_permission_with_invalid_payload(
@@ -190,8 +190,8 @@ async def test_create_permission_invalidates_cached_empty_list(
         url=PERMISSIONS_URL,
         headers=superuser_headers,
         query_data={
-            'limit': 10,
-            'offset': 0,
+            "limit": 10,
+            "offset": 0,
         },
     )
 
@@ -216,8 +216,8 @@ async def test_create_permission_invalidates_cached_empty_list(
         url=PERMISSIONS_URL,
         headers=superuser_headers,
         query_data={
-            'limit': 10,
-            'offset': 0,
+            "limit": 10,
+            "offset": 0,
         },
     )
 

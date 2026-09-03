@@ -4,6 +4,11 @@
 
 Content ETL не предоставляет HTTP API и запускается как отдельный Docker Compose service `content-etl`.
 
+В общем Compose процесс зависит от `theatre-db`, Elasticsearch и Redis DB 0.
+Он создаёт и обновляет поисковые индексы, которые затем читает
+`content-service`. Docker-образ использует Python 3.12; CI проверяет исходный
+код и зависимости на Python 3.10, 3.11 и 3.12.
+
 ## Стек
 
 - Python 3.12;
@@ -177,7 +182,10 @@ docker compose up --build
 
 ## Наблюдаемость
 
-В текущей конфигурации Content ETL не экспортирует OpenTelemetry traces в Jaeger. Распределённая трассировка настроена для HTTP-приложений `content-service`, `auth-service` и `admin-service`.
+В текущей конфигурации Content ETL не экспортирует OpenTelemetry traces в
+Jaeger. Распределённая трассировка настроена для HTTP-приложений
+`content-service`, `auth-service`, `admin-service`, `events-service` и
+`ugc-service`.
 
 ETL диагностируется по собственным логам, состоянию Redis и результатам загрузки Elasticsearch:
 

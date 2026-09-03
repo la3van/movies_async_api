@@ -1,4 +1,5 @@
 """Настройки сервиса сбора пользовательских событий."""
+
 from functools import lru_cache
 from typing import Any
 
@@ -7,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Настройки сервиса сбора пользовательских событий."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -37,11 +39,7 @@ class Settings(BaseSettings):
     event_rate_limit_window_seconds: int = 60
 
     # Kafka
-    kafka_bootstrap_servers: str = (
-        "kafka-0:9092,"
-        "kafka-1:9092,"
-        "kafka-2:9092"
-    )
+    kafka_bootstrap_servers: str = "kafka-0:9092,kafka-1:9092,kafka-2:9092"
 
     kafka_topic: str = "user-events"
     kafka_client_id: str = "events-service"
@@ -68,11 +66,7 @@ class Settings(BaseSettings):
     def auth_service_base_url(self) -> str:
         """Получить base URL Auth Service."""
         prefix = self.auth_service_api_prefix.strip("/")
-        return (
-            f"http://{self.auth_service_host}:"
-            f"{self.auth_service_port}/"
-            f"{prefix}/"
-        )
+        return f"http://{self.auth_service_host}:{self.auth_service_port}/{prefix}/"
 
     @property
     def kafka_producer_config(self) -> dict[str, Any]:

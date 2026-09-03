@@ -1,7 +1,6 @@
 """HTTP-клиент для Auth Service."""
-import httpx
-from pydantic import ValidationError
 
+import httpx
 from auth.exceptions import (
     AuthServiceContractError,
     AuthServiceUnavailableError,
@@ -9,10 +8,12 @@ from auth.exceptions import (
     InvalidAccessTokenError,
 )
 from auth.models import AuthenticatedUser
+from pydantic import ValidationError
 
 
 class AuthServiceClient:
     """Проверяет access-токен через существующий /users/me Auth Service."""
+
     def __init__(
         self,
         client: httpx.Client,
@@ -41,14 +42,10 @@ class AuthServiceClient:
             ) from exc
 
         if response.status_code in {401, 404}:
-            raise InvalidAccessTokenError(
-                "Auth Service rejected access token"
-            )
+            raise InvalidAccessTokenError("Auth Service rejected access token")
 
         if response.status_code == 403:
-            raise AuthUserForbiddenError(
-                "Auth Service rejected user"
-            )
+            raise AuthUserForbiddenError("Auth Service rejected user")
 
         if (
             response.status_code == 408
@@ -61,8 +58,7 @@ class AuthServiceClient:
 
         if response.status_code != 200:
             raise AuthServiceContractError(
-                "Unexpected Auth Service status: "
-                f"{response.status_code}"
+                f"Unexpected Auth Service status: {response.status_code}"
             )
 
         try:

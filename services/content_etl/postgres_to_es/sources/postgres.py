@@ -1,4 +1,5 @@
 """Источник данных PostgreSQL для ETL-пайплайнов."""
+
 import json
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
@@ -24,12 +25,11 @@ from postgres_to_es.models import (
     PostgresPersonFilm,
 )
 
-
 ALLOWED_TABLES = frozenset(
     {
-        'film_work',
-        'person',
-        'genre',
+        "film_work",
+        "person",
+        "genre",
     },
 )
 
@@ -87,10 +87,7 @@ class PostgresSource(
             )
             rows = cursor.fetchall()
 
-        return [
-            dict(row)
-            for row in rows
-        ]
+        return [dict(row) for row in rows]
 
     def _get_changed_records(
         self,
@@ -103,7 +100,7 @@ class PostgresSource(
         """Получает изменённые записи указанной таблицы."""
         if table_name not in ALLOWED_TABLES:
             raise ValueError(
-                f'Неподдерживаемая таблица: {table_name}',
+                f"Неподдерживаемая таблица: {table_name}",
             )
 
         modified_expression = (
@@ -129,16 +126,16 @@ class PostgresSource(
             connection=connection,
             query=query,
             params={
-                'last_modified': last_modified,
-                'last_id': last_id,
-                'limit': limit,
+                "last_modified": last_modified,
+                "last_id": last_id,
+                "limit": limit,
             },
         )
 
         return [
             ChangedRecord(
-                id=str(row['id']),
-                modified=row['modified'],
+                id=str(row["id"]),
+                modified=row["modified"],
             )
             for row in rows
         ]
@@ -153,7 +150,7 @@ class PostgresSource(
         """Получает изменённые фильмы после курсора."""
         return self._get_changed_records(
             connection=connection,
-            table_name='film_work',
+            table_name="film_work",
             last_modified=last_modified,
             last_id=last_id,
             limit=limit,
@@ -169,7 +166,7 @@ class PostgresSource(
         """Получает изменённых персон после курсора."""
         return self._get_changed_records(
             connection=connection,
-            table_name='person',
+            table_name="person",
             last_modified=last_modified,
             last_id=last_id,
             limit=limit,
@@ -185,7 +182,7 @@ class PostgresSource(
         """Получает изменённые жанры после курсора."""
         return self._get_changed_records(
             connection=connection,
-            table_name='genre',
+            table_name="genre",
             last_modified=last_modified,
             last_id=last_id,
             limit=limit,
@@ -213,14 +210,11 @@ class PostgresSource(
             connection=connection,
             query=query,
             params={
-                'person_ids': person_ids,
+                "person_ids": person_ids,
             },
         )
 
-        return [
-            str(row['film_work_id'])
-            for row in rows
-        ]
+        return [str(row["film_work_id"]) for row in rows]
 
     def get_film_work_ids_by_genre_ids(
         self,
@@ -244,14 +238,11 @@ class PostgresSource(
             connection=connection,
             query=query,
             params={
-                'genre_ids': genre_ids,
+                "genre_ids": genre_ids,
             },
         )
 
-        return [
-            str(row['film_work_id'])
-            for row in rows
-        ]
+        return [str(row["film_work_id"]) for row in rows]
 
     def get_person_ids_by_film_work_ids(
         self,
@@ -275,14 +266,11 @@ class PostgresSource(
             connection=connection,
             query=query,
             params={
-                'film_work_ids': film_work_ids,
+                "film_work_ids": film_work_ids,
             },
         )
 
-        return [
-            str(row['person_id'])
-            for row in rows
-        ]
+        return [str(row["person_id"]) for row in rows]
 
     def get_films_by_ids(
         self,
@@ -401,14 +389,11 @@ class PostgresSource(
             connection=connection,
             query=query,
             params={
-                'film_work_ids': film_work_ids,
+                "film_work_ids": film_work_ids,
             },
         )
 
-        return [
-            self._row_to_film(row)
-            for row in rows
-        ]
+        return [self._row_to_film(row) for row in rows]
 
     def get_genres_by_ids(
         self,
@@ -437,14 +422,11 @@ class PostgresSource(
             connection=connection,
             query=query,
             params={
-                'genre_ids': genre_ids,
+                "genre_ids": genre_ids,
             },
         )
 
-        return [
-            self._row_to_genre(row)
-            for row in rows
-        ]
+        return [self._row_to_genre(row) for row in rows]
 
     def get_persons_by_ids(
         self,
@@ -517,42 +499,35 @@ class PostgresSource(
             connection=connection,
             query=query,
             params={
-                'person_ids': person_ids,
+                "person_ids": person_ids,
             },
         )
 
-        return [
-            self._row_to_person(row)
-            for row in rows
-        ]
+        return [self._row_to_person(row) for row in rows]
 
     def _row_to_film(
         self,
         row: dict[str, Any],
     ) -> PostgresFilm:
         """Преобразует строку PostgreSQL в модель фильма."""
-        rating = row['rating']
+        rating = row["rating"]
 
         return PostgresFilm(
-            uuid=str(row['id']),
-            title=row['title'],
-            description=row['description'],
-            imdb_rating=(
-                float(rating)
-                if rating is not None
-                else None
-            ),
+            uuid=str(row["id"]),
+            title=row["title"],
+            description=row["description"],
+            imdb_rating=(float(rating) if rating is not None else None),
             genre=self._parse_film_genres(
-                row['genre'],
+                row["genre"],
             ),
             actors=self._parse_film_persons(
-                row['actors'],
+                row["actors"],
             ),
             writers=self._parse_film_persons(
-                row['writers'],
+                row["writers"],
             ),
             directors=self._parse_film_persons(
-                row['directors'],
+                row["directors"],
             ),
         )
 
@@ -562,9 +537,9 @@ class PostgresSource(
     ) -> PostgresGenre:
         """Преобразует строку PostgreSQL в модель жанра."""
         return PostgresGenre(
-            uuid=str(row['id']),
-            name=row['name'],
-            description=row['description'],
+            uuid=str(row["id"]),
+            name=row["name"],
+            description=row["description"],
         )
 
     def _row_to_person(
@@ -573,10 +548,10 @@ class PostgresSource(
     ) -> PostgresPerson:
         """Преобразует строку PostgreSQL в модель персоны."""
         return PostgresPerson(
-            uuid=str(row['id']),
-            full_name=row['full_name'],
+            uuid=str(row["id"]),
+            full_name=row["full_name"],
             films=self._parse_person_films(
-                row['films'],
+                row["films"],
             ),
         )
 
@@ -587,8 +562,8 @@ class PostgresSource(
         """Преобразует список жанров фильма в модели."""
         return [
             PostgresFilmGenre(
-                uuid=str(genre['uuid']),
-                name=genre['name'],
+                uuid=str(genre["uuid"]),
+                name=genre["name"],
             )
             for genre in self._parse_json_list(value)
         ]
@@ -600,8 +575,8 @@ class PostgresSource(
         """Преобразует список персон фильма в модели."""
         return [
             PostgresFilmPerson(
-                uuid=str(person['uuid']),
-                full_name=person['full_name'],
+                uuid=str(person["uuid"]),
+                full_name=person["full_name"],
             )
             for person in self._parse_json_list(value)
         ]
@@ -613,9 +588,9 @@ class PostgresSource(
         """Преобразует список фильмов персоны в модели."""
         return [
             PostgresPersonFilm(
-                uuid=str(film['uuid']),
+                uuid=str(film["uuid"]),
                 roles=list(
-                    film['roles'] or [],
+                    film["roles"] or [],
                 ),
             )
             for film in self._parse_json_list(value)
@@ -634,15 +609,12 @@ class PostgresSource(
 
         if not isinstance(value, list):
             raise ValueError(
-                'Ожидался JSON-список из PostgreSQL.',
+                "Ожидался JSON-список из PostgreSQL.",
             )
 
-        if not all(
-            isinstance(item, dict)
-            for item in value
-        ):
+        if not all(isinstance(item, dict) for item in value):
             raise ValueError(
-                'Элементы JSON-списка должны быть объектами.',
+                "Элементы JSON-списка должны быть объектами.",
             )
 
         return cast(

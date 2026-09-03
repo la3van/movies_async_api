@@ -1,4 +1,5 @@
 """Функциональные тесты получения текущего пользователя."""
+
 from http import HTTPStatus
 
 import pytest
@@ -19,7 +20,7 @@ async def test_get_current_user(
 ) -> None:
     """Проверяет получение профиля текущего пользователя."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=auth_headers,
     )
 
@@ -28,9 +29,9 @@ async def test_get_current_user(
 
         assert response.status == HTTPStatus.OK
         assert_has_fields(body, USER_RESPONSE_FIELDS)
-        assert body['id'] == registered_user['id']
-        assert body['login'] == registered_user['login']
-        assert body['email'] == registered_user['email']
+        assert body["id"] == registered_user["id"]
+        assert body["login"] == registered_user["login"]
+        assert body["email"] == registered_user["email"]
 
 
 @pytest.mark.asyncio
@@ -40,10 +41,10 @@ async def test_get_current_user_from_cache(
     delete_user_by_id,
 ) -> None:
     """Проверяет возврат профиля из Redis после удаления строки в БД."""
-    headers = build_auth_headers(registered_user_tokens['access_token'])
+    headers = build_auth_headers(registered_user_tokens["access_token"])
 
     first_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=headers,
     )
 
@@ -52,10 +53,10 @@ async def test_get_current_user_from_cache(
 
         assert first_response.status == HTTPStatus.OK
 
-    await delete_user_by_id(first_body['id'])
+    await delete_user_by_id(first_body["id"])
 
     second_response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=headers,
     )
 
@@ -70,22 +71,22 @@ async def test_get_current_user_from_cache(
 async def test_get_current_user_without_token(make_get_request) -> None:
     """Проверяет запрет получения профиля без access-токена."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
     )
 
     async with response:
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail'] == 'Not authenticated'
+        assert body["detail"] == "Not authenticated"
 
 
 @pytest.mark.parametrize(
-    'authorization',
+    "authorization",
     [
-        'Bearer invalid-token',
-        'Basic abc',
-        'Bearer',
+        "Bearer invalid-token",
+        "Basic abc",
+        "Bearer",
     ],
 )
 @pytest.mark.asyncio
@@ -95,15 +96,15 @@ async def test_get_current_user_with_invalid_authorization(
 ) -> None:
     """Проверяет ошибочные Authorization-заголовки."""
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
-        headers={'Authorization': authorization},
+        url=f"{test_settings.api_prefix}/users/me",
+        headers={"Authorization": authorization},
     )
 
     async with response:
         body = await response.json()
 
         assert response.status == HTTPStatus.UNAUTHORIZED
-        assert body['detail']
+        assert body["detail"]
 
 
 @pytest.mark.asyncio
@@ -115,20 +116,20 @@ async def test_get_current_inactive_user(
     make_get_request,
 ) -> None:
     """Проверяет запрет доступа для неактивного пользователя."""
-    user = await get_user_by_login('test_user')
+    user = await get_user_by_login("test_user")
 
     assert user is not None
 
     await pg_execute(
-        'UPDATE users SET is_active = false WHERE id = $1::uuid;',
-        user['id'],
+        "UPDATE users SET is_active = false WHERE id = $1::uuid;",
+        user["id"],
     )
     await redis_client.flushdb()
 
     response = await make_get_request(
-        url=f'{test_settings.api_prefix}/users/me',
+        url=f"{test_settings.api_prefix}/users/me",
         headers=build_auth_headers(
-            registered_user_tokens['access_token'],
+            registered_user_tokens["access_token"],
         ),
     )
 
@@ -136,4 +137,4 @@ async def test_get_current_inactive_user(
         body = await response.json()
 
         assert response.status == HTTPStatus.FORBIDDEN
-        assert body['detail'] == 'User is inactive'
+        assert body["detail"] == "User is inactive"

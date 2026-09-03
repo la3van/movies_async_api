@@ -1,22 +1,21 @@
 """PKCE и одноразовое Redis-хранилище OAuth-state."""
+
 import base64
 import hashlib
 import secrets
-
-from pydantic import ValidationError
-from redis.asyncio import Redis
-from redis.exceptions import RedisError
 
 from oauth.enums import OAuthProviderName
 from oauth.models import (
     OAuthAuthorizationData,
     OAuthStateData,
 )
+from pydantic import ValidationError
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from services.exceptions import (
     InvalidOAuthStateError,
     OAuthStateStorageError,
 )
-
 
 _STATE_BYTES = 32
 _CODE_VERIFIER_BYTES = 64
@@ -25,6 +24,7 @@ _STATE_CREATE_ATTEMPTS = 3
 
 class RedisOAuthStateStore:
     """Хранит состояние незаверённых OAuth-flow в Redis."""
+
     def __init__(
         self,
         *,
@@ -35,12 +35,12 @@ class RedisOAuthStateStore:
         """Инициализирует хранилище OAuth-state."""
         if not key_prefix:
             raise ValueError(
-                'OAuth state key prefix must not be empty',
+                "OAuth state key prefix must not be empty",
             )
 
         if ttl_seconds < 1:
             raise ValueError(
-                'OAuth state TTL must be greater than zero',
+                "OAuth state TTL must be greater than zero",
             )
 
         self._redis = redis
@@ -82,7 +82,7 @@ class RedisOAuthStateStore:
                 )
             except RedisError as error:
                 raise OAuthStateStorageError(
-                    'Could not save OAuth state',
+                    "Could not save OAuth state",
                 ) from error
 
             if created:
@@ -92,7 +92,7 @@ class RedisOAuthStateStore:
                 )
 
         raise OAuthStateStorageError(
-            'Could not allocate unique OAuth state',
+            "Could not allocate unique OAuth state",
         )
 
     async def consume(
@@ -104,7 +104,7 @@ class RedisOAuthStateStore:
         """Одноразово извлекает и проверяет OAuth-состояние."""
         if not state:
             raise InvalidOAuthStateError(
-                'OAuth state is missing',
+                "OAuth state is missing",
             )
 
         redis_key = self._build_key(state)
@@ -113,12 +113,12 @@ class RedisOAuthStateStore:
             raw_state_data = await self._redis.getdel(redis_key)
         except RedisError as error:
             raise OAuthStateStorageError(
-                'Could not read OAuth state'
+                "Could not read OAuth state"
             ) from error
 
         if raw_state_data is None:
             raise InvalidOAuthStateError(
-                'OAuth state is invalid, expired or already used',
+                "OAuth state is invalid, expired or already used",
             )
 
         try:
@@ -127,12 +127,12 @@ class RedisOAuthStateStore:
             )
         except ValidationError as error:
             raise InvalidOAuthStateError(
-                'OAuth state data is invalid',
+                "OAuth state data is invalid",
             ) from error
 
         if state_data.provider != expected_provider:
             raise InvalidOAuthStateError(
-                'OAuth state provider does not match callback provider',
+                "OAuth state provider does not match callback provider",
             )
 
         return state_data
@@ -143,10 +143,10 @@ class RedisOAuthStateStore:
     ) -> str:
         """Формирует Redis-ключ по хешу OAuth-service."""
         state_hash = hashlib.sha256(
-            state.encode('utf-8'),
+            state.encode("utf-8"),
         ).hexdigest()
 
-        return f'{self._key_prefix}:{state_hash}'
+        return f"{self._key_prefix}:{state_hash}"
 
 
 def _build_code_challenge(
@@ -154,13 +154,13 @@ def _build_code_challenge(
 ) -> str:
     """Вычисляет PKCE code challenge методом S256."""
     verifier_digest = hashlib.sha256(
-        code_verifier.encode('ascii'),
+        code_verifier.encode("ascii"),
     ).digest()
 
     return (
         base64.urlsafe_b64encode(
             verifier_digest,
         )
-        .rstrip(b'=')
-        .decode('ascii')
+        .rstrip(b"=")
+        .decode("ascii")
     )

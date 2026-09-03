@@ -1,16 +1,16 @@
 """SQLAlchemy-модель refresh-сессии."""
+
 from __future__ import annotations
 
 from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+from db.postgres import Base
+from models.entity import TimestampMixin, UUIDMixin
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from db.postgres import Base
-from models.entity import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from models.user import User
@@ -18,11 +18,12 @@ if TYPE_CHECKING:
 
 class RefreshSession(UUIDMixin, TimestampMixin, Base):
     """Refresh-сессия пользователя."""
-    __tablename__ = 'refresh_sessions'
+
+    __tablename__ = "refresh_sessions"
 
     user_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True),
-        ForeignKey('users.id', ondelete='CASCADE'),
+        ForeignKey("users.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
     )
@@ -55,5 +56,5 @@ class RefreshSession(UUIDMixin, TimestampMixin, Base):
     )
 
     user: Mapped[User] = relationship(
-        back_populates='refresh_sessions',
+        back_populates="refresh_sessions",
     )

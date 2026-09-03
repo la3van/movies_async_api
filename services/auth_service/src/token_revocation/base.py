@@ -1,4 +1,5 @@
 """Интерфейс хранилища отозванных access-токенов."""
+
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from datetime import datetime
@@ -7,6 +8,7 @@ from uuid import UUID
 
 class AccessTokenRevocationStore(ABC):
     """Определяет операции отзыва access-токенов."""
+
     @abstractmethod
     async def revoke_token(
         self,
@@ -14,7 +16,7 @@ class AccessTokenRevocationStore(ABC):
         expires_at: datetime,
     ) -> None:
         """Отзывает один access-токен до его истечения."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def revoke_sessions(
@@ -22,7 +24,7 @@ class AccessTokenRevocationStore(ABC):
         session_ids: Sequence[UUID],
     ) -> None:
         """Отзывает access-токены указанных сессий."""
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     async def is_revoked(
@@ -31,4 +33,4 @@ class AccessTokenRevocationStore(ABC):
         session_id: UUID,
     ) -> bool:
         """Проверяет отзыв токена или всей его сессии."""
-        pass  # pragma: no cover
+        # pragma: no cover

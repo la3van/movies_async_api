@@ -1,4 +1,5 @@
 """Трансформация персон из PostgreSQL в документы индекса persons."""
+
 from postgres_to_es.models import (
     PersonDocument,
     PersonMovie,

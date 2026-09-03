@@ -1,11 +1,11 @@
 """Реализация репозитория персон через Elasticsearch."""
-from elasticsearch import AsyncElasticsearch, NotFoundError
 
-from models.person import Person
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from models.film import ShortFilm
+from models.person import Person
 from repositories.elastic.bodies.persons import (
-    build_persons_body,
     build_person_films_body,
+    build_persons_body,
 )
 from repositories.elastic.mappers.films import build_short_film
 from repositories.interfaces.person import PersonRepository
@@ -13,6 +13,7 @@ from repositories.interfaces.person import PersonRepository
 
 class ElasticsearchPersonRepository(PersonRepository):
     """Репозиторий персон, использующий Elasticsearch."""
+
     def __init__(
         self,
         elastic: AsyncElasticsearch,
@@ -40,7 +41,7 @@ class ElasticsearchPersonRepository(PersonRepository):
         except NotFoundError:
             return None
 
-        return Person.model_validate(document['_source'])
+        return Person.model_validate(document["_source"])
 
     async def get_many(
         self,
@@ -64,8 +65,8 @@ class ElasticsearchPersonRepository(PersonRepository):
         )
 
         return [
-            Person.model_validate(hit['_source'])
-            for hit in response['hits']['hits']
+            Person.model_validate(hit["_source"])
+            for hit in response["hits"]["hits"]
         ]
 
     async def get_films(
@@ -87,6 +88,6 @@ class ElasticsearchPersonRepository(PersonRepository):
         )
 
         return [
-            build_short_film(hit['_source'])
-            for hit in response['hits']['hits']
+            build_short_film(hit["_source"])
+            for hit in response["hits"]["hits"]
         ]

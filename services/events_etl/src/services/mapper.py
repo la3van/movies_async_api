@@ -1,14 +1,14 @@
 """Преобразование Kafka-событий в строки ClickHouse."""
+
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
 import orjson
-from pydantic import ValidationError
-
 from kafka.base import ConsumedMessage
 from models.events import KafkaUserEvent
 from models.rows import ClickHouseEventRow
+from pydantic import ValidationError
 from services.exceptions import EventMappingError
 
 
@@ -43,10 +43,8 @@ class EventMapper:
             message,
         )
 
-        specific_fields = (
-            self._extract_specific_fields(
-                event,
-            )
+        specific_fields = self._extract_specific_fields(
+            event,
         )
 
         return ClickHouseEventRow(
@@ -58,33 +56,23 @@ class EventMapper:
             occurred_at=event.occurred_at,
             received_at=event.received_at,
             request_id=event.request_id,
-
             page=event.context.page,
-
             entity_type=(
                 event.context.entity_type.value
-                if event.context.entity_type
-                is not None
+                if event.context.entity_type is not None
                 else None
             ),
-
             entity_id=event.context.entity_id,
-
             playback_id=event.playback_id,
-
             payload_json=(
                 orjson.dumps(
                     event.payload,
-                )
-                .decode("utf-8")
+                ).decode("utf-8")
             ),
-
             kafka_topic=message.topic,
             kafka_partition=message.partition,
             kafka_offset=message.offset,
-
             ingested_at=ingested_at,
-
             **specific_fields,
         )
 
@@ -163,56 +151,42 @@ class EventMapper:
                 )
 
             case "video_started":
-                fields["duration_seconds"] = (
-                    self._require_float(
-                        event.payload,
-                        "duration_seconds",
-                    )
+                fields["duration_seconds"] = self._require_float(
+                    event.payload,
+                    "duration_seconds",
                 )
 
             case "video_progress":
-                fields["position_seconds"] = (
-                    self._require_float(
-                        event.payload,
-                        "position_seconds",
-                    )
+                fields["position_seconds"] = self._require_float(
+                    event.payload,
+                    "position_seconds",
                 )
 
-                fields["duration_seconds"] = (
-                    self._require_float(
-                        event.payload,
-                        "duration_seconds",
-                    )
+                fields["duration_seconds"] = self._require_float(
+                    event.payload,
+                    "duration_seconds",
                 )
 
             case "video_finished":
-                fields["duration_seconds"] = (
-                    self._require_float(
-                        event.payload,
-                        "duration_seconds",
-                    )
+                fields["duration_seconds"] = self._require_float(
+                    event.payload,
+                    "duration_seconds",
                 )
 
             case "video_quality_changed":
-                fields["position_seconds"] = (
-                    self._require_float(
-                        event.payload,
-                        "position_seconds",
-                    )
+                fields["position_seconds"] = self._require_float(
+                    event.payload,
+                    "position_seconds",
                 )
 
-                fields["from_quality"] = (
-                    self._require_string(
-                        event.payload,
-                        "from_quality",
-                    )
+                fields["from_quality"] = self._require_string(
+                    event.payload,
+                    "from_quality",
                 )
 
-                fields["to_quality"] = (
-                    self._require_string(
-                        event.payload,
-                        "to_quality",
-                    )
+                fields["to_quality"] = self._require_string(
+                    event.payload,
+                    "to_quality",
                 )
 
             case "search_filter_used":
@@ -224,8 +198,8 @@ class EventMapper:
 
             case _:
                 raise EventMappingError(
-                    "Неизвестный тип пользовательского "
-                    f"события: {event.event_type}"
+                    "Неизвестный тип пользовательского события: "
+                    f"{event.event_type}"
                 )
 
         return fields
@@ -282,8 +256,7 @@ class EventMapper:
 
         if not isinstance(filters, dict):
             raise EventMappingError(
-                "search_filter_used должен "
-                "содержать объект filters"
+                "search_filter_used должен содержать объект filters"
             )
 
         genre_id = filters.get(
@@ -292,9 +265,7 @@ class EventMapper:
 
         try:
             parsed_genre_id = (
-                UUID(str(genre_id))
-                if genre_id is not None
-                else None
+                UUID(str(genre_id)) if genre_id is not None else None
             )
 
         except ValueError as exc:
@@ -325,10 +296,7 @@ class EventMapper:
         value = payload.get(key)
 
         if not isinstance(value, str) or not value:
-            raise EventMappingError(
-                f"Поле {key} должно быть "
-                "непустой строкой"
-            )
+            raise EventMappingError(f"Поле {key} должно быть непустой строкой")
 
         return value
 
@@ -344,9 +312,7 @@ class EventMapper:
             return None
 
         if not isinstance(value, str):
-            raise EventMappingError(
-                f"Поле {key} должно быть строкой"
-            )
+            raise EventMappingError(f"Поле {key} должно быть строкой")
 
         return value
 
@@ -359,8 +325,6 @@ class EventMapper:
         value = payload.get(key)
 
         if not isinstance(value, (int, float)) or isinstance(value, bool):
-            raise EventMappingError(
-                f"Поле {key} должно быть числом"
-            )
+            raise EventMappingError(f"Поле {key} должно быть числом")
 
         return float(value)

@@ -1,15 +1,19 @@
 """Маршрутизация моделей контента в theatre-db."""
+
 from typing import Any
+
+from django.db.models import Model
 
 
 class ContentDatabaseRouter:
     """Направляет модели приложения content в PostgreSQL."""
+
     app_label = "content"
     database_alias = "content"
 
     def db_for_read(
         self,
-        model: type,
+        model: type[Model],
         **hints: Any,
     ) -> str | None:
         """Выбирает базу для чтения модели."""
@@ -22,7 +26,7 @@ class ContentDatabaseRouter:
 
     def db_for_write(
         self,
-        model: type,
+        model: type[Model],
         **hints: Any,
     ) -> str | None:
         """Выбирает базу для записи модели."""
@@ -35,19 +39,15 @@ class ContentDatabaseRouter:
 
     def allow_relation(
         self,
-        obj1: Any,
-        obj2: Any,
+        obj1: Model,
+        obj2: Model,
         **hints: Any,
     ) -> bool | None:
         """Разрешает связи между моделями одной контентной базы."""
         del hints
 
-        obj1_is_content = (
-            obj1._meta.app_label == self.app_label
-        )
-        obj2_is_content = (
-            obj2._meta.app_label == self.app_label
-        )
+        obj1_is_content = obj1._meta.app_label == self.app_label
+        obj2_is_content = obj2._meta.app_label == self.app_label
 
         if obj1_is_content or obj2_is_content:
             return obj1_is_content and obj2_is_content

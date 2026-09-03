@@ -1,4 +1,5 @@
 """Создание body запросов для поиска жанров."""
+
 from typing import Any
 
 
@@ -11,36 +12,36 @@ def build_genres_body(
 ) -> dict[str, Any]:
     """Формирует запрос Elasticsearch для получения и поиска жанров."""
     search_query: dict[str, Any] = {
-        'match_all': {},
+        "match_all": {},
     }
     if query:
         search_query = {
-            'multi_match': {
-                'query': query,
-                'fields': [
-                    'name^5',
-                    'description',
+            "multi_match": {
+                "query": query,
+                "fields": [
+                    "name^5",
+                    "description",
                 ],
             },
         }
 
     body: dict[str, Any] = {
-        'query': search_query,
-        'from': (page_number - 1) * page_size,
-        'size': page_size,
+        "query": search_query,
+        "from": (page_number - 1) * page_size,
+        "size": page_size,
     }
 
     if sort:
-        order = 'desc' if sort.startswith('-') else 'asc'
+        order = "desc" if sort.startswith("-") else "asc"
         sort_field = genre_sort_fields.get(
-            sort.lstrip('-'),
-            'name.raw',
+            sort.lstrip("-"),
+            "name.raw",
         )
 
-        body['sort'] = [
+        body["sort"] = [
             {
                 sort_field: {
-                    'order': order,
+                    "order": order,
                 },
             },
         ]

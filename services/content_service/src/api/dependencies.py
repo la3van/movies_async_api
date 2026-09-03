@@ -1,29 +1,24 @@
 """Функции сборки зависимостей FastAPI-приложения."""
-from typing import Annotated
 
-from elasticsearch import AsyncElasticsearch
-from fastapi import Depends
-from redis.asyncio import Redis
+from typing import Annotated
 
 from cache.base import Cache
 from cache.redis import RedisCache
-
+from core.config import Settings, get_settings
 from db.elastic import get_elastic
 from db.redis import get_redis
-
+from elasticsearch import AsyncElasticsearch
+from fastapi import Depends
+from redis.asyncio import Redis
 from repositories.elastic.film import ElasticsearchFilmRepository
 from repositories.elastic.genre import ElasticsearchGenreRepository
 from repositories.elastic.person import ElasticsearchPersonRepository
-
 from repositories.interfaces.film import FilmRepository
 from repositories.interfaces.genre import GenreRepository
 from repositories.interfaces.person import PersonRepository
-
 from services.film import FilmService
 from services.genre import GenreService
 from services.person import PersonService
-
-from core.config import Settings, get_settings
 
 
 def get_cache(
