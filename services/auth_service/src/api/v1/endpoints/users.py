@@ -113,10 +113,12 @@ async def get_my_login_history(
         examples=[0],
     ),
     created_from: datetime | None = Query(  # noqa: B008
+        None,
         description="Нижняя граница времени входа включительно.",
         examples=["2026-07-01T00:00:00Z"],
     ),
     created_to: datetime | None = Query(  # noqa: B008
+        None,
         description="Верхняя граница времени входа не включительно.",
         examples=["2026-08-01T00:00:00Z"],
     ),
