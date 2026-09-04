@@ -15,12 +15,14 @@ from core.event_rate_limit import (
 )
 from core.logger import LOGGING_CONFIG
 from core.request_id import register_request_id
+from core.sentry import init_sentry
 from core.tracing import configure_tracing, shutdown_tracing
 from flask import Flask
 from kafka.base import EventPublisher
 from kafka.producer import KafkaEventPublisher
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from redis import Redis
+from sentry_sdk.integrations.flask import FlaskIntegration
 from services.events import EventService
 
 dictConfig(LOGGING_CONFIG)
@@ -34,6 +36,13 @@ def create_app(
 ) -> Flask:
     """Создать и настроить Flask-приложение."""
     settings = settings or get_settings()
+
+    init_sentry(
+        service_name=settings.project_name,
+        integration=FlaskIntegration(
+            transaction_style="endpoint",
+        ),
+    )
 
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = settings.max_event_request_bytes

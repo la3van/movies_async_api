@@ -55,3 +55,12 @@ POST http://127.0.0.1:8000/api/v1/events
 
 Отдельного набора pytest у сервиса пока нет. CI выполняет Ruff, mypy,
 установку зависимостей и компиляцию исходников на Python 3.10, 3.11 и 3.12.
+
+## Логи и Sentry
+
+Логи контейнера автоматически поступают в общий ELK-стек и доступны в
+Kibana по фильтру `service.name: "events-service"`. Flask-ошибки отправляются
+в Sentry, если в `.env` задан `SENTRY_DSN`; пустое значение отключает SDK.
+
+Подробности: [Sentry](../../infrastructure/sentry/README.md) и
+[ELK](../../infrastructure/elk/README.md).

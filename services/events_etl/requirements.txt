@@ -5,3 +5,4 @@ prometheus-client==0.26.0
 pydantic==2.13.4
 pydantic-settings==2.14.2
 orjson==3.11.9
+sentry-sdk==2.68.1

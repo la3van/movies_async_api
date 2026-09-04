@@ -500,3 +500,11 @@ Access token должен быть валидным, неистёкшим и п�
 ```bash
 mypy src
 ```
+
+## Логи и Sentry
+
+Логи контейнера автоматически поступают в общий ELK-стек и доступны в
+Kibana по фильтру `service.name: "auth-service"`. Sentry включается непустым
+`SENTRY_DSN` в `.env`; без него SDK не выполняет сетевых запросов. Полная
+инструкция находится в
+[`../../infrastructure/sentry/README.md`](../../infrastructure/sentry/README.md).

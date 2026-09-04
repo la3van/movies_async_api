@@ -1,6 +1,10 @@
 target-version = "py310"
 line-length = 79
 
+extend-exclude = [
+    "infrastructure/sentry-self-hosted",
+]
+
 [lint]
 select = [
     "E4",

@@ -10,6 +10,7 @@ from clickhouse.client import ClickHouseEventStorage
 from clickhouse_connect.driver.exceptions import ClickHouseError
 from core.config import Settings, get_settings
 from core.logger import LOGGING_CONFIG
+from core.sentry import init_sentry
 from kafka.consumer import KafkaBatchConsumer
 from kafka.dlq import KafkaDeadLetterPublisher
 from monitoring.metrics import start_metrics_server
@@ -102,6 +103,9 @@ def main() -> None:
     )
 
     settings = get_settings()
+    init_sentry(
+        service_name=settings.project_name,
+    )
     stop_event = Event()
 
     register_signal_handlers(

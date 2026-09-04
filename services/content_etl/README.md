@@ -195,7 +195,14 @@ docker compose exec redis redis-cli --scan --pattern 'etl_state:*'
 curl "http://localhost:9200/_cat/indices?v"
 ```
 
+Консольные логи автоматически поступают в ELK и доступны в Kibana по фильтру
+`service.name: "content-etl"`. Необработанные исключения и ERROR-логи
+отправляются в Sentry, если в `.env` задан `SENTRY_DSN`.
+
 Если трассировка фонового процесса будет добавлена позднее, полезными границами spans будут отдельная итерация ETL, обработка batch и retry-попытка, а не каждая чистая transform-функция.
+
+Общая настройка: [Sentry](../../infrastructure/sentry/README.md) и
+[ELK](../../infrastructure/elk/README.md).
 
 ## Проверка результата
 

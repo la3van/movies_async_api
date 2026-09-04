@@ -12,6 +12,7 @@ from auth.client import (
 from core.config import get_settings
 from core.logger import LOGGING
 from core.request_id import RequestIdMiddleware
+from core.sentry import init_sentry
 from core.tracing import configure_tracing, shutdown_tracing
 from db.elastic import close_elastic, init_elastic
 from db.redis import close_redis, init_redis
@@ -25,6 +26,7 @@ from opentelemetry.instrumentation.httpx import (
     HTTPXClientInstrumentor,
 )
 from opentelemetry.instrumentation.redis import RedisInstrumentor
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 dictConfig(LOGGING)
 
@@ -46,6 +48,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 settings = get_settings()
+
+init_sentry(
+    service_name=settings.project_name,
+    integration=FastApiIntegration(
+        transaction_style="endpoint",
+    ),
+)
 
 tracer_provider = configure_tracing(
     default_service_name="content-service",

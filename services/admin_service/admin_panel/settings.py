@@ -6,6 +6,8 @@ from typing import Any
 
 from django.core.exceptions import ImproperlyConfigured
 
+from admin_panel.sentry import init_sentry
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -260,6 +262,10 @@ SESSION_COOKIE_AGE = get_int_env(
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
+init_sentry(
+    service_name=PROJECT_NAME,
+)
+
 AUTH_SERVICE_HOST = os.getenv(
     "AUTH_SERVICE_HOST",
     "auth-service",
@@ -275,7 +281,10 @@ AUTH_SERVICE_API_PREFIX = os.getenv(
     "/api/v1",
 ).strip("/")
 
-AUTH_SERVICE_BASE_URL = f"http://{AUTH_SERVICE_HOST}:{AUTH_SERVICE_PORT}/{AUTH_SERVICE_API_PREFIX}/"
+AUTH_SERVICE_BASE_URL = (
+    f"http://{AUTH_SERVICE_HOST}:{AUTH_SERVICE_PORT}"
+    f"/{AUTH_SERVICE_API_PREFIX}/"
+)
 
 AUTH_SERVICE_CONNECT_TIMEOUT = get_int_env(
     "AUTH_SERVICE_CONNECT_TIMEOUT",

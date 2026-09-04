@@ -32,6 +32,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    project_name: str = "content-etl"
+
     # PostgreSQL
     postgres_host: str
     postgres_port: int

@@ -338,3 +338,13 @@ radon mi services/content_service/src -s
 ```
 
 Актуальные результаты проекта хранятся в [`../../docs/CODE_MAINTAINABILITY.md`](../../docs/CODE_MAINTAINABILITY.md).
+
+## Логи и Sentry
+
+Логи контейнера автоматически поступают в общий ELK-стек и доступны в
+Kibana по фильтру `service.name: "content-service"`. Sentry включается
+непустым `SENTRY_DSN` в `.env`. Настройки tracing Sentry по умолчанию равны
+нулю, поскольку HTTP-трассы уже отправляются в Jaeger через OpenTelemetry.
+
+Подробности: [Sentry](../../infrastructure/sentry/README.md) и
+[ELK](../../infrastructure/elk/README.md).

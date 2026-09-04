@@ -48,3 +48,12 @@ Kafka, ClickHouse, retry, batch processing и DLQ перечислены в
 
 Отдельного набора pytest у процесса пока нет. CI выполняет Ruff, mypy,
 установку зависимостей и компиляцию исходников на Python 3.10, 3.11 и 3.12.
+
+## Логи и Sentry
+
+Логи контейнера автоматически поступают в общий ELK-стек и доступны в
+Kibana по фильтру `service.name: "events-etl"`. Необработанные исключения и
+ERROR-логи отправляются в Sentry, если в `.env` задан `SENTRY_DSN`.
+
+Подробности: [Sentry](../../infrastructure/sentry/README.md) и
+[ELK](../../infrastructure/elk/README.md).

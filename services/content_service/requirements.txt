@@ -5,6 +5,7 @@ pydantic-settings==2.14.1
 uvicorn[standard]==0.30.6
 orjson==3.11.9
 coverage==7.14.2
+sentry-sdk==2.68.1
 
 # OpenTelemetry core
 opentelemetry-api==1.43.0

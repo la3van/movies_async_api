@@ -12,6 +12,7 @@ from core.config import get_settings
 from core.logger import LOGGING
 from core.request_id import RequestIdMiddleware
 from core.request_size import RequestSizeLimitMiddleware
+from core.sentry import init_sentry
 from core.tracing import configure_tracing, shutdown_tracing
 from db.mongo import close_mongo, init_mongo
 from db.redis import close_redis, init_redis
@@ -22,9 +23,17 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 dictConfig(LOGGING)
 settings = get_settings()
+
+init_sentry(
+    service_name=settings.project_name,
+    integration=FastApiIntegration(
+        transaction_style="endpoint",
+    ),
+)
 
 tracer_provider = configure_tracing(default_service_name="ugc-service")
 if tracer_provider is not None:

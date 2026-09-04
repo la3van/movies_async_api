@@ -546,3 +546,11 @@ docker compose build --no-cache admin-service
 - Структура таблиц `content.*` не управляется миграциями Admin Service.
 - Изменение структуры контентной базы требует отдельного обновления инфраструктуры и последующего обновления Django-моделей.
 - Доступ к Admin Service разрешён только активным суперпользователям Auth Service.
+
+## Логи и Sentry
+
+Логи контейнера автоматически поступают в общий ELK-стек и доступны в
+Kibana по фильтру `service.name: "admin-service"`. Для отправки Django-ошибок
+в Sentry задайте `SENTRY_DSN` в `.env`. Остальные Sentry-параметры и безопасная
+проверка описаны в
+[`../../infrastructure/sentry/README.md`](../../infrastructure/sentry/README.md).
