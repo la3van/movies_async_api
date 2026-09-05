@@ -78,14 +78,17 @@ done
 
 Перед запуском проверьте следующие значения:
 
-- `JWT_SECRET_KEY` должен совпадать в Auth, Content и UGC Services;
+- `JWT_SECRET_KEY` должен совпадать в Auth и Content Services; UGC Service
+  проверяет токены через Auth Service и собственного ключа подписи не хранит;
 - `SUPERUSER_PASSWORD` в Auth Service не должен оставаться `generate_me`;
 - настройки `theatre-db` должны совпадать в Admin Service и Content ETL;
 - `CLICKHOUSE_PASSWORD` должен совпадать у ClickHouse и Events ETL;
 - данные MongoDB из UGC `.env` должны соответствовать `mongodb` в Compose.
 
 Для учебного локального окружения MongoDB использует пользователя `ugc_user`
-и пароль `ugc_password`, заданные в `docker-compose.yml`.
+и пароль `ugc_password`, заданные в `docker-compose.yml`. MongoDB запускается
+как одновузловой replica set `rs0`, а сервис `mongodb-init` автоматически
+инициализирует его для поддержки транзакций UGC Service.
 
 ### 2. Установить Sentry
 

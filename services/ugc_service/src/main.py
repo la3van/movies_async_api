@@ -1,7 +1,7 @@
 """Точка входа FastAPI-приложения UGC Service."""
 
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from logging.config import dictConfig
 
 from api.exception_handlers import register_exception_handlers
@@ -45,18 +45,22 @@ if tracer_provider is not None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Открыть и гарантированно закрыть внешние ресурсы приложения."""
-    await init_mongo()
-    await init_redis()
-    await init_auth_client()
-    await init_content_client()
-    try:
+    async with AsyncExitStack() as stack:
+        stack.callback(shutdown_tracing)
+
+        stack.push_async_callback(close_mongo)
+        await init_mongo()
+
+        stack.push_async_callback(close_redis)
+        await init_redis()
+
+        stack.push_async_callback(close_auth_client)
+        await init_auth_client()
+
+        stack.push_async_callback(close_content_client)
+        await init_content_client()
+
         yield
-    finally:
-        await close_content_client()
-        await close_auth_client()
-        await close_redis()
-        await close_mongo()
-        shutdown_tracing()
 
 
 app = FastAPI(

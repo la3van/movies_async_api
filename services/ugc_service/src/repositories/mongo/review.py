@@ -9,6 +9,7 @@ from core.exceptions import (
     ResourceConflictError,
     ReviewNotFoundError,
 )
+from core.pagination import ReviewCursor
 from models.review import Review, ReviewDetails
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError, PyMongoError
@@ -24,7 +25,9 @@ class MongoReviewRepository(ReviewRepository):
     """Хранить рецензии и присоединять оценки/голоса через aggregation."""
 
     def __init__(self, database: Any, sort_fields: dict[str, str]) -> None:
+        self._database = database
         self._collection = database.reviews
+        self._reactions = database.review_reactions
         self._sort_fields = sort_fields
 
     async def create(self, review: Review) -> Review:
@@ -71,21 +74,22 @@ class MongoReviewRepository(ReviewRepository):
         self,
         film_id: UUID,
         sort: str,
-        page_number: int,
+        cursor: ReviewCursor | None,
         page_size: int,
     ) -> list[ReviewDetails]:
         pipeline = build_review_list_pipeline(
             film_id=str(film_id),
             sort=sort,
             sort_fields=self._sort_fields,
-            page_number=page_number,
+            cursor=cursor,
             page_size=page_size,
         )
         try:
-            cursor = self._collection.aggregate(pipeline)
-            documents = await cursor.to_list(length=page_size)
+            mongo_cursor = self._collection.aggregate(pipeline)
+            documents = await mongo_cursor.to_list(length=page_size)
         except PyMongoError as error:
             raise DependencyUnavailableError("MongoDB unavailable") from error
+
         return [build_review_details(document) for document in documents]
 
     async def update_text(self, review_id: UUID, text: str) -> Review:
@@ -106,9 +110,25 @@ class MongoReviewRepository(ReviewRepository):
             raise ReviewNotFoundError
         return build_review(document)
 
-    async def delete(self, review_id: UUID) -> bool:
+    async def delete_with_reactions(self, review_id: UUID) -> bool:
+        """Удалить рецензию и реакции в одной MongoDB-транзакции."""
+
+        async def delete_in_transaction(session: Any) -> bool:
+            await self._reactions.delete_many(
+                {"review_id": str(review_id)},
+                session=session,
+            )
+            result = await self._collection.delete_one(
+                {"_id": str(review_id)},
+                session=session,
+            )
+            return result.deleted_count == 1
+
         try:
-            result = await self._collection.delete_one({"_id": str(review_id)})
+            async with self._database.client.start_session() as session:
+                return await session.with_transaction(
+                    delete_in_transaction,
+                    max_commit_time_ms=5_000,
+                )
         except PyMongoError as error:
             raise DependencyUnavailableError("MongoDB unavailable") from error
-        return result.deleted_count == 1

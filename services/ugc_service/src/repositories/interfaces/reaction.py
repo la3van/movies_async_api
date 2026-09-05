@@ -30,8 +30,3 @@ class ReviewReactionRepository(ABC):
     async def delete(self, user_id: UUID, review_id: UUID) -> bool:
         """Удалить голос пользователя."""
         raise NotImplementedError
-
-    @abstractmethod
-    async def delete_for_review(self, review_id: UUID) -> None:
-        """Удалить все голоса удаляемой рецензии."""
-        raise NotImplementedError

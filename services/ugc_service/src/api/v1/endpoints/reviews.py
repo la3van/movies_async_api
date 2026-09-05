@@ -12,11 +12,13 @@ from api.v1.schemas.reviews import (
     ReactionResponse,
     ReactionUpsertRequest,
     ReviewCreateRequest,
+    ReviewPageResponse,
     ReviewResponse,
     ReviewUpdateRequest,
 )
 from auth.dependencies import get_current_user
 from auth.models import AuthenticatedUser
+from core.exceptions import InvalidPaginationCursorError
 from core.rate_limit import rate_limit
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from models.reaction import ReactionValue
@@ -27,31 +29,55 @@ router = APIRouter()
 
 @router.get(
     "/films/{film_id}",
-    response_model=list[ReviewResponse],
+    response_model=ReviewPageResponse,
     summary="Список рецензий фильма с гибкой сортировкой",
 )
 async def list_reviews(
     film_id: UUID,
     request: Request,
-    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
-    service: Annotated[ReviewService, Depends(get_review_service)],
+    current_user: Annotated[
+        AuthenticatedUser,
+        Depends(get_current_user),
+    ],
+    service: Annotated[
+        ReviewService,
+        Depends(get_review_service),
+    ],
     sort: str = Query(
         "-published_at",
-        pattern=r"^-?(published_at|updated_at|likes|dislikes|helpfulness|author_rating)$",
+        pattern=(
+            r"^-?(published_at|updated_at|likes|dislikes|"
+            r"helpfulness|author_rating)$"
+        ),
         description="Поле сортировки; '-' означает порядок по убыванию",
     ),
-    page_number: int = Query(1, ge=1),
+    cursor: str | None = Query(
+        None,
+        min_length=1,
+        max_length=1024,
+        description="Непрозрачный курсор из ответа предыдущей страницы",
+    ),
     page_size: int = Query(50, ge=1, le=100),
-) -> list[ReviewResponse]:
-    reviews = await service.list_by_film(
-        user=current_user,
-        film_id=film_id,
-        sort=sort,
-        page_number=page_number,
-        page_size=page_size,
-        request_id=request.state.request_id,
+) -> ReviewPageResponse:
+    try:
+        page = await service.list_by_film(
+            user=current_user,
+            film_id=film_id,
+            sort=sort,
+            cursor=cursor,
+            page_size=page_size,
+            request_id=request.state.request_id,
+        )
+    except InvalidPaginationCursorError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="invalid_pagination_cursor",
+        ) from error
+
+    return ReviewPageResponse(
+        items=[build_review_response(review) for review in page.items],
+        next_cursor=page.next_cursor,
     )
-    return [build_review_response(review) for review in reviews]
 
 
 @router.post(

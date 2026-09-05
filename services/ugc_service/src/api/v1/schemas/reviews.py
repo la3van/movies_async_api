@@ -42,6 +42,13 @@ class ReviewResponse(BaseModel):
     author_rating: int | None = Field(default=None, ge=0, le=10)
 
 
+class ReviewPageResponse(BaseModel):
+    """Страница рецензий с курсором продолжения."""
+
+    items: list[ReviewResponse]
+    next_cursor: str | None = None
+
+
 class ReactionUpsertRequest(BaseModel):
     """Лайк или дизлайк рецензии."""
 

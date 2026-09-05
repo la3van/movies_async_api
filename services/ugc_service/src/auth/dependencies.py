@@ -11,7 +11,6 @@ from auth.exceptions import (
 )
 from auth.models import AuthenticatedUser
 from auth.service import AuthenticationService
-from core.config import Settings, get_settings
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -20,10 +19,9 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 def get_authentication_service(
     client: Annotated[AuthServiceClient, Depends(get_auth_client)],
-    settings: Annotated[Settings, Depends(get_settings)],
 ) -> AuthenticationService:
     """Собрать сервис аутентификации."""
-    return AuthenticationService(client, settings)
+    return AuthenticationService(client)
 
 
 async def get_current_user(

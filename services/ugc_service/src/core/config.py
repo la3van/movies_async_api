@@ -3,7 +3,6 @@
 from functools import lru_cache
 from urllib.parse import quote_plus
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,8 +27,13 @@ class Settings(BaseSettings):
     mongo_auth_database: str = "admin"
     mongo_connect_timeout_ms: int = 2_000
     mongo_server_selection_timeout_ms: int = 2_000
+    mongo_socket_timeout_ms: int = 5_000
+    mongo_wait_queue_timeout_ms: int = 2_000
+    mongo_operation_timeout_ms: int = 5_000
     mongo_max_pool_size: int = 100
     mongo_min_pool_size: int = 0
+
+    mongo_replica_set: str = "rs0"
 
     redis_host: str = "localhost"
     redis_port: int = 6379
@@ -47,9 +51,6 @@ class Settings(BaseSettings):
     auth_service_api_prefix: str = "/api/v1"
     auth_service_connect_timeout: float = 1.0
     auth_service_read_timeout: float = 2.0
-    auth_allow_jwt_fallback: bool = True
-    jwt_secret_key: str = Field(min_length=16)
-    jwt_algorithm: str = "HS256"
 
     content_service_host: str = "content-service"
     content_service_port: int = 8000
@@ -79,6 +80,7 @@ class Settings(BaseSettings):
         return (
             f"mongodb://{credentials}{self.mongo_host}:{self.mongo_port}/"
             f"?authSource={quote_plus(self.mongo_auth_database)}"
+            f"&replicaSet={quote_plus(self.mongo_replica_set)}"
         )
 
     @property

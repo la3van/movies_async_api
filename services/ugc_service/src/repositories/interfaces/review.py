@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
+from core.pagination import ReviewCursor
 from models.review import Review, ReviewDetails
 
 
@@ -29,10 +30,10 @@ class ReviewRepository(ABC):
         self,
         film_id: UUID,
         sort: str,
-        page_number: int,
+        cursor: ReviewCursor | None,
         page_size: int,
     ) -> list[ReviewDetails]:
-        """Вернуть страницу рецензий с гибкой сортировкой."""
+        """Вернуть часть рецензий после заданного курсора."""
         raise NotImplementedError
 
     @abstractmethod
@@ -41,6 +42,6 @@ class ReviewRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, review_id: UUID) -> bool:
-        """Удалить рецензию."""
+    async def delete_with_reactions(self, review_id: UUID) -> bool:
+        """Атомарно удалить рецензию и все реакции на неё."""
         raise NotImplementedError

@@ -31,6 +31,12 @@ class DependencyUnavailableError(UGCServiceError):
     detail = "dependency_unavailable"
 
 
+class InvalidPaginationCursorError(UGCServiceError):
+    """Курсор отсутствует, повреждён или относится к другому запросу."""
+
+    detail = "invalid_pagination_cursor"
+
+
 class FilmNotFoundError(EntityNotFoundError):
     """Фильм отсутствует в Content Service."""
 

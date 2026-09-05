@@ -18,6 +18,9 @@ async def init_mongo() -> None:
         settings.mongo_uri,
         connectTimeoutMS=settings.mongo_connect_timeout_ms,
         serverSelectionTimeoutMS=settings.mongo_server_selection_timeout_ms,
+        socketTimeoutMS=settings.mongo_socket_timeout_ms,
+        waitQueueTimeoutMS=settings.mongo_wait_queue_timeout_ms,
+        timeoutMS=settings.mongo_operation_timeout_ms,
         maxPoolSize=settings.mongo_max_pool_size,
         minPoolSize=settings.mongo_min_pool_size,
         retryReads=True,
@@ -69,6 +72,22 @@ async def _ensure_indexes(database: Any) -> None:
             IndexModel(
                 [("film_id", ASCENDING), ("created_at", DESCENDING)],
                 name="ix_review_film_created",
+            ),
+            IndexModel(
+                [
+                    ("film_id", ASCENDING),
+                    ("created_at", DESCENDING),
+                    ("_id", DESCENDING),
+                ],
+                name="ix_review_film_created_id",
+            ),
+            IndexModel(
+                [
+                    ("film_id", ASCENDING),
+                    ("updated_at", DESCENDING),
+                    ("_id", DESCENDING),
+                ],
+                name="ix_review_film_updated_id",
             ),
             IndexModel(
                 [("user_id", ASCENDING), ("created_at", DESCENDING)],
