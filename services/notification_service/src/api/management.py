@@ -77,6 +77,14 @@ async def template(
 async def archive(template_id: UUID, request: Request) -> None:
     """Архивирует шаблон, сохраняя ранее созданные версии."""
     async with request.app.state.engine.begin() as conn:
+        name = await conn.scalar(
+            text("SELECT name FROM templates WHERE id=:id FOR UPDATE"),
+            dict(id=template_id),
+        )
+        if name is None:
+            raise HTTPException(404, "template_not_found")
+        if name in {"user.registered", "film.created"}:
+            raise HTTPException(409, "system_template_required")
         result = await conn.execute(
             text(
                 "UPDATE templates SET archived=true WHERE id=:id RETURNING id"

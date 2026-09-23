@@ -19,6 +19,13 @@ class DeliveryRepository:
     async def claim(self) -> dict[str, Any] | None:
         """Захватывает задание и фиксирует аренду до обращения к сети."""
         async with self.engine.begin() as conn:
+            # Разделяем блокировку с другими захватами. Установка общей
+            # паузы дождётся коротких транзакций уже начатых захватов.
+            blocked = await conn.scalar(
+                text("SELECT blocked FROM smtp_state WHERE id=1 FOR SHARE")
+            )
+            if blocked:
+                return None
             row = (
                 (
                     await conn.execute(
@@ -54,6 +61,63 @@ lease_until=now()+make_interval(secs=>:lease),
                 ),
             )
             return dict(result.mappings().one())
+
+    async def smtp_blocked(self) -> bool:
+        """Возвращает сохраняемый признак остановки SMTP-отправки."""
+        async with self.engine.connect() as conn:
+            return bool(
+                await conn.scalar(
+                    text("SELECT blocked FROM smtp_state WHERE id=1")
+                )
+            )
+
+    async def claim_smtp_probe(self) -> UUID | None:
+        """Разрешает только одному sender проверять восстановление SMTP."""
+        token = uuid4()
+        async with self.engine.begin() as conn:
+            result = await conn.scalar(
+                text("""
+                UPDATE smtp_state SET probe_token=:token,
+                    probe_after=now()+interval '90 seconds'
+                WHERE id=1 AND blocked AND probe_after<=now()
+                RETURNING probe_token
+            """),
+                dict(token=token),
+            )
+            return UUID(str(result)) if result is not None else None
+
+    async def finish_smtp_probe(self, token: UUID, restored: bool) -> None:
+        """Снимает паузу после успешной проверки действующим владельцем."""
+        async with self.engine.begin() as conn:
+            await conn.execute(
+                text("""
+                UPDATE smtp_state SET blocked=:blocked, probe_token=NULL,
+                    probe_after=now()+interval '30 seconds'
+                WHERE id=1 AND probe_token=:token
+            """),
+                dict(blocked=not restored, token=token),
+            )
+
+    async def pause_smtp(self, row: dict[str, Any]) -> None:
+        """Ставит общую паузу и возвращает задание в очередь."""
+        async with self.engine.begin() as conn:
+            await conn.execute(
+                text("""
+                UPDATE smtp_state SET blocked=true, probe_token=NULL,
+                    probe_after=now()+interval '30 seconds'
+                WHERE id=1
+            """)
+            )
+            await conn.execute(
+                text("""
+                UPDATE delivery_jobs SET status='retry', attempt=attempt-1,
+                    error_code='smtp_authentication_failed',
+                    next_attempt_at=now(), lease_until=NULL, claim_token=NULL,
+                    updated_at=now()
+                WHERE delivery_id=:id AND claim_token=:token
+            """),
+                dict(id=row["delivery_id"], token=row["claim_token"]),
+            )
 
     async def finish(
         self,
@@ -94,8 +158,6 @@ updated_at=now()
                 attempt=row["attempt"],
                 error_code=error,
             )
-            # Результат и событие меняются одной транзакцией; API узнает
-            # статус даже при падении отправителя сразу после commit.
             await conn.execute(
                 text("""
                 INSERT INTO

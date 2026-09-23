@@ -26,6 +26,12 @@ class TransientFailure(Exception):
     pass
 
 
+class SMTPConfigurationFailure(Exception):
+    """Общая ошибка SMTP-авторизации, не расходующая попытки задания."""
+
+    pass
+
+
 class Recipient(BaseModel):
     """Данные активного получателя, загружаемые только перед отправкой."""
 
@@ -110,6 +116,10 @@ class DeliveryService:
             )
             if errors:
                 raise PermanentFailure("recipient_rejected")
+        except aiosmtplib.errors.SMTPAuthenticationError as exc:
+            raise SMTPConfigurationFailure(
+                "smtp_authentication_failed"
+            ) from exc
         except aiosmtplib.errors.SMTPRecipientsRefused as exc:
             if all(item.code >= 500 for item in exc.recipients):
                 raise PermanentFailure("recipient_rejected") from exc
@@ -118,6 +128,22 @@ class DeliveryService:
             if exc.code >= 500:
                 raise PermanentFailure("smtp_rejected") from exc
             raise TransientFailure("smtp_temporary_failure") from exc
+
+    async def check_smtp(self) -> None:
+        """Проверяет подключение и вход без отправки пробного письма."""
+        smtp = aiosmtplib.SMTP(
+            hostname=self.settings.smtp_host,
+            port=self.settings.smtp_port,
+            username=self.settings.smtp_username or None,
+            password=self.settings.smtp_password.get_secret_value() or None,
+            use_tls=self.settings.smtp_mode == "tls",
+            start_tls=self.settings.smtp_mode == "starttls",
+            timeout=self.settings.smtp_timeout,
+        )
+        try:
+            await asyncio.wait_for(smtp.connect(), timeout=60)
+        finally:
+            smtp.close()
 
     def delay(self, attempt: int) -> float:
         """Рассчитывает ограниченную экспоненциальную задержку с jitter."""

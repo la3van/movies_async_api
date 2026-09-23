@@ -23,6 +23,13 @@ OPERATIONS = Counter(
 )
 
 
+DELIVERY_ERRORS = Counter(
+    "notification_delivery_errors_total",
+    "Delivery errors by safe reason code",
+    ["error_code"],
+)
+
+
 class JsonFormatter(logging.Formatter):
     """Форматировщик логов без сериализации данных исключения."""
 
