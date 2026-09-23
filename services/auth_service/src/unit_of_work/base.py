@@ -12,11 +12,15 @@ from repositories.interfaces import (
     SocialAccountRepository,
     UserRepository,
 )
+from repositories.interfaces.notification import (
+    NotificationAudienceRepository,
+)
 
 
 class AbstractUnitOfWork(ABC):
     """Определяет границы одной бизнес-транзакции."""
 
+    notification_audiences: NotificationAudienceRepository
     users: UserRepository
     roles: RoleRepository
     permissions: PermissionRepository

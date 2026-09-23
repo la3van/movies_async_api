@@ -13,6 +13,8 @@ Dockerfile, зависимости, конфигурацию и README.
 | `content_etl` | фоновый ETL | PostgreSQL, Elasticsearch и Redis | [документация](content_etl/README.md) |
 | `events_service` | Flask API | Kafka и Redis | [документация](events_service/README.md) |
 | `events_etl` | фоновый ETL | Kafka и ClickHouse | [документация](events_etl/README.md) |
+| `notification_service` | FastAPI и фоновые процессы | PostgreSQL и Kafka | [документация](notification_service/README.md) |
+| `notification_worker` | Consumer и SMTP-отправитель | PostgreSQL, Kafka и SMTP | [документация](notification_worker/README.md) |
 | `ugc_service` | FastAPI | MongoDB и Redis | [документация](ugc_service/README.md) |
 
 ## Связи
@@ -23,7 +25,10 @@ Dockerfile, зависимости, конфигурацию и README.
 - `ugc-service` проверяет пользователя через Auth Service, а существование
   фильма — через Content Service;
 - `content-etl` формирует поисковую read model для Content Service;
-- `events-etl` переносит поток из Kafka в ClickHouse.
+- `events-etl` переносит поток из Kafka в ClickHouse;
+- `notification-service` принимает заявки и события, создаёт задания в Kafka;
+- `notification-worker` получает данные адресата из Auth, отправляет письма
+  и возвращает результаты через Kafka.
 
 Redis разделён логическими DB:
 
@@ -69,3 +74,5 @@ Kibana на `http://127.0.0.1:5601`.
 Ruff проверяет весь монорепозиторий. Mypy и компиляция выполняются отдельно
 для каждого сервиса на Python 3.10, 3.11 и 3.12. Функциональные pytest-наборы
 Auth и Content Services запускаются в CI в изолированных Compose-проектах.
+Для двух сервисов уведомлений автоматические тесты не добавлены.
+[Ручная проверка обоих приложений](notification_service/README.md#ручная-проверка-обоих-сервисов).

@@ -508,3 +508,27 @@ Kibana по фильтру `service.name: "auth-service"`. Sentry включае
 `SENTRY_DSN` в `.env`; без него SDK не выполняет сетевых запросов. Полная
 инструкция находится в
 [`../../infrastructure/sentry/README.md`](../../infrastructure/sentry/README.md).
+
+## Внутренний API уведомлений
+
+Методы `/api/v1/internal/notifications` доступны сервисам внутри сети Compose.
+Nginx запрещает внешний доступ к `/api/v1/internal/`.
+
+| Метод | Путь относительно префикса | Назначение |
+|---|---|---|
+| GET | `/users/{user_id}` | Email и ФИО активного получателя для worker |
+| POST | `/audiences/{audience_id}` | Идемпотентное создание снимка аудитории |
+| GET | `/audiences/{audience_id}?after=UUID&limit=100` | Страница UUID снимка |
+
+Авторизация — заголовок `X-Service-Token`. `NOTIFICATION_WORKER_TOKEN` даёт
+доступ к получателю, `NOTIFICATION_API_TOKEN` — к аудитории. Пустые и неверные
+ключи отклоняются. Граница страницы `after` исключительная, `limit` — от 1 до 500.
+
+Транзакция UoW сохраняет идентификатор снимка и состав активных пользователей
+вместе. Повторный POST не меняет аудиторию; регистрация новых пользователей
+не сдвигает страницы начатой рассылки. Email и ФИО в снимок не записываются.
+
+Миграция `auth_notifications_2` также добавляет outbox регистрации. Триггер
+INSERT в `users` сохраняет `user.registered` в той же транзакции, включая OAuth.
+Отдельный процесс `auth-events-outbox` публикует записи в Kafka после commit.
+Миграция применяется после `6604474198ef` и не поддерживает destructive downgrade.

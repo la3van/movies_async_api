@@ -15,6 +15,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Раздельные ключи доступа к аудитории и данным получателя.
+    notification_api_token: SecretStr = SecretStr("")
+    notification_worker_token: SecretStr = SecretStr("")
+
     # Auth API project
     project_name: str = "auth-service"
     debug: bool = False

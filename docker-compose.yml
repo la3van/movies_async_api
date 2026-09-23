@@ -22,6 +22,8 @@ services:
         condition: service_started
       events-service:
         condition: service_healthy
+      notification-service:
+        condition: service_healthy
       ugc-service:
         condition: service_healthy
     restart: unless-stopped
@@ -35,6 +37,8 @@ services:
     expose:
       - "8000"
     depends_on:
+      auth-notification-migrate:
+        condition: service_completed_successfully
       auth-postgres:
         condition: service_healthy
       redis:
@@ -302,9 +306,34 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  kafka-volume-init:
+    image: apache/kafka:4.3.1
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        # Новые volumes могут принадлежать root. До запуска брокеров
+        # передаём каталоги пользователю appuser (UID/GID 1000).
+        # Содержимое не удаляем и владельцев существующих файлов не меняем.
+        for directory in /volumes/kafka-0 /volumes/kafka-1 /volumes/kafka-2; do
+          chown 1000:1000 "$$directory"
+          chmod u+rwx "$$directory"
+        done
+    volumes:
+      - kafka_0_data:/volumes/kafka-0
+      - kafka_1_data:/volumes/kafka-1
+      - kafka_2_data:/volumes/kafka-2
+    restart: "no"
+
   kafka-0:
     image: apache/kafka:4.3.1
     hostname: kafka-0
+    depends_on:
+      kafka-volume-init:
+        condition: service_completed_successfully
+    volumes:
+      - kafka_0_data:/tmp/kraft-combined-logs
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -332,6 +361,11 @@ services:
   kafka-1:
     image: apache/kafka:4.3.1
     hostname: kafka-1
+    depends_on:
+      kafka-volume-init:
+        condition: service_completed_successfully
+    volumes:
+      - kafka_1_data:/tmp/kraft-combined-logs
     environment:
       KAFKA_NODE_ID: 2
       KAFKA_PROCESS_ROLES: broker,controller
@@ -359,6 +393,11 @@ services:
   kafka-2:
     image: apache/kafka:4.3.1
     hostname: kafka-2
+    depends_on:
+      kafka-volume-init:
+        condition: service_completed_successfully
+    volumes:
+      - kafka_2_data:/tmp/kraft-combined-logs
     environment:
       KAFKA_NODE_ID: 3
       KAFKA_PROCESS_ROLES: broker,controller
@@ -412,6 +451,15 @@ services:
           --topic user-events-dlq \
           --partitions 6 \
           --replication-factor 3
+        for topic in notification-delivery-v1 notification-delivery-v1-dlq notification-results-v1 cinema-events-v1 notification-failed-v1; do
+          /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka-0:9092 --create --if-not-exists \
+            --topic "$$topic" --partitions 6 --replication-factor 3 \
+            --config min.insync.replicas=2 --config retention.ms=-1
+        done
+        /opt/kafka/bin/kafka-configs.sh --bootstrap-server kafka-0:9092 \
+          --entity-type topics --entity-name notification-delivery-v1-dlq \
+          --alter --add-config max.message.bytes=2097152
     restart: "no"
 
   clickhouse:
@@ -487,7 +535,315 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  notification-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: notification-admin-local
+    volumes:
+      - notification_postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/notifications/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  notification-migrate:
+    build:
+      context: ./services/notification_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_service/.env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      notification-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  delivery-migrate:
+    build:
+      context: ./services/notification_worker
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_worker/.env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      notification-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  notification-service:
+    build:
+      context: ./services/notification_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_service/.env
+    expose:
+      - "8000"
+    depends_on:
+      notification-migrate:
+        condition: service_completed_successfully
+      auth-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  notification-outbox:
+    build:
+      context: ./services/notification_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_service/.env
+    command: ["python", "-m", "messaging.outbox"]
+    depends_on:
+      notification-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "core.health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  notification-worker:
+    build:
+      context: ./services/notification_worker
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_worker/.env
+    depends_on:
+      delivery-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "core.health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    ports:
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped
+
+  film-notification-migrate:
+    image: postgres:16
+    environment:
+      PGHOST: theatre-db
+      PGUSER: postgres
+      PGPASSWORD: secret
+      PGDATABASE: theatre
+    volumes:
+      - ./infrastructure/postgres/theatre/notifications.sql:/migration.sql:ro
+    command: ["psql", "-v", "ON_ERROR_STOP=1", "-1", "-f", "/migration.sql"]
+    depends_on:
+      theatre-db:
+        condition: service_healthy
+    restart: "no"
+
+  auth-notification-migrate:
+    build:
+      context: ./services/auth_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/auth_service/.env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  notification-sender:
+    build:
+      context: ./services/notification_worker
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_worker/.env
+    command: ["python", "-m", "messaging.sender"]
+    environment:
+      SERVICE_NAME: "notification-sender"
+    depends_on:
+      delivery-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "core.health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  notification-results-outbox:
+    build:
+      context: ./services/notification_worker
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_worker/.env
+    command: ["python", "-m", "messaging.relay"]
+    environment:
+      SERVICE_NAME: "notification-results-outbox"
+    depends_on:
+      delivery-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "core.health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  notification-results:
+    build:
+      context: ./services/notification_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_service/.env
+    command: ["python", "-m", "messaging.updates", "results"]
+    environment:
+      SERVICE_NAME: "notification-results"
+    depends_on:
+      notification-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "core.health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  notification-events:
+    build:
+      context: ./services/notification_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_service/.env
+    command: ["python", "-m", "messaging.updates", "events"]
+    environment:
+      SERVICE_NAME: "notification-events"
+    depends_on:
+      notification-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "core.health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  notification-campaigns:
+    build:
+      context: ./services/notification_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_service/.env
+    command: ["python", "-m", "messaging.campaigns"]
+    environment:
+      SERVICE_NAME: "notification-campaigns"
+    depends_on:
+      notification-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "core.health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  auth-events-outbox:
+    build:
+      context: ./services/notification_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_service/.env
+      - ./services/auth_service/.env
+    command: ["python", "-m", "messaging.source_relay"]
+    environment:
+      POSTGRES_HOST: "auth-postgres"
+      SERVICE_NAME: "auth-events-outbox"
+    depends_on:
+      auth-notification-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "core.health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  film-events-outbox:
+    build:
+      context: ./services/notification_service
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/notification_service/.env
+    command: ["python", "-m", "messaging.source_relay"]
+    environment:
+      POSTGRES_HOST: "theatre-db"
+      POSTGRES_DB: "theatre"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "secret"
+      SERVICE_NAME: "film-events-outbox"
+    depends_on:
+      film-notification-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "core.health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 90s
+    restart: unless-stopped
+
+  notification-metrics:
+    image: prom/prometheus:v3.2.1
+    volumes:
+      - ./infrastructure/prometheus/notifications.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+
 volumes:
+  notification_postgres_data:
+  kafka_0_data:
+  kafka_1_data:
+  kafka_2_data:
   auth_postgres_data:
   postgres_data:
   elasticsearch_data:

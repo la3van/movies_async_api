@@ -306,3 +306,11 @@ docker compose down -v --remove-orphans
 ```
 
 Эта команда не удаляет данные отдельного Sentry-стека.
+
+## Уведомления
+
+Добавлены `notification_service` и `notification_worker`: защищённый API,
+шаблоны, рассылки, transactional outbox, Kafka, персонализация через Auth,
+SMTP, сохраняемые повторы и возврат результатов доставки.
+[Запуск, гарантии, проверки и текущие ограничения](docs/notifications.md).
+Готовые тестовые настройки приведены в `.env.example` каждого сервиса.

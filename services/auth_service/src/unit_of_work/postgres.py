@@ -5,6 +5,9 @@ from types import TracebackType
 from repositories.postgres.login_history import (
     PostgresLoginHistoryRepository,
 )
+from repositories.postgres.notification import (
+    PostgresNotificationAudienceRepository,
+)
 from repositories.postgres.permission import (
     PostgresPermissionRepository,
 )
@@ -35,6 +38,9 @@ class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
         """Создаёт сессию и репозитории для одной бизнес операции."""
         self.session = self._session_factory()
 
+        self.notification_audiences = PostgresNotificationAudienceRepository(
+            self.session,
+        )
         self.users = PostgresUserRepository(self.session)
         self.roles = PostgresRoleRepository(self.session)
         self.permissions = PostgresPermissionRepository(self.session)

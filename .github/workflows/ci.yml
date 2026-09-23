@@ -37,6 +37,8 @@ jobs:
           - "3.11"
           - "3.12"
         service:
+          - notification_service
+          - notification_worker
           - ugc_service
           - auth_service
           - content_service
@@ -62,6 +64,12 @@ jobs:
       - name: Check compatibility and types
         run: |
           case "${{ matrix.service }}" in
+            notification_service|notification_worker)
+              cd "services/${{ matrix.service }}"
+              python -m compileall -q src
+              MYPYPATH=src python -m mypy --strict \
+                --config-file ../../mypy.ini src
+              ;;
             content_etl)
               cd services/content_etl
               python -m compileall -q postgres_to_es

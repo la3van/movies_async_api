@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: notifications
+    static_configs:
+      - targets:
+          - notification-service:8000
+          - notification-outbox:8000
+          - notification-worker:8000
+          - notification-sender:8000
+          - notification-results-outbox:8000
+          - notification-results:8000
+          - notification-events:8000
+          - notification-campaigns:8000
+          - auth-events-outbox:8000
+          - film-events-outbox:8000
