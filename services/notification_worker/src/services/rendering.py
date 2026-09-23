@@ -43,7 +43,7 @@ def render(value: str, context: dict[str, str], escape: bool = False) -> str:
         length += literal_length + replacement_length
         if length > MAX_RENDERED_LENGTH:
             raise ValueError("Rendered message is too large")
-        fragments.append(value[position: match.start()])
+        fragments.append(value[position : match.start()])
         fragments.append(html.escape(replacement) if escape else replacement)
         position = match.end()
     if length + len(value) - position > MAX_RENDERED_LENGTH:
