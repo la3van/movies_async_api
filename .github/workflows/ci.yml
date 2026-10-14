@@ -37,6 +37,7 @@ jobs:
           - "3.11"
           - "3.12"
         service:
+          - profile_service
           - notification_service
           - notification_worker
           - ugc_service
@@ -113,6 +114,7 @@ jobs:
         service:
           - auth_service
           - content_service
+          - profile_service
 
     steps:
       - uses: actions/checkout@v5

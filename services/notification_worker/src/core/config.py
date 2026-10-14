@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     dlq_topic: str = "notification-delivery-v1-dlq"
     consumer_group: str = "notification-worker-v1"
     auth_base_url: str = "http://auth-service:8000/api/v1/"
+    profile_base_url: str = "http://profile-service:8000/api/v1/"
+    profile_token: SecretStr = SecretStr("")
     poll_seconds: float = Field(default=1.0, gt=0)
     kafka_timeout_seconds: float = Field(default=20.0, gt=0, le=60)
     health_stale_seconds: float = Field(default=90.0, ge=60)

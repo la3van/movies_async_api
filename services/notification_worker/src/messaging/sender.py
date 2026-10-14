@@ -20,6 +20,8 @@ from services.delivery import (
 
 log = logging.getLogger(__name__)
 SAFE_ERRORS = {
+    "profile_unavailable",
+    "invalid_profile_response",
     "auth_unavailable",
     "invalid_auth_response",
     "smtp_temporary_failure",
@@ -39,6 +41,7 @@ def report_failure(code: str) -> str:
     """Публикует только разрешённый код, без исключения и данных письма."""
     safe = code if code in SAFE_ERRORS else "transient_delivery_failure"
     DELIVERY_ERRORS.labels(safe).inc()
+
     log.error("Delivery failure: %s", safe)
     return safe
 
@@ -59,6 +62,7 @@ async def run(stop: asyncio.Event) -> None:
             while not stop.is_set():
                 try:
                     if await repository.smtp_blocked():
+                        degraded = True
                         unready()
                         token = await repository.claim_smtp_probe()
                         if token is not None:
@@ -71,6 +75,7 @@ async def run(stop: asyncio.Event) -> None:
                                 )
                             else:
                                 await repository.finish_smtp_probe(token, True)
+                                degraded = False
                                 log.info("SMTP connection restored")
                         await pause(stop, settings.poll_seconds)
                         continue
@@ -94,6 +99,7 @@ async def run(stop: asyncio.Event) -> None:
                         ):
                             await delivery.send(job)
                     except SMTPConfigurationFailure:
+                        degraded = True
                         unready()
                         report_failure("smtp_authentication_failed")
                         await repository.pause_smtp(row)

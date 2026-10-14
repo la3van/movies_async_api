@@ -18,7 +18,14 @@ select = [
 ]
 
 [lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends"]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+]
+
+[lint.per-file-ignores]
+"services/admin_service/admin_panel/test_settings.py" = ["E402", "F403"]
 
 [format]
 quote-style = "double"

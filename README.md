@@ -1,8 +1,8 @@
 # Movies Backend
 
 Монорепозиторий backend-сервисов онлайн-кинотеатра. Проект объединяет API
-контента, аутентификацию, админ-панель, сбор событий, пользовательский контент
-и два ETL-процесса.
+контента, аутентификацию, персональные профили, админ-панель, сбор событий,
+пользовательский контент, уведомления и два ETL-процесса.
 
 ## Сервисы
 
@@ -10,42 +10,65 @@
 | --- | --- | --- |
 | `content-service` | фильмы, жанры, персоны и поиск | Elasticsearch, Redis, Auth Service |
 | `auth-service` | пользователи, JWT, роли и permissions | PostgreSQL, Redis |
-| `admin-service` | Django Admin для контента | PostgreSQL, Auth Service |
+| `profile-service` | персональные профили и аудит | PostgreSQL, Auth Service |
+| `admin-service` | Django Admin для контента и просмотра профилей | PostgreSQL, Auth и Profile Services |
 | `content-etl` | PostgreSQL → Elasticsearch | PostgreSQL, Elasticsearch, Redis |
 | `events-service` | приём пользовательских событий | Auth Service, Redis, Kafka |
 | `events-etl` | Kafka → ClickHouse | Kafka, ClickHouse |
 | `ugc-service` | закладки, оценки и рецензии | MongoDB, Redis, Auth и Content Services |
+| `notification-service` | шаблоны, заявки на уведомления и рассылки | PostgreSQL, Kafka, Auth Service |
+| `notification-worker`, `notification-sender` | получение заданий и отправка писем | PostgreSQL, Kafka, SMTP, Auth и Profile Services |
 
 Подробности находятся в [обзоре сервисов](services/README.md) и README каждого
-сервиса.
+сервиса: [Content](services/content_service/README.md),
+[Auth](services/auth_service/README.md),
+[Profile](services/profile_service/README.md),
+[Admin](services/admin_service/README.md),
+[Content ETL](services/content_etl/README.md),
+[Events](services/events_service/README.md),
+[Events ETL](services/events_etl/README.md),
+[UGC](services/ugc_service/README.md),
+[Notification](services/notification_service/README.md) и
+[Notification Worker](services/notification_worker/README.md).
 
 ## Архитектура
+
+Основные связи API контента и пользовательских данных:
 
 ```mermaid
 flowchart TB
     client[Clients] --> nginx[Nginx]
     nginx --> content[Content API]
     nginx --> auth[Auth API]
+    nginx --> profile[Profile API]
     nginx --> admin[Django Admin]
-    nginx --> events[Events API]
     nginx --> ugc[UGC API]
 
     content --> es[Elasticsearch]
     content --> redis[Redis]
-    content_etl[Content ETL] --> es
-    content_etl --> theatre[(PostgreSQL theatre)]
-
-    auth --> auth_db[(PostgreSQL auth)]
-    admin --> theatre
-
-    events --> kafka[Kafka]
-    events_etl[Events ETL] --> kafka
-    events_etl --> clickhouse[ClickHouse]
-
+    content --> auth
+    auth --> postgres[("PostgreSQL: отдельные базы")]
+    profile --> postgres
+    profile --> auth
+    admin --> postgres
+    admin --> auth
+    admin --> profile
     ugc --> mongo[MongoDB]
     ugc --> auth
     ugc --> content
 ```
+
+Auth отвечает за учётные записи и права, Profile — за ФИО, телефон и согласие
+на маркетинговые сообщения, UGC — за закладки, оценки и рецензии.
+Сервисы используют общий UUID пользователя. Персональные данные профиля
+хранятся в зашифрованном виде в отдельной базе PostgreSQL; чтение профилей
+сотрудниками доступно через API и Django Admin с правом `profiles:read`.
+
+Content ETL переносит контент из PostgreSQL в Elasticsearch. Events Service
+принимает события через Nginx и публикует их в Kafka, а Events ETL загружает
+их в ClickHouse. Notification Service принимает заявки через Nginx,
+сохраняет их в PostgreSQL и передаёт задания через Kafka. Notification Worker
+получает email из Auth, имя и фамилию из Profile и отправляет письма через SMTP.
 
 Nginx публикует основной HTTP-вход на `127.0.0.1:8000`. HTTP-сервисы
 передают `X-Request-ID`; OpenTelemetry traces отправляются в Jaeger.
@@ -58,7 +81,8 @@ Elasticsearch и отображаются в Kibana. Ошибки каждого
 
 ### 1. Создать конфигурационные файлы
 
-Из корня репозитория:
+Из корня репозитория создайте отсутствующие `.env` из примеров.
+Существующие настройки сохраняются:
 
 ```bash
 for service in \
@@ -68,11 +92,16 @@ for service in \
   content_service \
   events_etl \
   events_service \
+  notification_service \
+  notification_worker \
+  profile_service \
   ugc_service
 do
-  cp \
-    "services/${service}/.env.example" \
-    "services/${service}/.env"
+  if [ ! -f "services/${service}/.env" ]; then
+    cp \
+      "services/${service}/.env.example" \
+      "services/${service}/.env"
+  fi
 done
 ```
 
@@ -85,12 +114,32 @@ done
 - `CLICKHOUSE_PASSWORD` должен совпадать у ClickHouse и Events ETL;
 - данные MongoDB из UGC `.env` должны соответствовать `mongodb` в Compose.
 
+Параметры межсервисного доступа должны совпадать:
+
+| Параметр | Соответствующий параметр |
+| --- | --- |
+| `INTERNAL_TOKEN` в Notification Service | `NOTIFICATION_API_TOKEN` в Auth |
+| `INTERNAL_TOKEN` в Notification Worker | `NOTIFICATION_WORKER_TOKEN` в Auth |
+| `PROFILE_TOKEN` в Notification Worker | `NOTIFICATION_TOKEN` в Profile |
+| `MIGRATION_TOKEN` в Profile | `PROFILE_MIGRATION_TOKEN` в Auth |
+
+Для хранения персональных данных в Profile задаются `ENCRYPTION_KEYS` и
+`PHONE_INDEX_KEY`, для хранения серверных Auth-сессий в Admin —
+`ADMIN_TOKEN_KEY`. Значения `generate_me` в примерах необходимо заменить;
+уже настроенные ключи сохраняйте. Формат ключей и порядок их смены описаны
+в [README Profile Service](services/profile_service/README.md#защита-и-ключи).
+При `PROFILE_NAMES_EXTERNAL=true` Auth хранит учётные данные, а ФИО
+создаются и изменяются через Profile API.
+
 Для учебного локального окружения MongoDB использует пользователя `ugc_user`
 и пароль `ugc_password`, заданные в `docker-compose.yml`. MongoDB запускается
 как одновузловой replica set `rs0`, а сервис `mongodb-init` автоматически
 инициализирует его для поддержки транзакций UGC Service.
 
 ### 2. Установить Sentry
+
+Этот шаг нужен для сбора ошибок в локальном Sentry. При пустом `SENTRY_DSN`
+в конфигурации сервисов основной проект может работать без него.
 
 Self-hosted Sentry запускается отдельным официальным Docker Compose-стеком.
 Это необходимо, поскольку современные версии Sentry зависят от собственного
@@ -123,16 +172,24 @@ cd ../..
 
 ### 3. Запустить систему
 
-При первом запуске или после изменения Dockerfile запустите Sentry и соберите
-основной проект:
+Основной проект запускается из корня репозитория:
 
 ```bash
-make sentry-up
-docker compose up -d --build
+docker compose up -d
 docker compose ps
 ```
 
-Для последующих запусков обоих уже установленных стеков достаточно:
+После изменений исходного кода, зависимостей или Dockerfile пересоберите
+образы и запустите контейнеры:
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+Если используется установленный Sentry, запустите его командой
+`make sentry-up`. Для запуска обоих уже установленных стеков также доступна
+команда:
 
 ```bash
 make up
@@ -147,10 +204,16 @@ ClickHouse. Sentry также может некоторое время возв�
 
 ### 4. Создать суперпользователя приложения
 
+Если суперпользователь ещё не создан, после готовности Auth выполните:
+
 ```bash
 docker compose exec auth-service \
   python -m src.commands.create_superuser
 ```
+
+Логин и пароль задаются параметрами `SUPERUSER_LOGIN` и `SUPERUSER_PASSWORD`
+в `services/auth_service/.env`. Эти же учётные данные используются для входа
+в Django Admin.
 
 ## Адреса
 
@@ -159,9 +222,15 @@ docker compose exec auth-service \
 | Nginx | `http://127.0.0.1:8000` |
 | Content Swagger | `http://127.0.0.1:8000/api/openapi` |
 | Auth Swagger | `http://127.0.0.1:8000/docs` |
+| Profile Swagger | `http://127.0.0.1:8000/profiles/docs` |
+| Profile health/readiness | `http://127.0.0.1:8000/profiles/health`, `/profiles/ready` |
 | Django Admin | `http://127.0.0.1:8000/admin/` |
+| Профили в Django Admin | `http://127.0.0.1:8000/admin/profiles/` |
 | UGC Swagger | `http://127.0.0.1:8000/ugc/docs` |
 | UGC health/readiness | `http://127.0.0.1:8000/ugc/health`, `/ugc/ready` |
+| Notification Swagger | `http://127.0.0.1:8000/notifications/docs` |
+| Notification health/readiness | `http://127.0.0.1:8000/notifications/health`, `/notifications/ready` |
+| Mailpit | `http://127.0.0.1:8025` |
 | Jaeger | `http://127.0.0.1:16686` |
 | Kibana | `http://127.0.0.1:5601` |
 | Sentry | `http://127.0.0.1:9000` |
@@ -173,6 +242,12 @@ docker compose exec auth-service \
 UGC API также маршрутизируется через Nginx по префиксам
 `/api/v1/bookmarks`, `/api/v1/ratings` и `/api/v1/reviews`. Events API
 доступен по `POST /api/v1/events`.
+
+Profile API доступен по префиксу `/api/v1/profiles`, Notification API —
+по `/api/v1/notifications`. Для работы с собственным профилем используется
+Bearer access-токен Auth. Чтение чужих профилей требует `profiles:read`
+или статуса суперпользователя; управление контентом в Django Admin доступно
+суперпользователям.
 
 ## Проверки качества
 
@@ -200,23 +275,29 @@ mypy и функциональные тесты сервисов, в котор�
 
 ## Функциональные тесты
 
-Функциональные тесты сейчас есть у Auth Service и Content Service. Каждый
-набор использует собственное изолированное Docker Compose окружение.
+Функциональные тесты Auth, Content и Profile Services используют собственные
+Docker Compose окружения. Например, тесты Auth запускаются так:
 
 ```bash
 cd services/auth_service/tests/functional
 cp .env.example .env
-docker compose up --build \
+docker compose -p movies-auth-tests up --build \
   --abort-on-container-exit \
   --exit-code-from tests \
   tests
-docker compose down -v --remove-orphans
+docker compose -p movies-auth-tests down -v --remove-orphans
 ```
 
 Для Content Service дополнительно нужен файл
 `services/content_service/.env`, созданный из `.env.example`.
 
-В CI оба набора запускаются на Python 3.10, 3.11 и 3.12.
+Команды и особенности остальных наборов описаны в README
+[Content](services/content_service/README.md) и
+[Profile](services/profile_service/README.md#проверки).
+
+В CI все три набора запускаются на Python 3.10, 3.11 и 3.12.
+Отдельная задача проверяет интеграции Auth, UGC, Notification Worker и
+Django Admin с профилями.
 
 ## Наблюдаемость
 
@@ -230,7 +311,7 @@ http://127.0.0.1:5601
 `@timestamp`. Подробная инструкция находится в
 [`infrastructure/elk/README.md`](infrastructure/elk/README.md).
 
-Для ошибок приложений во всех семи Python-компонентах подключён Sentry SDK.
+Для ошибок приложений в Python-компонентах подключён Sentry SDK.
 Он включается непустым `SENTRY_DSN` в `.env` конкретного сервиса.
 
 После первого запуска откройте `http://127.0.0.1:9000`, создайте проект и
@@ -270,6 +351,7 @@ Elasticsearch и остальных компонентов рекомендуе�
 docker compose logs -f \
   nginx \
   auth-service \
+  profile-service \
   content-service \
   events-service \
   events-etl \
@@ -309,8 +391,10 @@ docker compose down -v --remove-orphans
 
 ## Уведомления
 
-Добавлены `notification_service` и `notification_worker`: защищённый API,
-шаблоны, рассылки, transactional outbox, Kafka, персонализация через Auth,
-SMTP, сохраняемые повторы и возврат результатов доставки.
-[Запуск, гарантии, проверки и текущие ограничения](docs/notifications.md).
+`notification_service` и `notification_worker` обеспечивают защищённый API,
+шаблоны, рассылки, transactional outbox, передачу заданий через Kafka,
+отправку через SMTP, сохраняемые повторы и возврат результатов доставки.
+Email получателя загружается из Auth, имя и фамилия — из Profile.
+В локальном окружении письма доступны в Mailpit.
+[Запуск, гарантии, проверки и текущие ограничения](services/notification_service/README.md).
 Готовые тестовые настройки приведены в `.env.example` каждого сервиса.

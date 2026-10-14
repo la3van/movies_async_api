@@ -5,6 +5,7 @@ from api.v1.endpoints import (
     notification_internal,
     oauth,
     permissions,
+    profile_migration,
     roles,
     users,
 )
@@ -18,3 +19,4 @@ api_router.include_router(roles.router)
 api_router.include_router(permissions.router)
 api_router.include_router(oauth.router)
 api_router.include_router(notification_internal.router)
+api_router.include_router(profile_migration.router)

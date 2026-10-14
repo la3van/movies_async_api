@@ -35,6 +35,8 @@ def init_sentry(*, service_name: str) -> bool:
             "SENTRY_PROFILES_SAMPLE_RATE",
         ),
         send_default_pii=False,
+        include_local_variables=False,
+        max_request_body_size="never",
         integrations=[
             DjangoIntegration(transaction_style="url"),
             LoggingIntegration(

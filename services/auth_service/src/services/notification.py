@@ -7,6 +7,7 @@ from api.v1.schemas.notification import (
     NotificationAudienceResponse,
     NotificationRecipientResponse,
 )
+from core.config import get_settings
 from services.exceptions import AuthServiceError, UserNotFoundError
 from unit_of_work.base import UnitOfWorkFactory
 
@@ -33,8 +34,12 @@ class NotificationService:
             return NotificationRecipientResponse(
                 id=user.id,
                 email=user.email,
-                first_name=user.first_name,
-                last_name=user.last_name,
+                first_name=None
+                if get_settings().profile_names_external
+                else user.first_name,
+                last_name=None
+                if get_settings().profile_names_external
+                else user.last_name,
                 is_active=user.is_active,
             )
 

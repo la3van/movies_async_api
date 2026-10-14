@@ -65,6 +65,10 @@ async def _ensure_indexes(database: Any) -> None:
     await database.reviews.create_indexes(
         [
             IndexModel(
+                [("user_id", ASCENDING), ("_id", ASCENDING)],
+                name="ix_review_user_id",
+            ),
+            IndexModel(
                 [("user_id", ASCENDING), ("film_id", ASCENDING)],
                 unique=True,
                 name="uq_review_user_film",

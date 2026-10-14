@@ -49,6 +49,11 @@ class ReviewPageResponse(BaseModel):
     next_cursor: str | None = None
 
 
+class UserReviewPageResponse(BaseModel):
+    items: list[ReviewResponse]
+    next_cursor: UUID | None = None
+
+
 class ReactionUpsertRequest(BaseModel):
     """Лайк или дизлайк рецензии."""
 

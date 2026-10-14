@@ -1,0 +1,7 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Главная</a> &rsaquo; <a href="{% url 'admin:profiles_list' %}">Профили</a> &rsaquo; Карточка</div>{% endblock %}
+{% block content %}
+<div class="module"><table>{% for label, value in fields %}<tr><th>{{ label }}</th><td>{{ value|default_if_none:"—" }}</td></tr>{% endfor %}</table></div>
+<p>Изменение персональных данных выполняет владелец профиля.</p>
+{% endblock %}
+

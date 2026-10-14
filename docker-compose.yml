@@ -26,6 +26,41 @@ services:
         condition: service_healthy
       ugc-service:
         condition: service_healthy
+      profile-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  profile-postgres:
+    image: postgres:16
+    env_file:
+      - ./services/profile_service/.env
+    volumes:
+      - profile_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+
+  profile-service:
+    build:
+      context: ./services/profile_service
+    env_file:
+      - ./services/profile_service/.env
+    expose:
+      - "8000"
+    depends_on:
+      profile-postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     restart: unless-stopped
 
   auth-service:
@@ -313,9 +348,6 @@ services:
     command:
       - |
         set -eu
-        # Новые volumes могут принадлежать root. До запуска брокеров
-        # передаём каталоги пользователю appuser (UID/GID 1000).
-        # Содержимое не удаляем и владельцев существующих файлов не меняем.
         for directory in /volumes/kafka-0 /volumes/kafka-1 /volumes/kafka-2; do
           chown 1000:1000 "$$directory"
           chmod u+rwx "$$directory"
@@ -680,6 +712,8 @@ services:
     depends_on:
       delivery-migrate:
         condition: service_completed_successfully
+      profile-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-m", "core.health"]
       interval: 15s
@@ -840,6 +874,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  profile_postgres_data:
   notification_postgres_data:
   kafka_0_data:
   kafka_1_data:

@@ -1,5 +1,10 @@
 # UGC Service
 
+Для вкладок профиля доступны `GET /api/v1/ratings/me` и
+`GET /api/v1/reviews/me`: `page_size` до 100, UUID-курсор `after`, ответ
+`items`/`next_cursor`. Данные относятся только к текущему пользователю.
+Персональные данные хранятся в [Profile Service](../profile_service/README.md).
+
 Production-like FastAPI-сервис пользовательского контента онлайн-кинотеатра. Сервис реализует CRUD закладок, оценок и рецензий, лайки/дизлайки рецензий и агрегированную статистику фильмов. Основное хранилище — MongoDB.
 
 В общем Compose сервис называется `ugc-service`, использует MongoDB и Redis

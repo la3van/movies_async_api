@@ -2,10 +2,11 @@
 
 from uuid import UUID
 
+from core.config import get_settings
 from models.role import Role
 from models.user import User
 from repositories.interfaces.user import UserRepository
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -69,8 +70,12 @@ class PostgresUserRepository(UserRepository):
             login=login,
             email=email,
             password_hash=password_hash,
-            first_name=first_name,
-            last_name=last_name,
+            first_name=None
+            if get_settings().profile_names_external
+            else first_name,
+            last_name=None
+            if get_settings().profile_names_external
+            else last_name,
             is_active=is_active,
             is_superuser=is_superuser,
             roles=[],
@@ -125,3 +130,18 @@ class PostgresUserRepository(UserRepository):
         await self.session.flush()
 
         return user
+
+    async def list_legacy_profiles(
+        self, after: UUID | None, limit: int
+    ) -> list[User]:
+        query = (
+            select(User)
+            .where(
+                or_(User.first_name.is_not(None), User.last_name.is_not(None))
+            )
+            .order_by(User.id)
+            .limit(limit)
+        )
+        if after is not None:
+            query = query.where(User.id > after)
+        return list((await self.session.scalars(query)).all())

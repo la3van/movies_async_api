@@ -19,6 +19,23 @@ class MongoRatingRepository(RatingRepository):
     def __init__(self, database: Any) -> None:
         self._collection = database.ratings
 
+    async def list_by_user(
+        self, user_id: UUID, after: UUID | None, limit: int
+    ) -> list[Rating]:
+        query: dict[str, Any] = {"user_id": str(user_id)}
+        if after is not None:
+            query["film_id"] = {"$gt": str(after)}
+        try:
+            documents = (
+                await self._collection.find(query)
+                .sort("film_id", 1)
+                .limit(limit)
+                .to_list(length=limit)
+            )
+        except PyMongoError as error:
+            raise DependencyUnavailableError("MongoDB unavailable") from error
+        return [build_rating(document) for document in documents]
+
     async def upsert(self, user_id: UUID, film_id: UUID, value: int) -> Rating:
         now = datetime.now(timezone.utc)
         try:
@@ -68,7 +85,7 @@ class MongoRatingRepository(RatingRepository):
 
     async def get_film_stats(self, film_id: UUID) -> FilmRatingStats:
         try:
-            cursor = self._collection.aggregate(
+            cursor = await self._collection.aggregate(
                 build_rating_stats_pipeline(str(film_id))
             )
             documents = await cursor.to_list(length=1)

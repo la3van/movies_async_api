@@ -13,6 +13,11 @@ from repositories.interfaces.rating import RatingRepository
 class RatingService:
     """Управлять оценкой пользователя и агрегатами фильма."""
 
+    async def list_by_user(
+        self, user_id: UUID, after: UUID | None, limit: int
+    ) -> list[Rating]:
+        return await self._repository.list_by_user(user_id, after, limit)
+
     def __init__(
         self,
         repository: RatingRepository,

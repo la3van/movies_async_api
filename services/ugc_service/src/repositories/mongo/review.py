@@ -64,7 +64,7 @@ class MongoReviewRepository(ReviewRepository):
             {"$limit": 1},
         ]
         try:
-            cursor = self._collection.aggregate(pipeline)
+            cursor = await self._collection.aggregate(pipeline)
             documents = await cursor.to_list(length=1)
         except PyMongoError as error:
             raise DependencyUnavailableError("MongoDB unavailable") from error
@@ -85,11 +85,30 @@ class MongoReviewRepository(ReviewRepository):
             page_size=page_size,
         )
         try:
-            mongo_cursor = self._collection.aggregate(pipeline)
+            mongo_cursor = await self._collection.aggregate(pipeline)
             documents = await mongo_cursor.to_list(length=page_size)
         except PyMongoError as error:
             raise DependencyUnavailableError("MongoDB unavailable") from error
 
+        return [build_review_details(document) for document in documents]
+
+    async def list_by_user(
+        self, user_id: UUID, after: UUID | None, limit: int
+    ) -> list[ReviewDetails]:
+        query: dict[str, Any] = {"user_id": str(user_id)}
+        if after is not None:
+            query["_id"] = {"$gt": str(after)}
+        pipeline = [
+            {"$match": query},
+            {"$sort": {"_id": 1}},
+            {"$limit": limit},
+            *build_review_details_stages(),
+        ]
+        try:
+            cursor = await self._collection.aggregate(pipeline)
+            documents = await cursor.to_list(length=limit)
+        except PyMongoError as error:
+            raise DependencyUnavailableError("MongoDB unavailable") from error
         return [build_review_details(document) for document in documents]
 
     async def update_text(self, review_id: UUID, text: str) -> Review:

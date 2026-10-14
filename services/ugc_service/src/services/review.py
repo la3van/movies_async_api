@@ -20,6 +20,11 @@ from repositories.interfaces.review import ReviewRepository
 class ReviewService:
     """CRUD рецензий, агрегации и пользовательские реакции."""
 
+    async def list_by_user(
+        self, user_id: UUID, after: UUID | None, limit: int
+    ) -> list[ReviewDetails]:
+        return await self._reviews.list_by_user(user_id, after, limit)
+
     def __init__(
         self,
         review_repository: ReviewRepository,

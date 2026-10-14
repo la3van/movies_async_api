@@ -10,6 +10,13 @@ class RatingRepository(ABC):
     """Операции хранения и агрегации пользовательских оценок."""
 
     @abstractmethod
+    async def list_by_user(
+        self, user_id: UUID, after: UUID | None, limit: int
+    ) -> list[Rating]:
+        """List own ratings, ordered by film UUID."""
+        raise NotImplementedError
+
+    @abstractmethod
     async def upsert(self, user_id: UUID, film_id: UUID, value: int) -> Rating:
         """Создать или заменить оценку пользователя."""
         raise NotImplementedError

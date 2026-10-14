@@ -33,5 +33,4 @@ __MACOSX/
 
 *.log
 
-# Generated self-hosted Sentry stack
 infrastructure/sentry-self-hosted/

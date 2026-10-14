@@ -74,6 +74,10 @@ class DeliveryService:
             raise TransientFailure("invalid_auth_response") from exc
         if not recipient.is_active or recipient.id != job.user_id:
             raise PermanentFailure("recipient_unavailable")
+
+        recipient.first_name, recipient.last_name = await self._profile_name(
+            job.user_id
+        )
         context = {
             **job.context,
             "first_name": recipient.first_name or "",
@@ -128,6 +132,38 @@ class DeliveryService:
             if exc.code >= 500:
                 raise PermanentFailure("smtp_rejected") from exc
             raise TransientFailure("smtp_temporary_failure") from exc
+
+    async def _profile_name(
+        self, user_id: UUID
+    ) -> tuple[str | None, str | None]:
+        if not self.settings.profile_token.get_secret_value():
+            raise TransientFailure("profile_unavailable")
+        response = await self.client.get(
+            self.settings.profile_base_url.rstrip("/")
+            + f"/internal/profiles/{user_id}/notification-name",
+            headers={
+                "X-Service-Token": (
+                    self.settings.profile_token.get_secret_value()
+                )
+            },
+        )
+        if response.status_code == 404:
+            return None, None
+        if response.status_code != 200:
+            raise TransientFailure("profile_unavailable")
+        try:
+            data = response.json()
+            if UUID(data["user_id"]) != user_id:
+                raise ValueError
+            first, last = data["first_name"], data["last_name"]
+            if not all(
+                value is None or isinstance(value, str)
+                for value in (first, last)
+            ):
+                raise ValueError
+        except (ValueError, KeyError, TypeError) as exc:
+            raise TransientFailure("invalid_profile_response") from exc
+        return first, last
 
     async def check_smtp(self) -> None:
         """Проверяет подключение и вход без отправки пробного письма."""

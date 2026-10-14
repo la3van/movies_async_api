@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: profile_test
+      POSTGRES_PASSWORD: profile_test
+      POSTGRES_DB: profiles_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U profile_test -d profiles_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  tests:
+    build:
+      context: ../..
+      dockerfile: tests/functional/Dockerfile
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.10}
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+

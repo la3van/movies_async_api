@@ -2,7 +2,8 @@
 
 from api.v1.schemas.entity import EntityResponse
 from api.v1.schemas.roles import RoleResponse
-from pydantic import BaseModel, EmailStr, Field
+from core.config import get_settings
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserBase(BaseModel):
@@ -37,6 +38,13 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Схема создания пользователя."""
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def names_live_in_profile(cls, value: str | None) -> str | None:
+        if value is not None and get_settings().profile_names_external:
+            raise ValueError("Create personal data via /api/v1/profiles/me")
+        return value
 
     password: str = Field(
         min_length=8,
@@ -84,6 +92,11 @@ class UserPasswordUpdate(BaseModel):
 
 class UserResponse(UserBase, EntityResponse):
     """Response-схема пользователя."""
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def hide_legacy_names(cls, value: str | None) -> str | None:
+        return None if get_settings().profile_names_external else value
 
     is_active: bool = Field(
         description="Флаг активного пользователя",

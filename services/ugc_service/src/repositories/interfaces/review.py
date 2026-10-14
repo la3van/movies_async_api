@@ -11,6 +11,13 @@ class ReviewRepository(ABC):
     """CRUD и агрегированное чтение рецензий."""
 
     @abstractmethod
+    async def list_by_user(
+        self, user_id: UUID, after: UUID | None, limit: int
+    ) -> list[ReviewDetails]:
+        """Own reviews, ordered by review UUID."""
+        raise NotImplementedError
+
+    @abstractmethod
     async def create(self, review: Review) -> Review:
         """Создать рецензию."""
         raise NotImplementedError

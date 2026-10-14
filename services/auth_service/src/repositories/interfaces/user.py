@@ -11,6 +11,12 @@ class UserRepository(ABC):
     """Определяет операции получения и сохранения пользователей."""
 
     @abstractmethod
+    async def list_legacy_profiles(
+        self, after: UUID | None, limit: int
+    ) -> list[User]:
+        """Read legacy names for the explicit Profile migration."""
+
+    @abstractmethod
     async def get_by_id(self, user_id: UUID) -> User | None:
         """Возвращает пользователя по идентификатору или None,
         если пользователь не найден."""

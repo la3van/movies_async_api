@@ -92,7 +92,7 @@ CSRF_TRUSTED_ORIGINS = get_list_env(
 )
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    "admin_auth.apps.ProfileAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -109,6 +109,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "admin_auth.middleware.RefreshAuthMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -148,8 +149,6 @@ WSGI_APPLICATION = "admin_panel.wsgi.application"
 ASGI_APPLICATION = "admin_panel.asgi.application"
 
 
-# Служебная база Django Admin:
-# сессии, shadow-пользователи и журнал действий.
 SQLITE_PATH = os.getenv(
     "SQLITE_PATH",
     str(BASE_DIR / "data" / "admin.sqlite3"),
@@ -224,8 +223,15 @@ AUTHENTICATION_BACKENDS = [
     "admin_auth.backends.AuthServiceBackend",
 ]
 
-# Локальные пароли не используются:
-# пароль всегда проверяет auth-service.
+PROFILE_SERVICE_BASE_URL = os.getenv(
+    "PROFILE_SERVICE_BASE_URL", "http://profile-service:8000/api/v1/"
+)
+ADMIN_TOKEN_KEY = os.getenv("ADMIN_TOKEN_KEY", "")
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = get_bool_env("SESSION_COOKIE_SECURE", False)
+
+
 AUTH_PASSWORD_VALIDATORS: list[dict[str, str]] = []
 
 LANGUAGE_CODE = os.getenv(

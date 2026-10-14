@@ -12,14 +12,34 @@ from api.v1.schemas.ratings import (
     FilmRatingStatsResponse,
     RatingResponse,
     RatingUpsertRequest,
+    UserRatingPageResponse,
 )
 from auth.dependencies import get_current_user
 from auth.models import AuthenticatedUser
 from core.rate_limit import rate_limit
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from services.rating import RatingService
 
 router = APIRouter()
+
+
+@router.get(
+    "/me",
+    response_model=UserRatingPageResponse,
+    summary="Все оценки текущего пользователя",
+)
+async def list_my_ratings(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    service: Annotated[RatingService, Depends(get_rating_service)],
+    after: UUID | None = None,
+    page_size: int = Query(50, ge=1, le=100),
+) -> UserRatingPageResponse:
+    ratings = await service.list_by_user(current_user.id, after, page_size + 1)
+    items = [build_rating_response(item) for item in ratings[:page_size]]
+    return UserRatingPageResponse(
+        items=items,
+        next_cursor=(items[-1].film_id if len(ratings) > page_size else None),
+    )
 
 
 @router.get(

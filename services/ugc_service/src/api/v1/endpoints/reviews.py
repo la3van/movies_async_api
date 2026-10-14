@@ -15,6 +15,7 @@ from api.v1.schemas.reviews import (
     ReviewPageResponse,
     ReviewResponse,
     ReviewUpdateRequest,
+    UserReviewPageResponse,
 )
 from auth.dependencies import get_current_user
 from auth.models import AuthenticatedUser
@@ -25,6 +26,25 @@ from models.reaction import ReactionValue
 from services.review import ReviewService
 
 router = APIRouter()
+
+
+@router.get(
+    "/me",
+    response_model=UserReviewPageResponse,
+    summary="Все рецензии текущего пользователя",
+)
+async def list_my_reviews(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    service: Annotated[ReviewService, Depends(get_review_service)],
+    after: UUID | None = None,
+    page_size: int = Query(50, ge=1, le=100),
+) -> UserReviewPageResponse:
+    reviews = await service.list_by_user(current_user.id, after, page_size + 1)
+    items = [build_review_response(item) for item in reviews[:page_size]]
+    return UserReviewPageResponse(
+        items=items,
+        next_cursor=(items[-1].id if len(reviews) > page_size else None),
+    )
 
 
 @router.get(

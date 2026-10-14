@@ -15,19 +15,18 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Раздельные ключи доступа к аудитории и данным получателя.
     notification_api_token: SecretStr = SecretStr("")
     notification_worker_token: SecretStr = SecretStr("")
+    profile_migration_token: SecretStr = SecretStr("")
 
-    # Auth API project
+    profile_names_external: bool = False
+
     project_name: str = "auth-service"
     debug: bool = False
 
-    # Auth API
     auth_service_host: str = "0.0.0.0"
     auth_service_port: int = 8000
 
-    # Postgres
     postgres_host: str = "localhost"
     postgres_port: int = 5432
     postgres_db: str = "auth"
@@ -36,7 +35,6 @@ class Settings(BaseSettings):
     postgres_connect_timeout: int = 5
     postgres_statement_timeout_ms: int = 30000
 
-    # Redis
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 2
@@ -47,21 +45,16 @@ class Settings(BaseSettings):
     redis_retry_backoff_base: float = 0.1
     redis_retry_backoff_cap: float = 1.0
 
-    # Rate limiting
     rate_limit_enabled: bool = True
     rate_limit_key_prefix: str = "auth:rate_limit"
 
-    # Trusted reverse proxies
     trusted_proxy_sources: str = "nginx,admin-service"
 
-    # OAuth
     oauth_state_ttl_seconds: int = 300
     oauth_state_key_prefix: str = "oauth:state"
 
-    # OAuth HTTP
     oauth_http_timeout_seconds: int = 10
 
-    # Yandex OAuth
     yandex_oauth_client_id: str = ""
     yandex_oauth_client_secret: SecretStr = SecretStr("")
     yandex_oauth_redirect_uri: str = (
@@ -69,7 +62,6 @@ class Settings(BaseSettings):
     )
     yandex_oauth_scopes: str = "login:info login:email"
 
-    # Google OAuth
     google_oauth_client_id: str = ""
     google_oauth_client_secret: SecretStr = SecretStr("")
     google_oauth_redirect_uri: str = (
@@ -77,31 +69,24 @@ class Settings(BaseSettings):
     )
     google_oauth_scopes: str = "openid email profile"
 
-    # TODO: Complete VK ID end-to-end setup after obtaining
-    # a trusted public HTTPS domain. VK ID rejects localhost
-    # and temporary trycloudflare.com callback domains.
     vk_oauth_client_id: str = ""
     vk_oauth_redirect_uri: str = ""
     vk_oauth_scopes: str = "email"
 
-    # JWT
     jwt_secret_key: SecretStr
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
 
-    # Access token revocation
     access_token_revocation_key_prefix: str = "access_tokens:revoked"
     access_token_revocation_clock_skew_seconds: int = 30
 
-    # Superuser
     superuser_login: str = "admin"
     superuser_email: str = "admin@example.com"
     superuser_password: SecretStr
     superuser_first_name: str = "Admin"
     superuser_last_name: str = "User"
 
-    # Cache
     user_cache_expire_in_seconds: int = 300
     role_cache_expire_in_seconds: int = 300
     permission_cache_expire_in_seconds: int = 300

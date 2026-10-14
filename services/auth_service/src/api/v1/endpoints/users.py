@@ -14,7 +14,8 @@ from api.v1.schemas.users import (
     UserResponse,
     UserUpdate,
 )
-from fastapi import APIRouter, Depends, Path, Query, status
+from core.config import get_settings
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from services.user import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -30,9 +31,7 @@ router = APIRouter(prefix="/users", tags=["users"])
     response_description="Профиль текущего пользователя",
 )
 async def get_me(
-    current_user: UserResponse = (
-        Depends(get_current_active_user)  # noqa: B008
-    ),
+    current_user: UserResponse = (Depends(get_current_active_user)),
 ) -> UserResponse:
     """Возвращает текущего пользователя."""
 
@@ -51,12 +50,13 @@ async def get_me(
 )
 async def update_me(
     user_data: UserUpdate,
-    current_user: UserResponse = (
-        Depends(get_current_active_user)  # noqa: B008
-    ),
-    user_service: UserService = Depends(get_user_service),  # noqa: B008
+    current_user: UserResponse = (Depends(get_current_active_user)),
+    user_service: UserService = Depends(get_user_service),
 ) -> UserResponse:
     """Обновляет профиль текущего пользователя."""
+
+    if get_settings().profile_names_external:
+        raise HTTPException(409, "use_profiles_api")
 
     return await user_service.update_profile(
         user_id=current_user.id,
@@ -76,10 +76,8 @@ async def update_me(
 )
 async def change_my_password(
     password_data: UserPasswordUpdate,
-    current_user: UserResponse = (
-        Depends(get_current_active_user)  # noqa: B008
-    ),
-    user_service: UserService = Depends(get_user_service),  # noqa: B008
+    current_user: UserResponse = (Depends(get_current_active_user)),
+    user_service: UserService = Depends(get_user_service),
 ) -> None:
     """Меняет пароль текущего пользователя."""
 
@@ -112,20 +110,18 @@ async def get_my_login_history(
         description="Смещение от начала списка",
         examples=[0],
     ),
-    created_from: datetime | None = Query(  # noqa: B008
+    created_from: datetime | None = Query(
         None,
         description="Нижняя граница времени входа включительно.",
         examples=["2026-07-01T00:00:00Z"],
     ),
-    created_to: datetime | None = Query(  # noqa: B008
+    created_to: datetime | None = Query(
         None,
         description="Верхняя граница времени входа не включительно.",
         examples=["2026-08-01T00:00:00Z"],
     ),
-    current_user: UserResponse = (
-        Depends(get_current_active_user)  # noqa: B008
-    ),
-    user_service: UserService = Depends(get_user_service),  # noqa: B008
+    current_user: UserResponse = (Depends(get_current_active_user)),
+    user_service: UserService = Depends(get_user_service),
 ) -> list[LoginHistoryResponse]:
     """Возвращает историю входов текущего пользователя."""
 
@@ -149,18 +145,18 @@ async def get_my_login_history(
     response_description="Пользователь с обновлённым набором ролей",
 )
 async def assign_role_to_user(
-    user_id: UUID = Path(  # noqa: B008
+    user_id: UUID = Path(
         ...,
         description="UUID пользователя",
         examples=["6f822a92-7b51-4753-8d00-ecfedf98a937"],
     ),
-    role_id: UUID = Path(  # noqa: B008
+    role_id: UUID = Path(
         ...,
         description="UUID назначаемой роли",
         examples=["7d822a92-7b51-4753-8d00-ecfedf98a938"],
     ),
-    _current_user: UserResponse = Depends(require_superuser),  # noqa: B008
-    user_service: UserService = Depends(get_user_service),  # noqa: B008
+    _current_user: UserResponse = Depends(require_superuser),
+    user_service: UserService = Depends(get_user_service),
 ) -> UserResponse:
     """Назначает роль пользователю."""
 
@@ -181,18 +177,18 @@ async def assign_role_to_user(
     response_description="Пользователь с обновлённым набором ролей",
 )
 async def remove_role_from_user(
-    user_id: UUID = Path(  # noqa: B008
+    user_id: UUID = Path(
         ...,
         description="UUID пользователя",
         examples=["6f822a92-7b51-4753-8d00-ecfedf98a937"],
     ),
-    role_id: UUID = Path(  # noqa: B008
+    role_id: UUID = Path(
         ...,
         description="UUID удаляемой роли",
         examples=["7d822a92-7b51-4753-8d00-ecfedf98a938"],
     ),
-    _current_user: UserResponse = Depends(require_superuser),  # noqa: B008
-    user_service: UserService = Depends(get_user_service),  # noqa: B008
+    _current_user: UserResponse = Depends(require_superuser),
+    user_service: UserService = Depends(get_user_service),
 ) -> UserResponse:
     """Удаляет роль у пользователя."""
 

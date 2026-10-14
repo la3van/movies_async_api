@@ -38,3 +38,10 @@ class FilmRatingStatsResponse(BaseModel):
     likes_count: int = Field(ge=0)
     dislikes_count: int = Field(ge=0)
     distribution: list[RatingDistributionResponse]
+
+
+class UserRatingPageResponse(BaseModel):
+    """Own ratings with a stable film UUID cursor."""
+
+    items: list[RatingResponse]
+    next_cursor: UUID | None = None
