@@ -46,30 +46,13 @@ class UserService:
 
     @trace_method("users.get_by_id")
     async def get_by_id(self, user_id: UUID) -> UserResponse:
-        """Возвращает пользователя по идентификатору."""
-        user_cache_key = get_user_cache_key(user_id)
-
-        user = await self._cache.get_model(
-            key=user_cache_key,
-            model_type=UserResponse,
-        )
-        if user is not None:
-            return user
-
+        """Читает пользователя и актуальные права непосредственно из БД."""
         async with self._uow_factory() as uow:
             user_model = await uow.users.get_by_id(user_id)
             if user_model is None:
                 raise UserNotFoundError("User not found")
 
-            user = UserResponse.model_validate(user_model)
-
-        await self._cache.set_model(
-            key=user_cache_key,
-            value=user,
-            ttl=self._user_cache_ttl,
-        )
-
-        return user
+            return UserResponse.model_validate(user_model)
 
     @trace_method("users.update_profile")
     async def update_profile(

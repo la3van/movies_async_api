@@ -92,6 +92,7 @@ class ProfileService:
     async def list(
         self, actor: UUID, after: UUID | None, limit: int, request_id: str
     ) -> ProfilePage:
+        """Возвращает страницу профилей и фиксирует раскрытые UUID."""
         async with self._uow() as uow:
             records = await uow.profiles.list(after, limit + 1)
             items = [self._response(record) for record in records[:limit]]
@@ -99,6 +100,9 @@ class ProfileService:
             for item in items:
                 if item.phone:
                     item.phone = "***" + item.phone[-4:]
+                await uow.profiles.audit(
+                    actor, item.user_id, "profile.list_item", request_id
+                )
             await uow.profiles.audit(actor, None, "profile.list", request_id)
             await uow.commit()
             return ProfilePage(

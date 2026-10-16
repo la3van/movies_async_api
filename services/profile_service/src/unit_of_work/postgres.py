@@ -24,8 +24,22 @@ class SQLAlchemyUnitOfWork:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> None:
-        await self.session.rollback()
-        await self.session.close()
+        """Закрывает сессию, сохраняя исходную ошибку операции."""
+        cleanup_error: BaseException | None = None
+
+        try:
+            await self.session.rollback()
+        except BaseException as error:
+            cleanup_error = error
+        finally:
+            try:
+                await self.session.close()
+            except BaseException as error:
+                if cleanup_error is None:
+                    cleanup_error = error
+
+        if exc is None and cleanup_error is not None:
+            raise cleanup_error
 
     async def commit(self) -> None:
         await self.session.commit()
