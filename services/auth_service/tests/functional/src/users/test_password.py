@@ -1,5 +1,6 @@
 """Функциональные тесты смены пароля."""
 
+import json
 from http import HTTPStatus
 
 import pytest
@@ -83,6 +84,7 @@ async def test_change_password_invalidates_user_cache(
     registered_user,
     auth_headers,
     redis_exists,
+    redis_client,
     make_get_request,
     make_patch_request,
 ) -> None:
@@ -96,6 +98,11 @@ async def test_change_password_invalidates_user_cache(
         assert response.status == HTTPStatus.OK
 
     cache_key = f"user:profile:{registered_user['id']}"
+    await redis_client.set(
+        cache_key,
+        json.dumps(registered_user),
+        ex=60,
+    )
     assert await redis_exists(cache_key) is True
 
     password_response = await make_patch_request(

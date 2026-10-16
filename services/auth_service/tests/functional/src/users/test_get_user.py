@@ -1,5 +1,6 @@
 """Функциональные тесты получения текущего пользователя."""
 
+import json
 from http import HTTPStatus
 
 import pytest
@@ -35,12 +36,13 @@ async def test_get_current_user(
 
 
 @pytest.mark.asyncio
-async def test_get_current_user_from_cache(
+async def test_get_current_deleted_user_ignores_stale_cache(
     registered_user_tokens,
     make_get_request,
     delete_user_by_id,
+    redis_client,
 ) -> None:
-    """Проверяет возврат профиля из Redis после удаления строки в БД."""
+    """Запрещает доступ удалённому пользователю при наличии старого кеша."""
     headers = build_auth_headers(registered_user_tokens["access_token"])
 
     first_response = await make_get_request(
@@ -54,6 +56,11 @@ async def test_get_current_user_from_cache(
         assert first_response.status == HTTPStatus.OK
 
     await delete_user_by_id(first_body["id"])
+    await redis_client.set(
+        f"user:profile:{first_body['id']}",
+        json.dumps(first_body),
+        ex=60,
+    )
 
     second_response = await make_get_request(
         url=f"{test_settings.api_prefix}/users/me",
@@ -63,8 +70,8 @@ async def test_get_current_user_from_cache(
     async with second_response:
         second_body = await second_response.json()
 
-        assert second_response.status == HTTPStatus.OK
-        assert second_body == first_body
+        assert second_response.status == HTTPStatus.NOT_FOUND
+        assert second_body["detail"] == "User not found"
 
 
 @pytest.mark.asyncio
